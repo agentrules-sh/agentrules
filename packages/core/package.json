@@ -1,0 +1,54 @@
+{
+  "name": "@agentrules/core",
+  "version": "0.0.3",
+  "author": "Brian Cheung <bcheung.dev@gmail.com> (https://github.com/bcheung)",
+  "license": "MIT",
+  "homepage": "https://docs.agentrules.directory",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agentrules-sh/agentrules",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/agentrules-sh/agentrules/issues"
+  },
+  "keywords": [
+    "agentrules",
+    "agents",
+    "agentic",
+    "coding",
+    "development"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "diff": "^8.0.2",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "tsdown": "^0.9.0",
+    "typescript": "catalog:"
+  }
+}
