@@ -68,6 +68,11 @@ export function validatePresetConfig(
   if (!preset.description || typeof preset.description !== "string") {
     throw new Error(`Preset ${slug} is missing a description`);
   }
+  if (!preset.license || typeof preset.license !== "string") {
+    throw new Error(
+      `Preset ${slug} is missing a license (SPDX identifier required)`
+    );
+  }
   if (!preset.platforms || typeof preset.platforms !== "object") {
     throw new Error(`Preset ${slug} is missing platforms map`);
   }

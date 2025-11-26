@@ -13,6 +13,7 @@ const VALID_CONFIG = {
   name: "test-preset",
   title: "Test Preset",
   description: "A test preset",
+  license: "MIT",
   platforms: {
     opencode: {
       path: "opencode/files/.opencode",
@@ -131,7 +132,7 @@ describe("buildRegistry", () => {
     await mkdir(presetDir, { recursive: true });
     await writeFile(
       join(presetDir, "agentrules.json"),
-      JSON.stringify(VALID_CONFIG)
+      JSON.stringify({ ...VALID_CONFIG, name: "bad-preset" })
     );
     // Don't create platform directory
 
@@ -205,7 +206,7 @@ describe("buildRegistry", () => {
   });
 
   describe("README.md support", () => {
-    it("includes README.md in bundle", async () => {
+    it("includes README.md in bundle as readmeContent", async () => {
       await createPreset("test-preset", VALID_CONFIG, {
         "AGENT_RULES.md": "# Rules\n",
       });
@@ -227,10 +228,12 @@ describe("buildRegistry", () => {
         "utf8"
       );
       const bundle = JSON.parse(bundleContent);
-      expect(bundle.readme).toBe("# Test Preset\n\nThis is a great preset!");
+      expect(bundle.readmeContent).toBe(
+        "# Test Preset\n\nThis is a great preset!"
+      );
     });
 
-    it("sets hasReadme flag in entry", async () => {
+    it("sets hasReadmeContent flag in entry", async () => {
       await createPreset("test-preset", VALID_CONFIG, {
         "AGENT_RULES.md": "# Rules\n",
       });
@@ -248,10 +251,10 @@ describe("buildRegistry", () => {
         "utf8"
       );
       const index = JSON.parse(indexContent);
-      expect(index["test-preset.opencode"].hasReadme).toBe(true);
+      expect(index["test-preset.opencode"].hasReadmeContent).toBe(true);
     });
 
-    it("omits readme fields when no README.md", async () => {
+    it("omits readmeContent fields when no README.md", async () => {
       await createPreset("test-preset", VALID_CONFIG, {
         "AGENT_RULES.md": "# Rules\n",
       });
@@ -266,14 +269,14 @@ describe("buildRegistry", () => {
         "utf8"
       );
       const bundle = JSON.parse(bundleContent);
-      expect(bundle.readme).toBeUndefined();
+      expect(bundle.readmeContent).toBeUndefined();
 
       const indexContent = await readFile(
         join(outputDir, "registry.index.json"),
         "utf8"
       );
       const index = JSON.parse(indexContent);
-      expect(index["test-preset.opencode"].hasReadme).toBe(false);
+      expect(index["test-preset.opencode"].hasReadmeContent).toBe(false);
     });
   });
 

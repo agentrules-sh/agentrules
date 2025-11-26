@@ -12,6 +12,7 @@ const MINIMAL_PRESET = {
   name: "starter",
   title: "Starter",
   description: "Desc",
+  license: "MIT",
   platforms: { opencode: { path: ".opencode" } },
 };
 

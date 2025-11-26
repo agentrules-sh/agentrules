@@ -80,7 +80,8 @@ export function buildRegistryData(
       const installMessage = cleanInstallMessage(platformConfig.installMessage);
       const features = platformConfig.features ?? [];
 
-      const readme = presetInput.readme?.trim() || undefined;
+      const readmeContent = presetInput.readmeContent?.trim() || undefined;
+      const licenseContent = presetInput.licenseContent?.trim() || undefined;
 
       const entry: RegistryEntry = {
         name: encodeItemName(presetInput.slug, platform),
@@ -102,7 +103,8 @@ export function buildRegistryData(
         ),
         fileCount: files.length,
         totalSize,
-        hasReadme: Boolean(readme),
+        hasReadmeContent: Boolean(readmeContent),
+        hasLicenseContent: Boolean(licenseContent),
       };
 
       const bundle: RegistryBundle = {
@@ -114,9 +116,10 @@ export function buildRegistryData(
         tags: presetConfig.tags ?? [],
         author: presetConfig.author,
         license: presetConfig.license,
+        licenseContent,
+        readmeContent,
         features,
         installMessage,
-        readme,
         files,
       };
 

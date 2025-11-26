@@ -29,6 +29,7 @@ export type BuildResult = {
 const CONFIG_FILENAME = "agentrules.json";
 const INSTALL_FILENAME = "INSTALL.txt";
 const README_FILENAME = "README.md";
+const LICENSE_FILENAME = "LICENSE.md";
 
 export async function buildRegistry(
   options: BuildOptions
@@ -149,7 +150,11 @@ async function loadPreset(presetDir: string): Promise<RegistryPresetInput> {
 
   // Read preset README.md for registry display
   const readmePath = join(presetDir, README_FILENAME);
-  const readme = await readFileIfExists(readmePath);
+  const readmeContent = await readFileIfExists(readmePath);
+
+  // Read preset LICENSE.md for registry display
+  const licensePath = join(presetDir, LICENSE_FILENAME);
+  const licenseContent = await readFileIfExists(licensePath);
 
   const platforms: RegistryPresetInput["platforms"] = [];
 
@@ -194,7 +199,7 @@ async function loadPreset(presetDir: string): Promise<RegistryPresetInput> {
     );
   }
 
-  return { slug, config, platforms, readme };
+  return { slug, config, platforms, readmeContent, licenseContent };
 }
 
 async function collectFiles(

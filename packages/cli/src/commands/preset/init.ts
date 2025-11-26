@@ -44,7 +44,7 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
   const description = options.description ?? `${title} preset`;
   const platforms = normalizePlatforms(options.platforms ?? ["opencode"]);
   const author = options.author ? { name: options.author } : undefined;
-  const license = options.license;
+  const license = options.license ?? "MIT"; // Default to MIT if not specified
 
   const configPath = join(directory, CONFIG_FILENAME);
 
@@ -70,15 +70,12 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
     title,
     version: "1.0.0",
     description,
+    license, // Required field
     platforms: platformConfigs,
   };
 
   if (author) {
     preset.author = author;
-  }
-
-  if (license) {
-    preset.license = license;
   }
 
   // Create directory if needed

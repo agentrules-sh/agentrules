@@ -20,7 +20,7 @@ export type PresetConfig = {
   description: string;
   tags?: string[];
   author?: AuthorInfo;
-  license?: string;
+  license: string; // Required SPDX license identifier
   platforms: Partial<Record<PlatformId, PlatformPresetConfig>>;
 };
 
@@ -40,10 +40,11 @@ export type RegistryBundle = {
   description: string;
   tags: string[];
   author?: AuthorInfo;
-  license?: string;
+  license: string; // Required SPDX license identifier
+  licenseContent?: string; // Bundled from LICENSE.md
+  readmeContent?: string; // Bundled from README.md
   features?: string[];
   installMessage?: string;
-  readme?: string;
   files: BundledFile[];
 };
 
@@ -56,15 +57,17 @@ export type RegistryEntry = {
   description: string;
   tags: string[];
   author?: AuthorInfo;
-  license?: string;
+  license: string; // Required SPDX license identifier
   features?: string[];
   installMessage?: string;
   bundlePath: string;
   fileCount: number;
   /** Total size of all files in bytes */
   totalSize: number;
-  /** Whether the preset has a README */
-  hasReadme?: boolean;
+  /** Whether the preset has a README.md */
+  hasReadmeContent?: boolean;
+  /** Whether the preset has a LICENSE.md */
+  hasLicenseContent?: boolean;
 };
 
 export type RegistryData = {
@@ -89,5 +92,6 @@ export type RegistryPresetInput = {
   slug: string;
   config: PresetConfig;
   platforms: RegistryPlatformInput[];
-  readme?: string;
+  readmeContent?: string; // Content from README.md
+  licenseContent?: string; // Content from LICENSE.md
 };

@@ -110,6 +110,7 @@ describe("validatePreset", () => {
       title: "Minimal",
       version: "1.0.0",
       description: "Minimal preset",
+      license: "MIT", // license is now required
       platforms: {
         opencode: { path: "opencode/files/.opencode" },
       },
@@ -123,8 +124,34 @@ describe("validatePreset", () => {
 
     expect(result.valid).toBeTrue();
     expect(result.warnings.some((w) => w.includes("author"))).toBeTrue();
-    expect(result.warnings.some((w) => w.includes("license"))).toBeTrue();
     expect(result.warnings.some((w) => w.includes("tags"))).toBeTrue();
+  });
+
+  it("reports error for missing license", async () => {
+    const presetDir = join(testDir, "no-license");
+    await mkdir(presetDir, { recursive: true });
+    await mkdir(join(presetDir, "opencode/files/.opencode"), {
+      recursive: true,
+    });
+
+    const configWithoutLicense = {
+      name: "no-license",
+      title: "No License",
+      version: "1.0.0",
+      description: "Missing license",
+      platforms: {
+        opencode: { path: "opencode/files/.opencode" },
+      },
+    };
+    await writeFile(
+      join(presetDir, "agentrules.json"),
+      JSON.stringify(configWithoutLicense)
+    );
+
+    const result = await validatePreset({ path: presetDir });
+
+    expect(result.valid).toBeFalse();
+    expect(result.errors.length).toBeGreaterThan(0);
   });
 
   it("warns when name doesn't match directory", async () => {

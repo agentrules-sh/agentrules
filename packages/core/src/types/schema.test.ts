@@ -61,6 +61,7 @@ describe("presetConfigSchema", () => {
     name: "test-preset",
     title: "Test Preset",
     description: "A test preset",
+    license: "MIT",
     platforms: {
       opencode: { path: ".opencode" },
     },
@@ -86,10 +87,15 @@ describe("presetConfigSchema", () => {
       ...validConfig,
       tags: ["test", "example"],
       author: { name: "Test Author" },
-      license: "MIT",
     });
     expect(result.tags).toEqual(["test", "example"]);
     expect(result.author?.name).toBe("Test Author");
+    expect(result.license).toBe("MIT");
+  });
+
+  it("rejects config without license", () => {
+    const { license: _license, ...configWithoutLicense } = validConfig;
+    expect(() => presetConfigSchema.parse(configWithoutLicense)).toThrow();
   });
 
   it("rejects invalid slug format", () => {
@@ -151,6 +157,7 @@ describe("registryBundleSchema", () => {
     title: "Test Preset",
     version: "2024.11.26",
     description: "A test preset",
+    license: "MIT",
     tags: [],
     files: [
       {
@@ -193,6 +200,7 @@ describe("registryEntrySchema", () => {
     title: "Test Preset",
     version: "2024.11.26",
     description: "A test preset",
+    license: "MIT",
     tags: [],
     bundlePath: "/r/test-preset/opencode.2024.11.26.json",
     fileCount: 1,

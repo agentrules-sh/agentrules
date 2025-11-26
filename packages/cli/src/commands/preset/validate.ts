@@ -98,10 +98,6 @@ export async function validatePreset(
     warnings.push("No author name specified.");
   }
 
-  if (!preset.license) {
-    warnings.push("No license specified.");
-  }
-
   if (!preset.tags || preset.tags.length === 0) {
     warnings.push("No tags specified. Tags help with discoverability.");
   }

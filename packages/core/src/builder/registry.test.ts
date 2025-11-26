@@ -69,6 +69,7 @@ describe("buildRegistryData", () => {
             name: "auto-version",
             title: "Auto Version Test",
             description: "Should get auto-generated version",
+            license: "MIT",
             platforms: {
               opencode: { path: ".opencode" },
             },
@@ -99,6 +100,7 @@ describe("buildRegistryData", () => {
               name: "bad-preset",
               title: "Bad",
               description: "Contains binary",
+              license: "MIT",
               platforms: {
                 opencode: {
                   path: ".opencode",

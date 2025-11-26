@@ -29,7 +29,8 @@ const tagsSchema = z.array(tagSchema).max(10);
 const featureSchema = z.string().trim().min(1).max(160);
 const featuresSchema = z.array(featureSchema).max(10);
 const installMessageSchema = z.string().trim().max(4000);
-const licenseSchema = z.string().trim().max(80);
+const licenseSchema = z.string().trim().min(1).max(80);
+const contentSchema = z.string(); // For readmeContent and licenseContent (no length limit)
 
 const slugSchema = z
   .string()
@@ -68,7 +69,7 @@ export const presetConfigSchema = z
     description: descriptionSchema,
     tags: tagsSchema.optional(),
     author: authorSchema.optional(),
-    license: licenseSchema.optional(),
+    license: licenseSchema, // Required SPDX license identifier
     platforms: platformsObjectSchema,
   })
   .strict();
@@ -88,19 +89,23 @@ export const registryBundleSchema = z.object({
   description: descriptionSchema,
   tags: tagsSchema,
   author: authorSchema.optional(),
-  license: licenseSchema.optional(),
+  license: licenseSchema, // Required SPDX license identifier
+  licenseContent: contentSchema.optional(), // Bundled from LICENSE.md
+  readmeContent: contentSchema.optional(), // Bundled from README.md
   features: featuresSchema.optional(),
   installMessage: installMessageSchema.optional(),
   files: z.array(bundledFileSchema).min(1),
 });
 
 export const registryEntrySchema = registryBundleSchema
-  .omit({ files: true })
+  .omit({ files: true, readmeContent: true, licenseContent: true })
   .extend({
     name: z.string().trim().min(1),
     bundlePath: z.string().trim().min(1),
     fileCount: z.number().int().nonnegative(),
     totalSize: z.number().int().nonnegative(),
+    hasReadmeContent: z.boolean().optional(),
+    hasLicenseContent: z.boolean().optional(),
   });
 
 export const registryIndexSchema = z.record(z.string(), registryEntrySchema);
