@@ -336,6 +336,7 @@ registry
         logSuccess(
           `Built ${result.presets} preset(s) → ${result.entries} entries, ${result.bundles} bundles.`
         );
+        logInfo(`Version: ${result.version}`);
         logInfo(`Output: ${result.outputDir}`);
       }
     )

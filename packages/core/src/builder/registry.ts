@@ -14,6 +14,7 @@ import { toPosixPath } from "../utils/encoding";
 import {
   cleanInstallMessage,
   encodeItemName,
+  generateDateVersion,
   normalizeBundlePublicBase,
   validatePresetConfig,
 } from "./utils";
@@ -23,6 +24,8 @@ const NAME_PATTERN = /^[a-z0-9-]+$/;
 export type BuildRegistryDataOptions = {
   presets: RegistryPresetInput[];
   bundleBase?: string;
+  /** Override the auto-generated version. If not provided, uses current UTC date. */
+  version?: string;
 };
 
 export type BuildRegistryDataResult = {
@@ -35,6 +38,7 @@ export function buildRegistryData(
   options: BuildRegistryDataOptions
 ): BuildRegistryDataResult {
   const bundleBase = normalizeBundlePublicBase(options.bundleBase ?? "/r");
+  const buildVersion = options.version ?? generateDateVersion();
   const entries: RegistryEntry[] = [];
   const bundles: RegistryBundle[] = [];
 
@@ -83,14 +87,19 @@ export function buildRegistryData(
         slug: presetInput.slug,
         platform,
         title: presetConfig.title,
-        version: presetConfig.version,
+        version: buildVersion,
         description: presetConfig.description,
         tags: presetConfig.tags ?? [],
         author: presetConfig.author,
         license: presetConfig.license,
         features,
         installMessage,
-        bundlePath: getBundlePublicPath(bundleBase, presetInput.slug, platform),
+        bundlePath: getBundlePublicPath(
+          bundleBase,
+          presetInput.slug,
+          platform,
+          buildVersion
+        ),
         fileCount: files.length,
         totalSize,
         hasReadme: Boolean(readme),
@@ -100,7 +109,7 @@ export function buildRegistryData(
         slug: presetInput.slug,
         platform,
         title: presetConfig.title,
-        version: presetConfig.version,
+        version: buildVersion,
         description: presetConfig.description,
         tags: presetConfig.tags ?? [],
         author: presetConfig.author,
@@ -172,9 +181,14 @@ function encodeFilePayload(buffer: Buffer, filePath: string): string {
   return utf8;
 }
 
-function getBundlePublicPath(base: string, slug: string, platform: PlatformId) {
+function getBundlePublicPath(
+  base: string,
+  slug: string,
+  platform: PlatformId,
+  version: string
+) {
   const prefix = base === "/" ? "" : base;
-  return `${prefix}/${slug}/${platform}.json`;
+  return `${prefix}/${slug}/${platform}.${version}.json`;
 }
 
 function ensureKnownPlatform(platform: string, slug: string) {

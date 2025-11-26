@@ -1,12 +1,13 @@
 import {
   buildRegistryData,
+  generateDateVersion,
   normalizeBundlePublicBase,
   PLATFORM_IDS,
   type RegistryPresetInput,
   validatePresetConfig,
 } from "@agentrules/core";
 import { mkdir, readdir, readFile, stat, writeFile } from "fs/promises";
-import { basename, dirname, join, relative } from "path";
+import { basename, join, relative } from "path";
 
 export type BuildOptions = {
   input: string;
@@ -20,6 +21,7 @@ export type BuildResult = {
   presets: number;
   entries: number;
   bundles: number;
+  version: string;
   outputDir: string | null;
   validateOnly: boolean;
 };
@@ -37,6 +39,9 @@ export async function buildRegistry(
   const compact = Boolean(options.compact);
   const validateOnly = Boolean(options.validateOnly);
 
+  // Generate date-based version for this build
+  const version = generateDateVersion();
+
   const presetDirs = await discoverPresetDirs(inputDir);
 
   if (presetDirs.length === 0) {
@@ -52,13 +57,14 @@ export async function buildRegistry(
     presets.push(preset);
   }
 
-  const result = buildRegistryData({ bundleBase, presets });
+  const result = buildRegistryData({ bundleBase, presets, version });
 
   if (validateOnly || !outputDir) {
     return {
       presets: presets.length,
       entries: result.entries.length,
       bundles: result.bundles.length,
+      version,
       outputDir: null,
       validateOnly,
     };
@@ -76,17 +82,30 @@ export async function buildRegistry(
   const registryPath = join(outputDir, "registry.json");
   await writeFile(registryPath, JSON.stringify(result.entries, null, indent));
 
-  // Write individual bundle files
+  // Write individual bundle files (both versioned and latest)
   for (const bundle of result.bundles) {
-    const bundlePath = join(outputDir, bundle.slug, `${bundle.platform}.json`);
-    await mkdir(dirname(bundlePath), { recursive: true });
-    await writeFile(bundlePath, JSON.stringify(bundle, null, indent));
+    const bundleDir = join(outputDir, bundle.slug);
+    await mkdir(bundleDir, { recursive: true });
+
+    const bundleJson = JSON.stringify(bundle, null, indent);
+
+    // Write versioned bundle: {slug}/{platform}.{version}.json
+    const versionedPath = join(
+      bundleDir,
+      `${bundle.platform}.${bundle.version}.json`
+    );
+    await writeFile(versionedPath, bundleJson);
+
+    // Write latest bundle: {slug}/{platform}.json (for O(1) lookup without version)
+    const latestPath = join(bundleDir, `${bundle.platform}.json`);
+    await writeFile(latestPath, bundleJson);
   }
 
   return {
     presets: presets.length,
     entries: result.entries.length,
     bundles: result.bundles.length,
+    version,
     outputDir,
     validateOnly: false,
   };

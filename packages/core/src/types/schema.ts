@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { PLATFORM_IDS } from "./platform";
 
-const SEMVER_REGEX =
-  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(?:0|[1-9A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
+// Date-based version: YYYY.MM.DD or YYYY.MM.DD.N for same-day releases
+const DATE_VERSION_REGEX =
+  /^\d{4}\.(0[1-9]|1[0-2])\.(0[1-9]|[12]\d|3[01])(\.\d+)?$/;
 
 export const platformIdSchema = z.enum(PLATFORM_IDS);
 
@@ -19,7 +20,10 @@ const descriptionSchema = z.string().trim().min(1).max(500);
 const versionSchema = z
   .string()
   .trim()
-  .regex(SEMVER_REGEX, "Version must follow semantic versioning");
+  .regex(
+    DATE_VERSION_REGEX,
+    "Version must be date-based (YYYY.MM.DD or YYYY.MM.DD.N)"
+  );
 const tagSchema = z.string().trim().min(1).max(48);
 const tagsSchema = z.array(tagSchema).max(10);
 const featureSchema = z.string().trim().min(1).max(160);
@@ -60,7 +64,7 @@ export const presetConfigSchema = z
     $schema: z.string().optional(),
     name: slugSchema,
     title: titleSchema,
-    version: versionSchema,
+    version: versionSchema.optional(), // Version is auto-generated at build time
     description: descriptionSchema,
     tags: tagsSchema.optional(),
     author: authorSchema.optional(),

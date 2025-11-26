@@ -16,7 +16,7 @@ export type PresetConfig = {
   $schema?: string;
   name: string;
   title: string;
-  version: string;
+  version?: string; // Optional - auto-generated at build time if not provided
   description: string;
   tags?: string[];
   author?: AuthorInfo;

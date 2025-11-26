@@ -1,6 +1,17 @@
 import type { BundledFile, PlatformId, PresetConfig } from "../types";
 import { encodeUtf8, toPosixPath } from "../utils/encoding";
 
+/**
+ * Generates a date-based version string in format YYYY.MM.DD
+ * Uses UTC to ensure consistent versioning across timezones
+ */
+export function generateDateVersion(date: Date = new Date()): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}.${month}.${day}`;
+}
+
 export function normalizeBundlePublicBase(value: string) {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -48,8 +59,11 @@ export function validatePresetConfig(
   if (!preset.title || typeof preset.title !== "string") {
     throw new Error(`Preset ${slug} is missing a title`);
   }
-  if (!preset.version || typeof preset.version !== "string") {
-    throw new Error(`Preset ${slug} is missing a version`);
+  // Version is optional - will be auto-generated at build time if not provided
+  if (preset.version !== undefined && typeof preset.version !== "string") {
+    throw new Error(
+      `Preset ${slug} has invalid version (must be string or omitted)`
+    );
   }
   if (!preset.description || typeof preset.description !== "string") {
     throw new Error(`Preset ${slug} is missing a description`);

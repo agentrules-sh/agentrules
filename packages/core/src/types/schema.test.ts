@@ -56,20 +56,29 @@ describe("authorSchema", () => {
 });
 
 describe("presetConfigSchema", () => {
+  // Version is now optional in source config (auto-generated at build time)
   const validConfig = {
     name: "test-preset",
     title: "Test Preset",
-    version: "1.0.0",
     description: "A test preset",
     platforms: {
       opencode: { path: ".opencode" },
     },
   };
 
-  it("accepts valid preset config", () => {
+  it("accepts valid preset config without version", () => {
     const result = presetConfigSchema.parse(validConfig);
     expect(result.name).toBe("test-preset");
     expect(result.platforms.opencode?.path).toBe(".opencode");
+    expect(result.version).toBeUndefined();
+  });
+
+  it("accepts config with date-based version", () => {
+    const result = presetConfigSchema.parse({
+      ...validConfig,
+      version: "2024.11.26",
+    });
+    expect(result.version).toBe("2024.11.26");
   });
 
   it("accepts config with optional fields", () => {
@@ -93,6 +102,9 @@ describe("presetConfigSchema", () => {
     expect(() =>
       presetConfigSchema.parse({ ...validConfig, version: "invalid" })
     ).toThrow();
+    expect(() =>
+      presetConfigSchema.parse({ ...validConfig, version: "1.0.0" })
+    ).toThrow(); // semver no longer accepted
   });
 
   it("rejects empty platforms", () => {
@@ -107,16 +119,28 @@ describe("presetConfigSchema", () => {
     ).toThrow();
   });
 
-  it("validates semver versions", () => {
+  it("validates date-based versions", () => {
+    // Basic date format
     expect(
-      presetConfigSchema.parse({ ...validConfig, version: "1.0.0" })
+      presetConfigSchema.parse({ ...validConfig, version: "2024.01.01" })
+    ).toBeDefined();
+    // With same-day release suffix
+    expect(
+      presetConfigSchema.parse({ ...validConfig, version: "2024.11.26.1" })
     ).toBeDefined();
     expect(
-      presetConfigSchema.parse({ ...validConfig, version: "2.1.0-beta.1" })
+      presetConfigSchema.parse({ ...validConfig, version: "2024.12.31.42" })
     ).toBeDefined();
+    // Invalid formats
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, version: "1.0" })
-    ).toThrow();
+      presetConfigSchema.parse({ ...validConfig, version: "2024.1.1" })
+    ).toThrow(); // needs zero-padded month/day
+    expect(() =>
+      presetConfigSchema.parse({ ...validConfig, version: "2024.13.01" })
+    ).toThrow(); // invalid month
+    expect(() =>
+      presetConfigSchema.parse({ ...validConfig, version: "2024.01.32" })
+    ).toThrow(); // invalid day
   });
 });
 
@@ -125,7 +149,7 @@ describe("registryBundleSchema", () => {
     slug: "test-preset",
     platform: "opencode",
     title: "Test Preset",
-    version: "1.0.0",
+    version: "2024.11.26",
     description: "A test preset",
     tags: [],
     files: [
@@ -141,6 +165,7 @@ describe("registryBundleSchema", () => {
   it("accepts valid bundle", () => {
     const result = registryBundleSchema.parse(validBundle);
     expect(result.slug).toBe("test-preset");
+    expect(result.version).toBe("2024.11.26");
     expect(result.files).toHaveLength(1);
   });
 
@@ -166,10 +191,10 @@ describe("registryEntrySchema", () => {
     slug: "test-preset",
     platform: "opencode",
     title: "Test Preset",
-    version: "1.0.0",
+    version: "2024.11.26",
     description: "A test preset",
     tags: [],
-    bundlePath: "/r/test-preset/opencode.json",
+    bundlePath: "/r/test-preset/opencode.2024.11.26.json",
     fileCount: 1,
     totalSize: 100,
   };
@@ -177,7 +202,8 @@ describe("registryEntrySchema", () => {
   it("accepts valid entry", () => {
     const result = registryEntrySchema.parse(validEntry);
     expect(result.name).toBe("test-preset.opencode");
-    expect(result.bundlePath).toBe("/r/test-preset/opencode.json");
+    expect(result.version).toBe("2024.11.26");
+    expect(result.bundlePath).toBe("/r/test-preset/opencode.2024.11.26.json");
   });
 
   it("rejects negative fileCount", () => {
