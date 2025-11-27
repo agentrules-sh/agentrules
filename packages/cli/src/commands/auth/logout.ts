@@ -4,12 +4,13 @@
  * Clears stored credentials from the local machine.
  */
 
+import { getActiveRegistryUrl } from "@/commands/registry/manage";
 import {
   clearAllCredentials,
   clearCredentials,
   getCredentials,
-} from "../../lib/auth";
-import { getActiveRegistryUrl } from "../registry/manage";
+} from "@/lib/auth";
+import { log } from "@/lib/log";
 
 export type LogoutOptions = {
   /** Registry URL to logout from (default: active registry) */
@@ -18,8 +19,6 @@ export type LogoutOptions = {
   registry?: string;
   /** Clear credentials for all registries */
   all?: boolean;
-  /** Callback for status messages */
-  onStatus?: (message: string) => void;
 };
 
 export type LogoutResult = {
@@ -35,7 +34,7 @@ export type LogoutResult = {
 export async function logout(
   options: LogoutOptions = {}
 ): Promise<LogoutResult> {
-  const { apiUrl: explicitUrl, registry, all = false, onStatus } = options;
+  const { apiUrl: explicitUrl, registry, all = false } = options;
 
   // Resolve registry URL: explicit URL > registry alias > active registry
   const registryUrl = explicitUrl ?? (await getActiveRegistryUrl(registry)).url;
@@ -43,7 +42,7 @@ export async function logout(
   const apiUrl = new URL(registryUrl).origin;
 
   if (all) {
-    onStatus?.("Clearing all stored credentials...");
+    log.debug("Clearing all stored credentials");
     await clearAllCredentials();
     return { success: true, hadCredentials: true };
   }
@@ -53,8 +52,10 @@ export async function logout(
   const hadCredentials = existing !== null;
 
   if (hadCredentials) {
-    onStatus?.("Clearing stored credentials...");
+    log.debug(`Clearing credentials for ${apiUrl}`);
     await clearCredentials(apiUrl);
+  } else {
+    log.debug(`No credentials found for ${apiUrl}`);
   }
 
   return {

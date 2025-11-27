@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdtemp, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
-import { type RegistryCredentials, saveCredentials } from "../../lib/auth";
-import { whoami } from "./whoami";
+import { whoami } from "@/commands/auth/whoami";
+import { type RegistryCredentials, saveCredentials } from "@/lib/auth";
 
 const originalFetch = globalThis.fetch;
 let homeDir: string;
@@ -111,7 +111,7 @@ describe("whoami", () => {
     expect(result.apiUrl).toBe(DEFAULT_API_URL);
   });
 
-  it("calls onStatus when fetching user info", async () => {
+  it("fetches user info from server when not cached", async () => {
     const credentials: RegistryCredentials = {
       token: "test-token",
     };
@@ -133,13 +133,11 @@ describe("whoami", () => {
       },
     });
 
-    const messages: string[] = [];
-    await whoami({
-      apiUrl: DEFAULT_API_URL,
-      onStatus: (msg) => messages.push(msg),
-    });
+    const result = await whoami({ apiUrl: DEFAULT_API_URL });
 
-    expect(messages.some((m) => m.includes("Fetching"))).toBeTrue();
+    expect(result.success).toBeTrue();
+    expect(result.loggedIn).toBeTrue();
+    expect(result.user?.name).toBe("Test");
   });
 
   it("returns logged in with no user info when network fails", async () => {

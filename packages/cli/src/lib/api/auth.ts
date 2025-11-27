@@ -5,6 +5,8 @@
  * to support CLI user display features.
  */
 
+import { log } from "@/lib/log";
+
 // =============================================================================
 // Endpoints
 // =============================================================================
@@ -56,9 +58,7 @@ export async function fetchSession(
   const url = `${baseUrl}${AUTH_ENDPOINTS.GET_SESSION}`;
 
   try {
-    if (process.env.DEBUG) {
-      console.log("[DEBUG] GET", url);
-    }
+    log.debug(`GET ${url}`);
 
     const response = await fetch(url, {
       headers: {
@@ -67,10 +67,7 @@ export async function fetchSession(
     });
 
     const text = await response.text();
-
-    if (process.env.DEBUG) {
-      console.log("[DEBUG] Response:", response.status, text.slice(0, 200));
-    }
+    log.debug(`Response: ${response.status} ${text.slice(0, 200)}`);
 
     if (response.ok && text) {
       return JSON.parse(text) as GetSessionResponse;
@@ -78,9 +75,7 @@ export async function fetchSession(
 
     return null;
   } catch (err) {
-    if (process.env.DEBUG) {
-      console.log("[DEBUG] fetchSession error:", err);
-    }
+    log.debug(`fetchSession error: ${err}`);
     return null;
   }
 }

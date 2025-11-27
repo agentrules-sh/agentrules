@@ -2,14 +2,14 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdtemp, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
-import { loadConfig } from "../../lib/config";
 import {
   addRegistry,
   getActiveRegistryUrl,
   listRegistries,
   removeRegistry,
   useRegistry,
-} from "./manage";
+} from "@/commands/registry/manage";
+import { loadConfig } from "@/lib/config";
 
 let homeDir: string;
 let originalHome: string | undefined;

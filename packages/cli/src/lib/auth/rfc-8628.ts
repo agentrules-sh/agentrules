@@ -9,6 +9,7 @@
  */
 
 import * as client from "openid-client";
+import { log } from "@/lib/log";
 
 // Re-export types from openid-client for convenience
 export type {
@@ -86,15 +87,11 @@ export async function requestDeviceCode(
   }
 
   try {
-    if (process.env.DEBUG) {
-      console.log("[DEBUG] Device code request to:", deviceAuthEndpoint);
-    }
+    log.debug(`Device code request to: ${deviceAuthEndpoint}`);
 
     const response = await client.initiateDeviceAuthorization(config, params);
 
-    if (process.env.DEBUG) {
-      console.log("[DEBUG] Device code response:", JSON.stringify(response));
-    }
+    log.debug(`Device code response: ${JSON.stringify(response)}`);
 
     return { success: true, data: response, config };
   } catch (err) {
@@ -139,9 +136,7 @@ export async function pollForToken(
   const { config, deviceAuthorizationResponse, signal } = options;
 
   try {
-    if (process.env.DEBUG) {
-      console.log("[DEBUG] Starting token polling...");
-    }
+    log.debug("Starting token polling...");
 
     const tokenResponse = await client.pollDeviceAuthorizationGrant(
       config,
@@ -150,9 +145,7 @@ export async function pollForToken(
       { signal }
     );
 
-    if (process.env.DEBUG) {
-      console.log("[DEBUG] Token response:", JSON.stringify(tokenResponse));
-    }
+    log.debug(`Token response: ${JSON.stringify(tokenResponse)}`);
 
     return { success: true, token: tokenResponse };
   } catch (err) {

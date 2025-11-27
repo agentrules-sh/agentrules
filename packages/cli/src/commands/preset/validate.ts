@@ -6,6 +6,7 @@ import {
 } from "@agentrules/core";
 import { readFile, stat } from "fs/promises";
 import { basename, dirname, join } from "path";
+import { log } from "@/lib/log";
 
 export type ValidateOptions = {
   path?: string;
@@ -25,30 +26,42 @@ export async function validatePreset(
   options: ValidateOptions
 ): Promise<ValidateResult> {
   const configPath = await resolveConfigPath(options.path);
+  log.debug(`Resolved config path: ${configPath}`);
   const errors: string[] = [];
   const warnings: string[] = [];
 
   const configRaw = await readFile(configPath, "utf8").catch(() => null);
   if (configRaw === null) {
     errors.push(`Config file not found: ${configPath}`);
+    log.debug("Config file read failed");
     return { valid: false, configPath, preset: null, errors, warnings };
   }
 
+  log.debug("Config file read successfully");
   let configJson: unknown;
   try {
     configJson = JSON.parse(configRaw);
+    log.debug("JSON parsed successfully");
   } catch (e) {
     errors.push(`Invalid JSON: ${e instanceof Error ? e.message : String(e)}`);
+    log.debug(
+      `JSON parse error: ${e instanceof Error ? e.message : String(e)}`
+    );
     return { valid: false, configPath, preset: null, errors, warnings };
   }
 
   const slug = basename(dirname(configPath));
+  log.debug(`Preset slug: ${slug}`);
 
   let preset: PresetConfig;
   try {
     preset = validatePresetConfig(configJson, slug);
+    log.debug("Preset config validation passed");
   } catch (e) {
     errors.push(e instanceof Error ? e.message : String(e));
+    log.debug(
+      `Preset config validation failed: ${e instanceof Error ? e.message : String(e)}`
+    );
     return { valid: false, configPath, preset: null, errors, warnings };
   }
 
@@ -64,6 +77,10 @@ export async function validatePreset(
   const presetDir = dirname(configPath);
   const declaredPlatformKeys = Object.keys(preset.platforms);
 
+  log.debug(
+    `Checking ${declaredPlatformKeys.length} platform(s): ${declaredPlatformKeys.join(", ")}`
+  );
+
   if (declaredPlatformKeys.length === 0) {
     errors.push("No platforms defined. At least one platform is required.");
   }
@@ -73,6 +90,7 @@ export async function validatePreset(
       errors.push(
         `Unknown platform "${key}". Supported: ${PLATFORM_IDS.join(", ")}`
       );
+      log.debug(`Platform "${key}" is not supported`);
       continue;
     }
 
@@ -80,11 +98,16 @@ export async function validatePreset(
     const platformConfig = preset.platforms[key];
     if (!platformConfig?.path) {
       errors.push(`Platform "${key}" is missing a path.`);
+      log.debug(`Platform "${key}" missing path configuration`);
       continue;
     }
 
     const platformDir = join(presetDir, platformConfig.path);
     const platformExists = await directoryExists(platformDir);
+
+    log.debug(
+      `Platform "${key}" directory check: ${platformDir} - ${platformExists ? "exists" : "not found"}`
+    );
 
     if (!platformExists) {
       errors.push(
@@ -96,16 +119,23 @@ export async function validatePreset(
   // Check optional fields
   if (!preset.author?.name) {
     warnings.push("No author name specified.");
+    log.debug("Author name not specified");
   }
 
   if (!preset.tags || preset.tags.length === 0) {
     warnings.push("No tags specified. Tags help with discoverability.");
+    log.debug("No tags specified");
   }
 
+  const isValid = errors.length === 0;
+  log.debug(
+    `Validation complete: ${isValid ? "valid" : "invalid"} (${errors.length} errors, ${warnings.length} warnings)`
+  );
+
   return {
-    valid: errors.length === 0,
+    valid: isValid,
     configPath,
-    preset: errors.length === 0 ? preset : null,
+    preset: isValid ? preset : null,
     errors,
     warnings,
   };

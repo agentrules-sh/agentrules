@@ -4,19 +4,16 @@
  * Displays information about the currently authenticated user.
  */
 
-import { fetchSession } from "../../lib/api";
-import { getCredentials } from "../../lib/auth";
-import { getActiveRegistryUrl } from "../registry/manage";
+import { getActiveRegistryUrl } from "@/commands/registry/manage";
+import { fetchSession } from "@/lib/api";
+import { getCredentials } from "@/lib/auth";
+import { log } from "@/lib/log";
 
 export type WhoamiOptions = {
   /** Registry URL to check (default: active registry) */
   apiUrl?: string;
   /** Registry alias to use instead of URL */
   registry?: string;
-  /** Callback for status messages */
-  onStatus?: (message: string) => void;
-  /** Callback for error messages */
-  onError?: (message: string) => void;
 };
 
 export type WhoamiResult = {
@@ -44,7 +41,7 @@ export type WhoamiResult = {
 export async function whoami(
   options: WhoamiOptions = {}
 ): Promise<WhoamiResult> {
-  const { apiUrl: explicitUrl, registry, onStatus, onError } = options;
+  const { apiUrl: explicitUrl, registry } = options;
 
   // Resolve registry URL: explicit URL > registry alias > active registry
   const registryUrl = explicitUrl ?? (await getActiveRegistryUrl(registry)).url;
@@ -55,6 +52,7 @@ export async function whoami(
     const credentials = await getCredentials(apiUrl);
 
     if (!credentials) {
+      log.debug(`No credentials found for ${apiUrl}`);
       return {
         success: true,
         loggedIn: false,
@@ -64,6 +62,7 @@ export async function whoami(
 
     // If we have cached user info, return it
     if (credentials.userName && credentials.userEmail) {
+      log.debug("Using cached user info");
       return {
         success: true,
         loggedIn: true,
@@ -78,8 +77,7 @@ export async function whoami(
     }
 
     // Otherwise, fetch user info from the server
-    onStatus?.("Fetching user info...");
-
+    log.debug("Fetching user info from server");
     const session = await fetchSession(apiUrl, credentials.token);
 
     if (session?.user) {
@@ -105,7 +103,7 @@ export async function whoami(
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    onError?.(message);
+    log.debug(`Error: ${message}`);
     return {
       success: false,
       loggedIn: false,

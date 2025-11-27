@@ -9,13 +9,13 @@ import { createHash } from "crypto";
 import { access, appendFile, mkdtemp, readFile, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
+import { addPreset } from "@/commands/add";
 import {
   type Config,
   getConfigPath,
   loadConfig,
   saveConfig,
-} from "../lib/config";
-import { addPreset } from "./add";
+} from "@/lib/config";
 
 type FixturePayload = {
   index: RegistryIndex;
@@ -79,7 +79,10 @@ describe("addPreset", () => {
     const result = await addPreset({ preset: PRESET_SLUG, dryRun: true });
 
     expect(result.dryRun).toBeTrue();
-    expect(result.filesWritten).toBeGreaterThan(0);
+    const filesWritten = result.files.filter(
+      (f) => f.status === "created" || f.status === "overwritten"
+    );
+    expect(filesWritten.length).toBeGreaterThan(0);
     expect(result.conflicts).toHaveLength(0);
     expect(
       await fileExists(join(projectDir, ".opencode/AGENT_RULES.md"))
@@ -93,7 +96,10 @@ describe("addPreset", () => {
     const result = await addPreset({ preset: PRESET_SLUG });
 
     expect(result.dryRun).toBeFalse();
-    expect(result.filesWritten).toBeGreaterThan(0);
+    const filesWritten = result.files.filter(
+      (f) => f.status === "created" || f.status === "overwritten"
+    );
+    expect(filesWritten.length).toBeGreaterThan(0);
     const rulesPath = join(projectDir, ".opencode/AGENT_RULES.md");
     expect(await fileExists(rulesPath)).toBeTrue();
 
@@ -117,15 +123,15 @@ describe("addPreset", () => {
       skipConflicts: true,
     });
 
-    expect(result.skipConflicts).toBeTrue();
     expect(result.conflicts).toHaveLength(1);
-    expect(result.skippedConflicts).toBe(1);
+    const conflictFiles = result.files.filter((f) => f.status === "conflict");
+    expect(conflictFiles).toHaveLength(1);
     expect(result.conflicts[0]?.path).toBe(".opencode/AGENT_RULES.md");
     const fileContents = await readFile(rulesPath, "utf8");
     expect(fileContents).toContain("Local customization");
   });
 
-  it("throws when conflicts exist unless force or skip is provided", async () => {
+  it("returns conflicts when files differ and force is not provided", async () => {
     let fixture = createFixtures("# First install\n");
     mockPresetRequests(DEFAULT_BASE_URL, fixture);
     await addPreset({ preset: PRESET_SLUG, force: true });
@@ -137,12 +143,11 @@ describe("addPreset", () => {
     fixture = createFixtures("# Updated contents\n");
     mockPresetRequests(DEFAULT_BASE_URL, fixture);
 
-    try {
-      await addPreset({ preset: PRESET_SLUG });
-      throw new Error("Expected addPreset to throw due to conflicts");
-    } catch (error) {
-      expect((error as Error).message).toMatch(/Re-run with --force/);
-    }
+    const result = await addPreset({ preset: PRESET_SLUG });
+
+    expect(result.conflicts).toHaveLength(1);
+    expect(result.conflicts[0]?.path).toBe(".opencode/AGENT_RULES.md");
+    expect(result.conflicts[0]?.diff).toContain("# Local");
   });
 
   it("installs into custom directories when --dir is provided", async () => {
@@ -169,7 +174,10 @@ describe("addPreset", () => {
 
     // Global path is ~/.config/opencode
     expect(result.targetRoot).toContain(".config/opencode");
-    expect(result.filesWritten).toBeGreaterThan(0);
+    const filesWritten = result.files.filter(
+      (f) => f.status === "created" || f.status === "overwritten"
+    );
+    expect(filesWritten.length).toBeGreaterThan(0);
   });
 
   it("skips root files during global install and reports them", async () => {
@@ -186,7 +194,8 @@ describe("addPreset", () => {
     // Global path is ~/.config/opencode
     expect(result.targetRoot).toContain(".config/opencode");
     // Skipped root files should be reported
-    expect(result.skippedRootFiles).toContain("README.md");
+    const skippedFiles = result.files.filter((f) => f.status === "skipped");
+    expect(skippedFiles.map((f) => f.path)).toContain("README.md");
   });
 
   it("installs root files to project root during project install", async () => {
@@ -201,7 +210,8 @@ describe("addPreset", () => {
     // Root file should be at project root
     expect(await fileExists(join(projectDir, "README.md"))).toBeTrue();
     // No files should be skipped
-    expect(result.skippedRootFiles).toHaveLength(0);
+    const skippedFiles = result.files.filter((f) => f.status === "skipped");
+    expect(skippedFiles).toHaveLength(0);
   });
 
   it("installs the requested platform variant when multiple entries exist", async () => {

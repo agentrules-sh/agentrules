@@ -9,7 +9,7 @@ import {
   loadConfig,
   normalizeRegistryUrl,
   saveConfig,
-} from "./config";
+} from "@/lib/config";
 
 let homeDir: string;
 let originalHome: string | undefined;

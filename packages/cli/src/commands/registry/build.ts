@@ -8,6 +8,7 @@ import {
 } from "@agentrules/core";
 import { mkdir, readdir, readFile, stat, writeFile } from "fs/promises";
 import { basename, join, relative } from "path";
+import { log } from "@/lib/log";
 
 export type BuildOptions = {
   input: string;
@@ -43,6 +44,7 @@ export async function buildRegistry(
   // Generate date-based version for this build
   const version = generateDateVersion();
 
+  log.debug(`Discovering presets in ${inputDir}`);
   const presetDirs = await discoverPresetDirs(inputDir);
 
   if (presetDirs.length === 0) {
@@ -51,9 +53,13 @@ export async function buildRegistry(
     );
   }
 
+  log.debug(`Found ${presetDirs.length} preset(s)`);
+
   const presets: RegistryPresetInput[] = [];
 
   for (const presetDir of presetDirs) {
+    const slug = basename(presetDir);
+    log.debug(`Loading preset: ${slug}`);
     const preset = await loadPreset(presetDir);
     presets.push(preset);
   }
@@ -71,6 +77,7 @@ export async function buildRegistry(
     };
   }
 
+  log.debug(`Writing output to ${outputDir}`);
   await mkdir(outputDir, { recursive: true });
 
   const indent = compact ? undefined : 2;
@@ -78,10 +85,12 @@ export async function buildRegistry(
   // Write registry.index.json (lookup by name)
   const indexPath = join(outputDir, "registry.index.json");
   await writeFile(indexPath, JSON.stringify(result.index, null, indent));
+  log.debug(`Wrote ${indexPath}`);
 
   // Write registry.json (array of entries for listing)
   const registryPath = join(outputDir, "registry.json");
   await writeFile(registryPath, JSON.stringify(result.entries, null, indent));
+  log.debug(`Wrote ${registryPath}`);
 
   // Write individual bundle files (both versioned and latest)
   for (const bundle of result.bundles) {
@@ -100,6 +109,8 @@ export async function buildRegistry(
     // Write latest bundle: {slug}/{platform}.json (for O(1) lookup without version)
     const latestPath = join(bundleDir, `${bundle.platform}.json`);
     await writeFile(latestPath, bundleJson);
+
+    log.debug(`Wrote bundle: ${bundle.slug}/${bundle.platform}`);
   }
 
   return {

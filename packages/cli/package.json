@@ -48,8 +48,10 @@
   },
   "dependencies": {
     "@agentrules/core": "workspace:*",
+    "chalk": "^5.4.1",
     "commander": "^12.1.0",
-    "openid-client": "^6.8.1"
+    "openid-client": "^6.8.1",
+    "ora": "^8.2.0"
   },
   "devDependencies": {
     "tsdown": "^0.9.0",

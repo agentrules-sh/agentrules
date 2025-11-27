@@ -16,16 +16,24 @@ import {
   toUtf8String,
   verifyBundledFileChecksum,
 } from "@agentrules/core";
+import chalk from "chalk";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { homedir } from "os";
 import { dirname, relative, resolve, sep } from "path";
-import { colorizeDiffLine } from "../lib/color";
+import { getActiveRegistryUrl } from "@/commands/registry/manage";
 import {
   type Config as AgentrulesConfig,
   loadConfig,
   saveConfig,
-} from "../lib/config";
-import { getActiveRegistryUrl } from "./registry/manage";
+} from "@/lib/config";
+import { log } from "@/lib/log";
+
+export type FileWriteStatus =
+  | "created"
+  | "overwritten"
+  | "unchanged"
+  | "conflict"
+  | "skipped";
 
 export type AddPresetOptions = {
   preset: string;
@@ -38,20 +46,20 @@ export type AddPresetOptions = {
   skipConflicts?: boolean;
 };
 
+export type FileResult = {
+  path: string;
+  status: FileWriteStatus;
+};
+
 export type AddPresetResult = {
   entry: RegistryEntry;
   bundle: RegistryBundle;
-  filesWritten: number;
-  filesOverwritten: number;
-  filesSkipped: number;
+  files: FileResult[];
   conflicts: ConflictDetail[];
-  skippedConflicts: number;
-  skippedRootFiles: string[];
   targetRoot: string;
   targetLabel: string;
   registryAlias: string;
   dryRun: boolean;
-  skipConflicts: boolean;
 };
 
 type InstallTarget = {
@@ -68,12 +76,8 @@ type ConflictDetail = {
 };
 
 type WriteBundleStats = {
-  created: number;
-  skipped: number;
-  overwritten: number;
+  files: FileResult[];
   conflicts: ConflictDetail[];
-  skippedDueToConflict: number;
-  skippedRootFiles: string[];
 };
 
 export { normalizePlatformInput } from "@agentrules/core";
@@ -86,12 +90,18 @@ export async function addPreset(
   );
 
   const config = await loadConfig();
+  const dryRun = Boolean(options.dryRun);
+
+  log.debug(`Fetching registry index from ${registryUrl}`);
   const registryIndex = await fetchRegistryIndex(registryUrl);
+
   const entry = resolveRegistryEntry(
     registryIndex,
     options.preset,
     options.platform
   );
+
+  log.debug(`Downloading bundle: ${entry.bundlePath}`);
   const { bundle } = await fetchRegistryBundle(registryUrl, entry.bundlePath);
 
   if (bundle.slug !== entry.slug || bundle.platform !== entry.platform) {
@@ -102,32 +112,26 @@ export async function addPreset(
 
   const target = resolveInstallTarget(bundle.platform, options);
 
-  const installBehavior = {
+  log.debug(`Writing ${bundle.files.length} files to ${target.root}`);
+  const writeStats = await writeBundleFiles(bundle, target, {
     force: Boolean(options.force),
     skipConflicts: Boolean(options.skipConflicts),
-    dryRun: Boolean(options.dryRun),
-  };
+    dryRun,
+  });
 
-  const writeStats = await writeBundleFiles(bundle, target, installBehavior);
-
-  if (!installBehavior.dryRun) {
+  if (!dryRun) {
     await updateRegistryMetadata(config, registryAlias);
   }
 
   return {
     entry,
     bundle,
-    filesWritten: writeStats.created + writeStats.overwritten,
-    filesOverwritten: writeStats.overwritten,
-    filesSkipped: writeStats.skipped,
+    files: writeStats.files,
     conflicts: writeStats.conflicts,
-    skippedConflicts: writeStats.skippedDueToConflict,
-    skippedRootFiles: writeStats.skippedRootFiles,
     targetRoot: target.root,
     targetLabel: target.label,
     registryAlias,
-    dryRun: installBehavior.dryRun,
-    skipConflicts: installBehavior.skipConflicts,
+    dryRun,
   };
 }
 
@@ -174,14 +178,8 @@ async function writeBundleFiles(
   target: InstallTarget,
   behavior: { force: boolean; skipConflicts: boolean; dryRun: boolean }
 ): Promise<WriteBundleStats> {
-  const stats: WriteBundleStats = {
-    created: 0,
-    skipped: 0,
-    overwritten: 0,
-    conflicts: [],
-    skippedDueToConflict: 0,
-    skippedRootFiles: [],
-  };
+  const files: FileResult[] = [];
+  const conflicts: ConflictDetail[] = [];
 
   if (!behavior.dryRun) {
     await mkdir(target.root, { recursive: true });
@@ -196,7 +194,8 @@ async function writeBundleFiles(
 
     // Skip root files for global installs
     if (destResult.skipped) {
-      stats.skippedRootFiles.push(file.path);
+      files.push({ path: file.path, status: "skipped" });
+      log.debug(`Skipped (root file): ${file.path}`);
       continue;
     }
 
@@ -213,12 +212,14 @@ async function writeBundleFiles(
       if (!behavior.dryRun) {
         await writeFile(destination, data);
       }
-      stats.created += 1;
+      files.push({ path: relativePath, status: "created" });
+      log.debug(`Created: ${relativePath}`);
       continue;
     }
 
     if (existing.equals(data)) {
-      stats.skipped += 1;
+      files.push({ path: relativePath, status: "unchanged" });
+      log.debug(`Unchanged: ${relativePath}`);
       continue;
     }
 
@@ -226,36 +227,23 @@ async function writeBundleFiles(
       if (!behavior.dryRun) {
         await writeFile(destination, data);
       }
-      stats.overwritten += 1;
+      files.push({ path: relativePath, status: "overwritten" });
+      log.debug(`Overwritten: ${relativePath}`);
       continue;
     }
 
-    const conflictDetail: ConflictDetail = {
+    // Conflict
+    conflicts.push({
       path: relativePath,
       diff: renderDiffPreview(relativePath, existing, data),
-    };
-    stats.conflicts.push(conflictDetail);
-
-    if (behavior.skipConflicts || behavior.dryRun) {
-      stats.skippedDueToConflict += 1;
-    }
+    });
+    files.push({ path: relativePath, status: "conflict" });
+    log.debug(`Conflict: ${relativePath}`);
   }
 
-  if (
-    stats.conflicts.length > 0 &&
-    !behavior.skipConflicts &&
-    !behavior.dryRun
-  ) {
-    const preview = formatConflictPreview(stats.conflicts.slice(0, 3));
-    const extra = stats.conflicts.length - 3;
-    const suffix = extra > 0 ? `\n  • ...and ${extra} more` : "";
-    const instructions = `Found ${stats.conflicts.length} conflicting files. Re-run with --force to overwrite them.`;
-    throw new Error(
-      `${instructions}\n\n${preview}${suffix}\n\n${instructions}`
-    );
-  }
+  // Note: conflicts are returned in the result for the CLI to handle display
 
-  return stats;
+  return { files, conflicts };
 }
 
 type DestinationResult =
@@ -316,20 +304,6 @@ async function readExistingFile(pathname: string) {
   }
 }
 
-function formatConflictPreview(conflicts: ConflictDetail[]) {
-  return conflicts
-    .map((conflict) => {
-      const snippet = conflict.diff
-        ? `\n${conflict.diff
-            .split("\n")
-            .map((line) => `    ${line}`)
-            .join("\n")}`
-        : "";
-      return `  • ${conflict.path}${snippet}`;
-    })
-    .join("\n\n");
-}
-
 function renderDiffPreview(path: string, existing: Buffer, incoming: Buffer) {
   if (!(isLikelyText(existing) && isLikelyText(incoming))) {
     return "(binary file differs)";
@@ -341,7 +315,23 @@ function renderDiffPreview(path: string, existing: Buffer, incoming: Buffer) {
     toUtf8String(incoming)
   );
 
-  return preview.split("\n").map(colorizeDiffLine).join("\n");
+  return preview
+    .split("\n")
+    .map((line) => {
+      if (line.startsWith("@@")) return chalk.blueBright.bold(line);
+      if (
+        line.startsWith("diff") ||
+        line.startsWith("index") ||
+        line.startsWith("+++") ||
+        line.startsWith("---")
+      ) {
+        return chalk.yellow(line);
+      }
+      if (line.startsWith("+")) return chalk.green.bold(line);
+      if (line.startsWith("-")) return chalk.red.bold(line);
+      return line;
+    })
+    .join("\n");
 }
 
 function relativize(pathname: string, root: string) {

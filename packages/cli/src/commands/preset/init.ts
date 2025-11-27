@@ -6,6 +6,7 @@ import {
 } from "@agentrules/core";
 import { mkdir, stat, writeFile } from "fs/promises";
 import { basename, join } from "path";
+import { log } from "@/lib/log";
 
 export type InitOptions = {
   directory?: string;
@@ -38,6 +39,8 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
   const directory = options.directory ?? process.cwd();
   const dirName = basename(directory);
 
+  log.debug(`Initializing preset in: ${directory}`);
+
   // Validate/normalize inputs
   const name = normalizeName(options.name ?? dirName);
   const title = options.title ?? toTitleCase(name);
@@ -45,6 +48,8 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
   const platforms = normalizePlatforms(options.platforms ?? ["opencode"]);
   const author = options.author ? { name: options.author } : undefined;
   const license = options.license ?? "MIT"; // Default to MIT if not specified
+
+  log.debug(`Preset name: ${name}, platforms: ${platforms.join(", ")}`);
 
   const configPath = join(directory, CONFIG_FILENAME);
 
@@ -80,10 +85,12 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
 
   // Create directory if needed
   await mkdir(directory, { recursive: true });
+  log.debug(`Created/verified directory: ${directory}`);
 
   // Write config
   const content = `${JSON.stringify(preset, null, 2)}\n`;
   await writeFile(configPath, content, "utf8");
+  log.debug(`Wrote config file: ${configPath}`);
 
   // Create platform directories
   const createdDirs: string[] = [];
@@ -91,12 +98,18 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
     const platformPath = DEFAULT_PLATFORM_PATHS[platform];
     const fullPath = join(directory, platformPath);
 
-    if (!(await directoryExists(fullPath))) {
+    if (await directoryExists(fullPath)) {
+      log.debug(`Platform directory already exists: ${platformPath}`);
+    } else {
       await mkdir(fullPath, { recursive: true });
       createdDirs.push(platformPath);
+      log.debug(`Created platform directory: ${platformPath}`);
     }
   }
 
+  log.debug(
+    `Preset initialization complete. Created ${createdDirs.length} directories.`
+  );
   return { configPath, preset, createdDirs };
 }
 

@@ -2,12 +2,12 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdtemp, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
+import { logout } from "@/commands/auth/logout";
 import {
   getCredentials,
   type RegistryCredentials,
   saveCredentials,
-} from "../../lib/auth";
-import { logout } from "./logout";
+} from "@/lib/auth";
 
 let homeDir: string;
 let originalHome: string | undefined;
@@ -81,26 +81,16 @@ describe("logout", () => {
     expect(result.hadCredentials).toBeFalse();
   });
 
-  it("calls onStatus callback when clearing credentials", async () => {
+  it("clears credentials successfully", async () => {
     await saveCredentials(DEFAULT_API_URL, { token: "test-token" });
 
-    const messages: string[] = [];
-    await logout({
-      apiUrl: DEFAULT_API_URL,
-      onStatus: (msg) => messages.push(msg),
-    });
+    const result = await logout({ apiUrl: DEFAULT_API_URL });
 
-    expect(messages.some((m) => m.includes("Clearing"))).toBeTrue();
-  });
+    expect(result.success).toBeTrue();
+    expect(result.hadCredentials).toBeTrue();
 
-  it("does not call onStatus when no credentials to clear", async () => {
-    const messages: string[] = [];
-    await logout({
-      apiUrl: DEFAULT_API_URL,
-      onStatus: (msg) => messages.push(msg),
-    });
-
-    // No status message when there's nothing to clear
-    expect(messages).toHaveLength(0);
+    // Verify credentials are cleared
+    const stored = await getCredentials(DEFAULT_API_URL);
+    expect(stored).toBeNull();
   });
 });

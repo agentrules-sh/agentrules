@@ -5,7 +5,11 @@
     "rootDir": "src",
     "moduleResolution": "bundler",
     "module": "ESNext",
-    "target": "ESNext"
+    "target": "ESNext",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": ["src"]
 }

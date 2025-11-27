@@ -2,12 +2,12 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdtemp, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
+import { login } from "@/commands/auth/login";
 import {
   getCredentials,
   type RegistryCredentials,
   saveCredentials,
-} from "../../lib/auth";
-import { login } from "./login";
+} from "@/lib/auth";
 
 const originalFetch = globalThis.fetch;
 let homeDir: string;
@@ -109,11 +109,18 @@ describe("login", () => {
         userEmail: "test@example.com",
       });
 
-      const messages: string[] = [];
+      let receivedCode: string | undefined;
+      let browserOpenCalled = false;
+
       const result = await login({
         apiUrl: DEFAULT_API_URL,
         noBrowser: true,
-        onStatus: (msg) => messages.push(msg),
+        onDeviceCode: (data) => {
+          receivedCode = data.userCode;
+        },
+        onBrowserOpen: () => {
+          browserOpenCalled = true;
+        },
       });
 
       expect(result.success).toBeTrue();
@@ -125,9 +132,9 @@ describe("login", () => {
       const stored = await getCredentials(DEFAULT_API_URL);
       expect(stored?.token).toBe("new-access-token");
 
-      // Verify status messages
-      expect(messages.some((m) => m.includes("Initiating"))).toBeTrue();
-      expect(messages.some((m) => m.includes("ABCD-1234"))).toBeTrue();
+      // Verify callbacks were called
+      expect(receivedCode).toBe("ABCD-1234");
+      expect(browserOpenCalled).toBeTrue();
     });
 
     it("handles device code start failure", async () => {
@@ -310,7 +317,7 @@ describe("login", () => {
   });
 
   describe("error handling", () => {
-    it("reports errors via onError callback", async () => {
+    it("returns error in result on failure", async () => {
       mockFetchSequence([
         {
           url: `${DEFAULT_API_URL}/api/auth/device/code`,
@@ -320,17 +327,12 @@ describe("login", () => {
         },
       ]);
 
-      const errors: string[] = [];
       const result = await login({
         apiUrl: DEFAULT_API_URL,
         noBrowser: true,
-        onError: (msg) => errors.push(msg),
       });
 
       expect(result.success).toBeFalse();
-      // Error should be reported via callback
-      expect(errors.length).toBeGreaterThan(0);
-      // The error message may be wrapped by openid-client, so just check we got an error
       expect(result.error).toBeDefined();
     });
   });

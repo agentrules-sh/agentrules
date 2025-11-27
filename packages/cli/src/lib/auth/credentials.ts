@@ -16,7 +16,8 @@ import {
 } from "fs/promises";
 import { dirname, join } from "path";
 import { promisify } from "util";
-import { getConfigDir } from "../config";
+import { getConfigDir } from "@/lib/config";
+import { log } from "@/lib/log";
 
 const chmodAsync = promisify(chmod);
 const CREDENTIALS_FILENAME = "credentials.json";
@@ -60,13 +61,19 @@ async function loadStore(): Promise<CredentialsStore> {
   try {
     await access(credentialsPath, fsConstants.F_OK);
   } catch {
+    log.debug(`Credentials file not found at ${credentialsPath}`);
     return {};
   }
 
   try {
     const raw = await readFile(credentialsPath, "utf8");
-    return JSON.parse(raw) as CredentialsStore;
-  } catch {
+    const store = JSON.parse(raw) as CredentialsStore;
+    log.debug(`Loaded credentials for ${Object.keys(store).length} registries`);
+    return store;
+  } catch (error) {
+    log.debug(
+      `Failed to load credentials: ${error instanceof Error ? error.message : String(error)}`
+    );
     return {};
   }
 }
@@ -83,6 +90,9 @@ async function saveStore(store: CredentialsStore): Promise<void> {
   const content = JSON.stringify(store, null, 2);
   await writeFile(credentialsPath, content, { encoding: "utf8", mode: 0o600 });
   await chmodAsync(credentialsPath, 0o600);
+  log.debug(
+    `Saved credentials for ${Object.keys(store).length} registries to ${credentialsPath}`
+  );
 }
 
 /**
@@ -96,6 +106,7 @@ export async function getCredentials(
   const credentials = store[key];
 
   if (!credentials) {
+    log.debug(`No credentials found for registry: ${registryUrl}`);
     return null;
   }
 
@@ -103,9 +114,17 @@ export async function getCredentials(
   if (credentials.expiresAt) {
     const expiresAt = new Date(credentials.expiresAt);
     if (expiresAt.getTime() < Date.now()) {
+      log.debug(
+        `Credentials expired for registry ${registryUrl}, clearing them`
+      );
       await clearCredentials(registryUrl);
       return null;
     }
+    log.debug(
+      `Credentials valid for registry ${registryUrl}, expires at ${credentials.expiresAt}`
+    );
+  } else {
+    log.debug(`Credentials found for registry ${registryUrl} (no expiration)`);
   }
 
   return credentials;
@@ -121,6 +140,9 @@ export async function saveCredentials(
   const store = await loadStore();
   const key = normalizeUrl(registryUrl);
   store[key] = credentials;
+  log.debug(
+    `Saving credentials for registry ${registryUrl}${credentials.expiresAt ? ` (expires ${credentials.expiresAt})` : ""}`
+  );
   await saveStore(store);
 }
 
@@ -131,11 +153,13 @@ export async function clearCredentials(registryUrl: string): Promise<void> {
   const store = await loadStore();
   const key = normalizeUrl(registryUrl);
   delete store[key];
+  log.debug(`Cleared credentials for registry ${registryUrl}`);
 
   if (Object.keys(store).length === 0) {
     // Remove file if no credentials left
     try {
       await rm(getCredentialsPath(), { force: true });
+      log.debug("Removed empty credentials file");
     } catch {
       // Ignore
     }

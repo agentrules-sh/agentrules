@@ -8,18 +8,28 @@
 
 import { exec } from "child_process";
 import { promisify } from "util";
-import { fetchSession } from "../../lib/api";
+import { getActiveRegistryUrl } from "@/commands/registry/manage";
+import { fetchSession } from "@/lib/api";
 import {
   getCredentials,
   pollForToken,
   requestDeviceCode,
   saveCredentials,
-} from "../../lib/auth";
-import { getActiveRegistryUrl } from "../registry/manage";
+} from "@/lib/auth";
+import { log } from "@/lib/log";
 
 const execAsync = promisify(exec);
 
 const CLIENT_ID = "agentrules-cli";
+
+export type DeviceCodeData = {
+  /** User code to display (formatted as XXXX-XXXX) */
+  userCode: string;
+  /** URL for manual entry */
+  verificationUri: string;
+  /** URL with code included (if available) */
+  verificationUriComplete?: string;
+};
 
 export type LoginOptions = {
   /** Registry URL (default: active registry) */
@@ -30,10 +40,10 @@ export type LoginOptions = {
   noBrowser?: boolean;
   /** Force re-login even if already authenticated */
   force?: boolean;
-  /** Callback for status messages */
-  onStatus?: (message: string) => void;
-  /** Callback for error messages */
-  onError?: (message: string) => void;
+  /** Called when device code is received - display this to the user (essential for UX) */
+  onDeviceCode?: (data: DeviceCodeData) => void;
+  /** Called after browser open attempt - true if opened, false if manual entry needed (essential for UX) */
+  onBrowserOpen?: (opened: boolean) => void;
 };
 
 export type LoginResult = {
@@ -60,8 +70,8 @@ export async function login(options: LoginOptions = {}): Promise<LoginResult> {
     registry,
     noBrowser = false,
     force = false,
-    onStatus,
-    onError,
+    onDeviceCode,
+    onBrowserOpen,
   } = options;
 
   // Resolve registry URL: explicit URL > registry alias > active registry
@@ -69,10 +79,13 @@ export async function login(options: LoginOptions = {}): Promise<LoginResult> {
   // Extract base URL (origin) for auth - registry URL may have path like /r/
   const apiUrl = new URL(registryUrl).origin;
 
+  log.debug(`Authenticating with ${apiUrl}`);
+
   // Check if already logged in to this registry
   if (!force) {
     const existing = await getCredentials(apiUrl);
     if (existing) {
+      log.debug("Already logged in, skipping authentication");
       return {
         success: true,
         alreadyLoggedIn: true,
@@ -89,84 +102,66 @@ export async function login(options: LoginOptions = {}): Promise<LoginResult> {
   }
 
   try {
-    // =========================================================================
     // Step 1: Request device code
-    // =========================================================================
-    onStatus?.("Initiating device code flow...");
-
+    log.debug("Requesting device code");
     const codeResult = await requestDeviceCode({
       issuer: apiUrl,
       clientId: CLIENT_ID,
     });
 
     if (codeResult.success === false) {
-      onError?.(codeResult.error);
       return { success: false, error: codeResult.error };
     }
 
     const { data: deviceAuthResponse, config } = codeResult;
 
-    // =========================================================================
-    // Step 2: Open browser and display instructions
-    // =========================================================================
+    // Step 2: Display device code to user
     const formattedCode = formatUserCode(deviceAuthResponse.user_code);
+
+    onDeviceCode?.({
+      userCode: formattedCode,
+      verificationUri: deviceAuthResponse.verification_uri,
+      verificationUriComplete: deviceAuthResponse.verification_uri_complete,
+    });
+
+    // Step 3: Open browser (if enabled)
     let browserOpened = false;
 
     if (!noBrowser) {
       try {
-        // Prefer verification_uri_complete if available (includes user_code)
         const urlToOpen =
           deviceAuthResponse.verification_uri_complete ??
           deviceAuthResponse.verification_uri;
+        log.debug(`Opening browser: ${urlToOpen}`);
         await openBrowser(urlToOpen);
         browserOpened = true;
       } catch {
-        // Browser failed to open, will show manual instructions below
+        log.debug("Failed to open browser");
       }
     }
 
-    onStatus?.("");
-    if (browserOpened && deviceAuthResponse.verification_uri_complete) {
-      // Browser opened with code in URL - just need to verify
-      onStatus?.("Browser opened. Verify this code matches:");
-      onStatus?.(`  ${formattedCode}`);
-    } else {
-      // Manual flow - show URL and code
-      onStatus?.("To authenticate, visit:");
-      onStatus?.(`  ${deviceAuthResponse.verification_uri}`);
-      onStatus?.("");
-      onStatus?.(`And enter the code: ${formattedCode}`);
-    }
+    onBrowserOpen?.(browserOpened);
 
-    onStatus?.("");
-    onStatus?.("Waiting for authorization...");
-
-    // =========================================================================
     // Step 4: Poll for authorization
-    // =========================================================================
+    log.debug("Waiting for user authorization");
     const pollResult = await pollForToken({
       config,
       deviceAuthorizationResponse: deviceAuthResponse,
     });
 
     if (pollResult.success === false) {
-      onError?.(pollResult.error);
       return { success: false, error: pollResult.error };
     }
 
-    // =========================================================================
     // Step 5: Fetch user info
-    // =========================================================================
     const token = pollResult.token.access_token;
 
-    onStatus?.("Fetching user info...");
+    log.debug("Fetching user info");
     const session = await fetchSession(apiUrl, token);
     const user = session?.user;
     const sessionExpiresAt = session?.session?.expiresAt;
 
-    // =========================================================================
     // Step 6: Save credentials
-    // =========================================================================
     const expiresAt =
       sessionExpiresAt ??
       (pollResult.token.expires_in
@@ -175,6 +170,7 @@ export async function login(options: LoginOptions = {}): Promise<LoginResult> {
           ).toISOString()
         : undefined);
 
+    log.debug("Saving credentials");
     await saveCredentials(apiUrl, {
       token,
       expiresAt,
@@ -195,7 +191,6 @@ export async function login(options: LoginOptions = {}): Promise<LoginResult> {
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    onError?.(message);
     return { success: false, error: message };
   }
 }

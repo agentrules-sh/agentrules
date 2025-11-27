@@ -2,6 +2,7 @@ import { constants as fsConstants } from "fs";
 import { access, mkdir, readFile, writeFile } from "fs/promises";
 import { homedir } from "os";
 import { dirname, join } from "path";
+import { log } from "./log";
 
 const CONFIG_DIRNAME = ".agentrules";
 const CONFIG_FILENAME = "config.json";
@@ -32,11 +33,13 @@ const DEFAULT_CONFIG: Config = {
 export async function loadConfig(): Promise<Config> {
   await ensureConfigDir();
   const configPath = getConfigPath();
+  log.debug(`Loading config from ${configPath}`);
 
   try {
     await access(configPath, fsConstants.F_OK);
   } catch (error: unknown) {
     if (isNodeError(error) && error.code === "ENOENT") {
+      log.debug("Config file not found, creating default config");
       await writeDefaultConfig();
       return structuredClone(DEFAULT_CONFIG);
     }
@@ -61,6 +64,7 @@ export async function loadConfig(): Promise<Config> {
 export async function saveConfig(config: Config) {
   await ensureConfigDir();
   const configPath = getConfigPath();
+  log.debug(`Saving config to ${configPath}`);
   const serialized = JSON.stringify(config, null, 2);
   await writeFile(configPath, serialized, "utf8");
 }

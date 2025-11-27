@@ -11,7 +11,7 @@ import {
   listLoggedInRegistries,
   type RegistryCredentials,
   saveCredentials,
-} from "./credentials";
+} from "@/lib/auth/credentials";
 
 let homeDir: string;
 let originalHome: string | undefined;
