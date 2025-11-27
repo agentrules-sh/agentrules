@@ -7,7 +7,8 @@ export type AuthorInfo = {
 };
 
 export type PlatformPresetConfig = {
-  path: string;
+  /** Path to platform config files. Defaults to platform's projectDir (e.g., ".opencode") */
+  path?: string;
   features?: string[];
   installMessage?: string;
 };

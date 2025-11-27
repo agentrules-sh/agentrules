@@ -1,11 +1,13 @@
 import {
   isSupportedPlatform,
   PLATFORM_IDS,
+  PLATFORMS,
   type PresetConfig,
   validatePresetConfig,
 } from "@agentrules/core";
 import { readFile, stat } from "fs/promises";
 import { basename, dirname, join } from "path";
+import { directoryExists } from "@/lib/fs";
 import { log } from "@/lib/log";
 
 export type ValidateOptions = {
@@ -96,13 +98,13 @@ export async function validatePreset(
 
     // key is now narrowed to PlatformId
     const platformConfig = preset.platforms[key];
-    if (!platformConfig?.path) {
-      errors.push(`Platform "${key}" is missing a path.`);
-      log.debug(`Platform "${key}" missing path configuration`);
+    if (!platformConfig) {
       continue;
     }
 
-    const platformDir = join(presetDir, platformConfig.path);
+    // Default to platform's standard projectDir if path not specified
+    const platformPath = platformConfig.path ?? PLATFORMS[key].projectDir;
+    const platformDir = join(presetDir, platformPath);
     const platformExists = await directoryExists(platformDir);
 
     log.debug(
@@ -110,9 +112,7 @@ export async function validatePreset(
     );
 
     if (!platformExists) {
-      errors.push(
-        `Platform directory not found: ${platformConfig.path} (for ${key})`
-      );
+      errors.push(`Platform directory not found: ${platformPath} (for ${key})`);
     }
   }
 
@@ -153,13 +153,4 @@ async function resolveConfigPath(inputPath?: string): Promise<string> {
   }
 
   return inputPath;
-}
-
-async function directoryExists(path: string): Promise<boolean> {
-  try {
-    const stats = await stat(path);
-    return stats.isDirectory();
-  } catch {
-    return false;
-  }
 }

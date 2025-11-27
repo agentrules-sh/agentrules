@@ -3,11 +3,13 @@ import {
   generateDateVersion,
   normalizeBundlePublicBase,
   PLATFORM_IDS,
+  PLATFORMS,
   type RegistryPresetInput,
   validatePresetConfig,
 } from "@agentrules/core";
-import { mkdir, readdir, readFile, stat, writeFile } from "fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "fs/promises";
 import { basename, join, relative } from "path";
+import { directoryExists, fileExists } from "@/lib/fs";
 import { log } from "@/lib/log";
 
 export type BuildOptions = {
@@ -173,7 +175,10 @@ async function loadPreset(presetDir: string): Promise<RegistryPresetInput> {
     const platformConfig = config.platforms[platformId];
     if (!platformConfig) continue;
 
-    const platformDir = join(presetDir, platformConfig.path);
+    // Default to platform's standard projectDir if path not specified
+    const platformPath =
+      platformConfig.path ?? PLATFORMS[platformId].projectDir;
+    const platformDir = join(presetDir, platformPath);
 
     if (!(await directoryExists(platformDir))) {
       throw new Error(
@@ -237,32 +242,9 @@ async function collectFiles(
   return files;
 }
 
-async function fileExists(path: string): Promise<boolean> {
-  try {
-    const stats = await stat(path);
-    return stats.isFile();
-  } catch {
-    return false;
-  }
-}
-
 async function readFileIfExists(path: string): Promise<string | undefined> {
-  try {
-    const stats = await stat(path);
-    if (stats.isFile()) {
-      return await readFile(path, "utf8");
-    }
-  } catch {
-    // File doesn't exist
+  if (await fileExists(path)) {
+    return await readFile(path, "utf8");
   }
   return;
-}
-
-async function directoryExists(path: string): Promise<boolean> {
-  try {
-    const stats = await stat(path);
-    return stats.isDirectory();
-  } catch {
-    return false;
-  }
 }

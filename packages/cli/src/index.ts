@@ -10,7 +10,8 @@ import {
 import { login } from "@/commands/auth/login";
 import { logout } from "@/commands/auth/logout";
 import { whoami } from "@/commands/auth/whoami";
-import { initPreset } from "@/commands/preset/init";
+import { detectPlatforms, initPreset } from "@/commands/preset/init";
+import { initInteractive } from "@/commands/preset/init-interactive";
 import { validatePreset } from "@/commands/preset/validate";
 import { buildRegistry } from "@/commands/registry/build";
 import {
@@ -184,30 +185,80 @@ program
   .command("init")
   .description("Initialize a new preset in the current directory")
   .argument("[directory]", "Directory to initialize")
+  .option("-y, --yes", "Accept defaults without prompting")
   .option("-n, --name <name>", "Preset name")
   .option("-t, --title <title>", "Display title")
   .option("--description <text>", "Preset description")
-  .option(
-    "-p, --platforms <platforms>",
-    "Comma-separated platforms",
-    "opencode"
-  )
+  .option("-p, --platforms <platforms>", "Comma-separated platforms")
   .option("-a, --author <name>", "Author name")
   .option("-l, --license <license>", "License (e.g., MIT)")
   .option("-f, --force", "Overwrite existing agentrules.json")
   .action(
     handle(async (directory: string | undefined, options) => {
+      const targetDir = directory ?? process.cwd();
+
+      // Use interactive mode if:
+      // - Not using --yes flag
+      // - stdin is a TTY (not piped)
+      // - No explicit options provided (except directory and force)
+      const hasExplicitOptions =
+        options.name ||
+        options.title ||
+        options.description ||
+        options.platforms ||
+        options.author ||
+        options.license;
+
+      const useInteractive =
+        !options.yes && process.stdin.isTTY && !hasExplicitOptions;
+
+      if (useInteractive) {
+        const result = await initInteractive({
+          directory: targetDir,
+          force: options.force,
+        });
+
+        if (result && result.createdDirs.length > 0) {
+          log.print(
+            `\n${ui.header("Directories created", result.createdDirs.length)}`
+          );
+          log.print(ui.list(result.createdDirs.map((d) => ui.path(d))));
+        }
+
+        log.print(`\n${ui.header("Next steps")}`);
+        log.print(
+          ui.numberedList([
+            "Add your config files to the platform directories",
+            `Run ${ui.command("agentrules validate")} to check your preset`,
+          ])
+        );
+        return;
+      }
+
+      // Non-interactive mode
+      const detected = await detectPlatforms(targetDir);
+      const detectedPlatforms: Record<string, string> = {};
+      for (const d of detected) {
+        detectedPlatforms[d.id] = d.path;
+      }
+
+      // Use detected platforms if no explicit platforms provided
       const platforms = options.platforms
-        ?.split(",")
-        .map((p: string) => p.trim())
-        .filter(Boolean);
+        ? options.platforms
+            .split(",")
+            .map((p: string) => p.trim())
+            .filter(Boolean)
+        : detected.length > 0
+          ? detected.map((d) => d.id)
+          : ["opencode"];
 
       const result = await initPreset({
-        directory,
+        directory: targetDir,
         name: options.name,
         title: options.title,
         description: options.description,
         platforms,
+        detectedPlatforms,
         author: options.author,
         license: options.license,
         force: options.force,

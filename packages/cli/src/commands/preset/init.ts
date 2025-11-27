@@ -1,11 +1,13 @@
 import {
   isSupportedPlatform,
   PLATFORM_IDS,
+  PLATFORMS,
   type PlatformId,
   type PresetConfig,
 } from "@agentrules/core";
-import { mkdir, stat, writeFile } from "fs/promises";
+import { mkdir, writeFile } from "fs/promises";
 import { basename, join } from "path";
+import { directoryExists, fileExists } from "@/lib/fs";
 import { log } from "@/lib/log";
 
 export type InitOptions = {
@@ -14,6 +16,8 @@ export type InitOptions = {
   title?: string;
   description?: string;
   platforms?: string[];
+  /** Map of platform to detected path (e.g., { opencode: ".opencode" }) */
+  detectedPlatforms?: Partial<Record<PlatformId, string>>;
   author?: string;
   license?: string;
   force?: boolean;
@@ -25,15 +29,52 @@ export type InitResult = {
   createdDirs: string[];
 };
 
+export type DetectedPlatform = {
+  id: PlatformId;
+  path: string;
+};
+
 const CONFIG_FILENAME = "agentrules.json";
 const SCHEMA_URL = "https://agentrules.directory/schema/agentrules.json";
 
+/** Paths to check for existing platform configs (in order of preference) */
+const PLATFORM_DETECTION_PATHS: Record<PlatformId, string[]> = {
+  opencode: [".opencode"],
+  claude: [".claude"],
+  cursor: [".cursor", ".cursorrules"],
+  codex: [".codex"],
+};
+
+/** Default paths for new preset authoring */
 const DEFAULT_PLATFORM_PATHS: Record<PlatformId, string> = {
   opencode: "opencode/files/.opencode",
   claude: "claude/files/.claude",
   cursor: "cursor/files/.cursor",
   codex: "codex/files/.codex",
 };
+
+/**
+ * Detect existing platform config directories in a directory
+ */
+export async function detectPlatforms(
+  directory: string
+): Promise<DetectedPlatform[]> {
+  const detected: DetectedPlatform[] = [];
+
+  for (const platformId of PLATFORM_IDS) {
+    const pathsToCheck = PLATFORM_DETECTION_PATHS[platformId];
+
+    for (const pathToCheck of pathsToCheck) {
+      const fullPath = join(directory, pathToCheck);
+      if (await directoryExists(fullPath)) {
+        detected.push({ id: platformId, path: pathToCheck });
+        break; // Found one, don't check other paths for this platform
+      }
+    }
+  }
+
+  return detected;
+}
 
 export async function initPreset(options: InitOptions): Promise<InitResult> {
   const directory = options.directory ?? process.cwd();
@@ -46,6 +87,7 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
   const title = options.title ?? toTitleCase(name);
   const description = options.description ?? `${title} preset`;
   const platforms = normalizePlatforms(options.platforms ?? ["opencode"]);
+  const detectedPlatforms = options.detectedPlatforms ?? {};
   const author = options.author ? { name: options.author } : undefined;
   const license = options.license ?? "MIT"; // Default to MIT if not specified
 
@@ -61,21 +103,27 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
   }
 
   // Build platform configs
+  // Only include path if it differs from the platform's default projectDir
   const platformConfigs: PresetConfig["platforms"] = {};
   for (const platform of platforms) {
-    platformConfigs[platform] = {
-      path: DEFAULT_PLATFORM_PATHS[platform],
-      features: [],
-    };
+    const detectedPath = detectedPlatforms[platform];
+    const defaultPath = PLATFORMS[platform].projectDir;
+    const effectivePath = detectedPath ?? DEFAULT_PLATFORM_PATHS[platform];
+
+    // Only include path in config if it's not the default
+    if (effectivePath === defaultPath) {
+      platformConfigs[platform] = {};
+    } else {
+      platformConfigs[platform] = { path: effectivePath };
+    }
   }
 
   const preset: PresetConfig = {
     $schema: SCHEMA_URL,
     name,
     title,
-    version: "1.0.0",
     description,
-    license, // Required field
+    license,
     platforms: platformConfigs,
   };
 
@@ -92,9 +140,17 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
   await writeFile(configPath, content, "utf8");
   log.debug(`Wrote config file: ${configPath}`);
 
-  // Create platform directories
+  // Create platform directories (only for non-detected platforms)
   const createdDirs: string[] = [];
   for (const platform of platforms) {
+    // Skip if this platform was detected (directory already exists)
+    if (detectedPlatforms[platform]) {
+      log.debug(
+        `Using detected platform directory: ${detectedPlatforms[platform]}`
+      );
+      continue;
+    }
+
     const platformPath = DEFAULT_PLATFORM_PATHS[platform];
     const fullPath = join(directory, platformPath);
 
@@ -144,22 +200,4 @@ function normalizePlatforms(input: string[]): PlatformId[] {
   }
 
   return platforms;
-}
-
-async function fileExists(path: string): Promise<boolean> {
-  try {
-    const stats = await stat(path);
-    return stats.isFile();
-  } catch {
-    return false;
-  }
-}
-
-async function directoryExists(path: string): Promise<boolean> {
-  try {
-    const stats = await stat(path);
-    return stats.isDirectory();
-  } catch {
-    return false;
-  }
 }

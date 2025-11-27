@@ -1,10 +1,19 @@
 import { describe, expect, it } from "bun:test";
 import {
   authorSchema,
+  COMMON_LICENSES,
+  descriptionSchema,
+  licenseSchema,
   platformIdSchema,
   presetConfigSchema,
   registryBundleSchema,
   registryEntrySchema,
+  slugSchema,
+  titleSchema,
+  validateDescription,
+  validateLicense,
+  validateSlug,
+  validateTitle,
 } from "./schema";
 
 describe("platformIdSchema", () => {
@@ -18,6 +27,194 @@ describe("platformIdSchema", () => {
   it("rejects invalid platform IDs", () => {
     expect(() => platformIdSchema.parse("vscode")).toThrow();
     expect(() => platformIdSchema.parse("")).toThrow();
+  });
+});
+
+describe("slugSchema", () => {
+  it("accepts valid slugs", () => {
+    expect(slugSchema.parse("my-preset")).toBe("my-preset");
+    expect(slugSchema.parse("preset")).toBe("preset");
+    expect(slugSchema.parse("my-cool-preset")).toBe("my-cool-preset");
+    expect(slugSchema.parse("preset123")).toBe("preset123");
+    expect(slugSchema.parse("123preset")).toBe("123preset");
+  });
+
+  it("rejects slugs with leading hyphen", () => {
+    expect(() => slugSchema.parse("-preset")).toThrow();
+  });
+
+  it("rejects slugs with trailing hyphen", () => {
+    expect(() => slugSchema.parse("preset-")).toThrow();
+  });
+
+  it("rejects slugs with consecutive hyphens", () => {
+    expect(() => slugSchema.parse("my--preset")).toThrow();
+  });
+
+  it("rejects slugs with uppercase", () => {
+    expect(() => slugSchema.parse("MyPreset")).toThrow();
+  });
+
+  it("rejects slugs with spaces", () => {
+    expect(() => slugSchema.parse("my preset")).toThrow();
+  });
+
+  it("rejects slugs with special characters", () => {
+    expect(() => slugSchema.parse("my_preset")).toThrow();
+    expect(() => slugSchema.parse("my.preset")).toThrow();
+  });
+
+  it("rejects empty slugs", () => {
+    expect(() => slugSchema.parse("")).toThrow();
+  });
+
+  it("rejects slugs over 64 characters", () => {
+    expect(() => slugSchema.parse("a".repeat(65))).toThrow();
+  });
+});
+
+describe("validateSlug", () => {
+  it("returns undefined for valid slugs", () => {
+    expect(validateSlug("my-preset")).toBeUndefined();
+    expect(validateSlug("preset")).toBeUndefined();
+    expect(validateSlug("a".repeat(64))).toBeUndefined();
+  });
+
+  it("returns error for empty input", () => {
+    expect(validateSlug("")).toBe("Name is required");
+    expect(validateSlug("   ")).toBe("Name is required");
+  });
+
+  it("returns error for too long input", () => {
+    expect(validateSlug("a".repeat(65))).toBe(
+      "Name must be 64 characters or less"
+    );
+  });
+
+  it("returns error for invalid format", () => {
+    expect(validateSlug("-preset")).toBe(
+      "Must be lowercase alphanumeric with hyphens (e.g., my-preset)"
+    );
+    expect(validateSlug("preset-")).toBe(
+      "Must be lowercase alphanumeric with hyphens (e.g., my-preset)"
+    );
+    expect(validateSlug("my--preset")).toBe(
+      "Must be lowercase alphanumeric with hyphens (e.g., my-preset)"
+    );
+  });
+});
+
+describe("titleSchema", () => {
+  it("accepts valid titles", () => {
+    expect(titleSchema.parse("My Preset")).toBe("My Preset");
+    expect(titleSchema.parse("A")).toBe("A");
+    expect(titleSchema.parse("a".repeat(120))).toBe("a".repeat(120));
+  });
+
+  it("rejects empty titles", () => {
+    expect(() => titleSchema.parse("")).toThrow();
+  });
+
+  it("rejects titles over 120 characters", () => {
+    expect(() => titleSchema.parse("a".repeat(121))).toThrow();
+  });
+});
+
+describe("validateTitle", () => {
+  it("returns undefined for valid titles", () => {
+    expect(validateTitle("My Preset")).toBeUndefined();
+    expect(validateTitle("a".repeat(120))).toBeUndefined();
+  });
+
+  it("returns error for empty input", () => {
+    expect(validateTitle("")).toBe("Title is required");
+    expect(validateTitle("   ")).toBe("Title is required");
+  });
+
+  it("returns error for too long input", () => {
+    expect(validateTitle("a".repeat(121))).toBe(
+      "Title must be 120 characters or less"
+    );
+  });
+});
+
+describe("descriptionSchema", () => {
+  it("accepts valid descriptions", () => {
+    expect(descriptionSchema.parse("A description")).toBe("A description");
+    expect(descriptionSchema.parse("a".repeat(500))).toBe("a".repeat(500));
+  });
+
+  it("rejects empty descriptions", () => {
+    expect(() => descriptionSchema.parse("")).toThrow();
+  });
+
+  it("rejects descriptions over 500 characters", () => {
+    expect(() => descriptionSchema.parse("a".repeat(501))).toThrow();
+  });
+});
+
+describe("validateDescription", () => {
+  it("returns undefined for valid descriptions", () => {
+    expect(validateDescription("A description")).toBeUndefined();
+    expect(validateDescription("a".repeat(500))).toBeUndefined();
+  });
+
+  it("returns error for empty input", () => {
+    expect(validateDescription("")).toBe("Description is required");
+    expect(validateDescription("   ")).toBe("Description is required");
+  });
+
+  it("returns error for too long input", () => {
+    expect(validateDescription("a".repeat(501))).toBe(
+      "Description must be 500 characters or less"
+    );
+  });
+});
+
+describe("licenseSchema", () => {
+  it("accepts any non-empty license string", () => {
+    expect(licenseSchema.parse("MIT")).toBe("MIT");
+    expect(licenseSchema.parse("Apache-2.0")).toBe("Apache-2.0");
+    expect(licenseSchema.parse("Custom-License")).toBe("Custom-License");
+    expect(licenseSchema.parse("proprietary")).toBe("proprietary");
+  });
+
+  it("rejects empty licenses", () => {
+    expect(() => licenseSchema.parse("")).toThrow();
+  });
+
+  it("rejects licenses over 128 characters", () => {
+    expect(() => licenseSchema.parse("a".repeat(129))).toThrow();
+  });
+});
+
+describe("validateLicense", () => {
+  it("returns undefined for valid licenses", () => {
+    expect(validateLicense("MIT")).toBeUndefined();
+    expect(validateLicense("Custom-License")).toBeUndefined();
+    expect(validateLicense("a".repeat(128))).toBeUndefined();
+  });
+
+  it("returns error for empty input", () => {
+    expect(validateLicense("")).toBe("License is required");
+    expect(validateLicense("   ")).toBe("License is required");
+  });
+
+  it("returns error for too long input", () => {
+    expect(validateLicense("a".repeat(129))).toBe(
+      "License must be 128 characters or less"
+    );
+  });
+});
+
+describe("COMMON_LICENSES", () => {
+  it("contains common licenses for quick selection", () => {
+    expect(COMMON_LICENSES).toContain("MIT");
+    expect(COMMON_LICENSES).toContain("Apache-2.0");
+    expect(COMMON_LICENSES).toContain("GPL-3.0-only");
+    expect(COMMON_LICENSES).toContain("BSD-3-Clause");
+    expect(COMMON_LICENSES).toContain("ISC");
+    expect(COMMON_LICENSES).toContain("Unlicense");
   });
 });
 
