@@ -183,7 +183,7 @@ program
 program
   .command("init")
   .description("Initialize a new preset in the current directory")
-  .option("-d, --directory <path>", "Directory to initialize")
+  .argument("[directory]", "Directory to initialize")
   .option("-n, --name <name>", "Preset name")
   .option("-t, --title <title>", "Display title")
   .option("--description <text>", "Preset description")
@@ -196,14 +196,14 @@ program
   .option("-l, --license <license>", "License (e.g., MIT)")
   .option("-f, --force", "Overwrite existing agentrules.json")
   .action(
-    handle(async (options) => {
+    handle(async (directory: string | undefined, options) => {
       const platforms = options.platforms
         ?.split(",")
         .map((p: string) => p.trim())
         .filter(Boolean);
 
       const result = await initPreset({
-        directory: options.directory,
+        directory,
         name: options.name,
         title: options.title,
         description: options.description,
