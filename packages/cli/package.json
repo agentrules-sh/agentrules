@@ -48,7 +48,8 @@
   },
   "dependencies": {
     "@agentrules/core": "workspace:*",
-    "commander": "^12.1.0"
+    "commander": "^12.1.0",
+    "openid-client": "^6.8.1"
   },
   "devDependencies": {
     "tsdown": "^0.9.0",

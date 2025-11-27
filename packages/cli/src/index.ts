@@ -3,6 +3,9 @@
 import { Command } from "commander";
 import { createRequire } from "module";
 import { addPreset, normalizePlatformInput } from "./commands/add";
+import { login } from "./commands/auth/login";
+import { logout } from "./commands/auth/logout";
+import { whoami } from "./commands/auth/whoami";
 import { initPreset } from "./commands/preset/init";
 import { validatePreset } from "./commands/preset/validate";
 import { buildRegistry } from "./commands/registry/build";
@@ -391,6 +394,110 @@ registry
     handle(async (alias: string) => {
       await useRegistry(alias);
       logSuccess(`Default registry switched to "${alias}".`);
+    })
+  );
+
+program
+  .command("login")
+  .description("Authenticate with the registry using device code flow")
+  .option("--api-url <url>", "API URL (default: https://agentrules.directory)")
+  .option("--no-browser", "Skip opening browser automatically")
+  .option("-f, --force", "Force re-login even if already authenticated")
+  .action(
+    handle(
+      async (options: {
+        apiUrl?: string;
+        browser?: boolean;
+        force?: boolean;
+      }) => {
+        const result = await login({
+          apiUrl: options.apiUrl,
+          noBrowser: options.browser === false,
+          force: Boolean(options.force),
+          onStatus: (msg) => {
+            if (msg) logInfo(msg);
+          },
+        });
+
+        if (result.alreadyLoggedIn) {
+          logInfo("Already logged in.");
+          if (result.user) {
+            logInfo(
+              `Authenticated as ${result.user.name} (${result.user.email})`
+            );
+          }
+          return;
+        }
+
+        if (!result.success) {
+          throw new Error(result.error || "Login failed");
+        }
+
+        logSuccess("Successfully authenticated!");
+        if (result.user) {
+          logInfo(`Logged in as ${result.user.name} (${result.user.email})`);
+        }
+      }
+    )
+  );
+
+program
+  .command("logout")
+  .description("Remove stored credentials")
+  .action(
+    handle(async () => {
+      const result = await logout({
+        onStatus: (msg) => logInfo(msg),
+      });
+
+      if (!result.hadCredentials) {
+        logInfo("No credentials found. Already logged out.");
+        return;
+      }
+
+      logSuccess("Successfully logged out.");
+    })
+  );
+
+program
+  .command("whoami")
+  .description("Show the currently authenticated user")
+  .action(
+    handle(async () => {
+      const result = await whoami({
+        onStatus: (msg) => logInfo(msg),
+        onError: (msg) => logError(msg),
+      });
+
+      if (!result.success) {
+        throw new Error(
+          result.error || "Failed to check authentication status"
+        );
+      }
+
+      if (!result.loggedIn) {
+        logInfo("Not logged in. Run `agentrules login` to authenticate.");
+        return;
+      }
+
+      if (result.user) {
+        console.log(`${boldText("Name:")}  ${result.user.name}`);
+        console.log(`${boldText("Email:")} ${result.user.email}`);
+      }
+      if (result.apiUrl) {
+        console.log(`${boldText("API:")}   ${result.apiUrl}`);
+      }
+      if (result.expiresAt) {
+        const expiresDate = new Date(result.expiresAt);
+        const daysUntilExpiry = Math.ceil(
+          (expiresDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+        );
+        console.log(
+          `${boldText("Token:")} expires in ${daysUntilExpiry} day${
+            daysUntilExpiry === 1 ? "" : "s"
+          }`
+        );
+      }
     })
   );
 
