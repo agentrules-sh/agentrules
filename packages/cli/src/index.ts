@@ -2,14 +2,14 @@
 
 import { Command } from "commander";
 import { createRequire } from "module";
+import { login } from "@/commands/auth/login";
+import { logout } from "@/commands/auth/logout";
+import { whoami } from "@/commands/auth/whoami";
 import {
   type AddPresetResult,
   addPreset,
   normalizePlatformInput,
-} from "@/commands/add";
-import { login } from "@/commands/auth/login";
-import { logout } from "@/commands/auth/logout";
-import { whoami } from "@/commands/auth/whoami";
+} from "@/commands/preset/add";
 import { detectPlatforms, initPreset } from "@/commands/preset/init";
 import { initInteractive } from "@/commands/preset/init-interactive";
 import { validatePreset } from "@/commands/preset/validate";

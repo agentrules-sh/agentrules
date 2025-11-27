@@ -9,7 +9,7 @@ import { createHash } from "crypto";
 import { access, appendFile, mkdtemp, readFile, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
-import { addPreset } from "@/commands/add";
+import { addPreset } from "@/commands/preset/add";
 import {
   type Config,
   getConfigPath,
