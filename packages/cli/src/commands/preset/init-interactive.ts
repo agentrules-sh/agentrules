@@ -2,6 +2,7 @@ import {
   COMMON_LICENSES,
   PLATFORM_IDS,
   type PlatformId,
+  PRESET_CONFIG_FILENAME,
   validateDescription,
   validateLicense,
   validateSlug,
@@ -23,8 +24,6 @@ export type InteractiveInitOptions = {
   force?: boolean;
 };
 
-const CONFIG_FILENAME = "agentrules.json";
-
 /**
  * Run interactive init flow with clack prompts
  */
@@ -38,10 +37,10 @@ export async function initInteractive(
   p.intro("Create a new preset");
 
   // Check if config already exists
-  const configPath = join(directory, CONFIG_FILENAME);
+  const configPath = join(directory, PRESET_CONFIG_FILENAME);
   if (!force && (await fileExists(configPath))) {
     const overwrite = await p.confirm({
-      message: `${CONFIG_FILENAME} already exists. Overwrite?`,
+      message: `${PRESET_CONFIG_FILENAME} already exists. Overwrite?`,
       initialValue: false,
     });
 

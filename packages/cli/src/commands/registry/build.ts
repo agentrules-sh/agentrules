@@ -4,6 +4,7 @@ import {
   normalizeBundlePublicBase,
   PLATFORM_IDS,
   PLATFORMS,
+  PRESET_CONFIG_FILENAME,
   type RegistryPresetInput,
   validatePresetConfig,
 } from "@agentrules/core";
@@ -29,7 +30,6 @@ export type BuildResult = {
   validateOnly: boolean;
 };
 
-const CONFIG_FILENAME = "agentrules.json";
 const INSTALL_FILENAME = "INSTALL.txt";
 const README_FILENAME = "README.md";
 const LICENSE_FILENAME = "LICENSE.md";
@@ -51,7 +51,7 @@ export async function buildRegistry(
 
   if (presetDirs.length === 0) {
     throw new Error(
-      `No presets found in "${inputDir}". Each preset needs an ${CONFIG_FILENAME} file.`
+      `No presets found in "${inputDir}". Each preset needs an ${PRESET_CONFIG_FILENAME} file.`
     );
   }
 
@@ -133,7 +133,7 @@ async function discoverPresetDirs(inputDir: string): Promise<string[]> {
     if (!entry.isDirectory()) continue;
 
     const presetDir = join(inputDir, entry.name);
-    const configPath = join(presetDir, CONFIG_FILENAME);
+    const configPath = join(presetDir, PRESET_CONFIG_FILENAME);
 
     if (await fileExists(configPath)) {
       presetDirs.push(presetDir);
@@ -145,7 +145,7 @@ async function discoverPresetDirs(inputDir: string): Promise<string[]> {
 
 async function loadPreset(presetDir: string): Promise<RegistryPresetInput> {
   const slug = basename(presetDir);
-  const configPath = join(presetDir, CONFIG_FILENAME);
+  const configPath = join(presetDir, PRESET_CONFIG_FILENAME);
   const configRaw = await readFile(configPath, "utf8");
 
   let configJson: unknown;

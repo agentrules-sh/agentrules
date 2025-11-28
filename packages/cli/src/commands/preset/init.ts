@@ -3,6 +3,8 @@ import {
   PLATFORM_IDS,
   PLATFORMS,
   type PlatformId,
+  PRESET_CONFIG_FILENAME,
+  PRESET_SCHEMA_URL,
   type PresetConfig,
 } from "@agentrules/core";
 import { mkdir, writeFile } from "fs/promises";
@@ -33,9 +35,6 @@ export type DetectedPlatform = {
   id: PlatformId;
   path: string;
 };
-
-const CONFIG_FILENAME = "agentrules.json";
-const SCHEMA_URL = "https://agentrules.directory/schema/agentrules.json";
 
 /** Paths to check for existing platform configs (in order of preference) */
 const PLATFORM_DETECTION_PATHS: Record<PlatformId, string[]> = {
@@ -93,12 +92,12 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
 
   log.debug(`Preset name: ${name}, platforms: ${platforms.join(", ")}`);
 
-  const configPath = join(directory, CONFIG_FILENAME);
+  const configPath = join(directory, PRESET_CONFIG_FILENAME);
 
   // Check if config already exists
   if (!options.force && (await fileExists(configPath))) {
     throw new Error(
-      `${CONFIG_FILENAME} already exists. Use --force to overwrite.`
+      `${PRESET_CONFIG_FILENAME} already exists. Use --force to overwrite.`
     );
   }
 
@@ -119,7 +118,7 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
   }
 
   const preset: PresetConfig = {
-    $schema: SCHEMA_URL,
+    $schema: PRESET_SCHEMA_URL,
     name,
     title,
     description,

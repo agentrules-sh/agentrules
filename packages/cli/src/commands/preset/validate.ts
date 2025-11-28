@@ -2,6 +2,7 @@ import {
   isSupportedPlatform,
   PLATFORM_IDS,
   PLATFORMS,
+  PRESET_CONFIG_FILENAME,
   type PresetConfig,
   validatePresetConfig,
 } from "@agentrules/core";
@@ -21,8 +22,6 @@ export type ValidateResult = {
   errors: string[];
   warnings: string[];
 };
-
-const CONFIG_FILENAME = "agentrules.json";
 
 export async function validatePreset(
   options: ValidateOptions
@@ -143,13 +142,13 @@ export async function validatePreset(
 
 async function resolveConfigPath(inputPath?: string): Promise<string> {
   if (!inputPath) {
-    return join(process.cwd(), CONFIG_FILENAME);
+    return join(process.cwd(), PRESET_CONFIG_FILENAME);
   }
 
   const stats = await stat(inputPath).catch(() => null);
 
   if (stats?.isDirectory()) {
-    return join(inputPath, CONFIG_FILENAME);
+    return join(inputPath, PRESET_CONFIG_FILENAME);
   }
 
   return inputPath;
