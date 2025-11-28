@@ -4,7 +4,6 @@ import { tmpdir } from "os";
 import { join } from "path";
 import {
   addRegistry,
-  getActiveRegistryUrl,
   listRegistries,
   removeRegistry,
   useRegistry,
@@ -60,16 +59,13 @@ describe("registry module", () => {
     expect(result.removedDefault).toBeTrue();
   });
 
-  it("switches active registry and reports the correct URL", async () => {
+  it("switches active registry", async () => {
     await addRegistry("prod", "https://prod.dev/r", { makeDefault: true });
     await addRegistry("dev", "https://example.dev/r");
 
     await useRegistry("dev");
-    const active = await getActiveRegistryUrl();
-    expect(active.alias).toBe("dev");
-    expect(active.url).toBe("https://example.dev/r/");
-
-    const explicit = await getActiveRegistryUrl("prod");
-    expect(explicit.alias).toBe("prod");
+    const registries = await listRegistries();
+    const defaultEntry = registries.find((entry) => entry.isDefault);
+    expect(defaultEntry?.alias).toBe("dev");
   });
 });

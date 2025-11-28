@@ -8,7 +8,6 @@ import {
   clearCredentials,
   getCredentials,
   getCredentialsPath,
-  listLoggedInRegistries,
   type RegistryCredentials,
   saveCredentials,
 } from "@/lib/auth/credentials";
@@ -165,22 +164,6 @@ describe("credentials module", () => {
 
       expect(await getCredentials(REGISTRY_A)).toBeNull();
       expect(await getCredentials(REGISTRY_B)).toBeNull();
-    });
-  });
-
-  describe("listLoggedInRegistries", () => {
-    it("returns empty array when no credentials exist", async () => {
-      const registries = await listLoggedInRegistries();
-      expect(registries).toEqual([]);
-    });
-
-    it("returns all registries with stored credentials", async () => {
-      await saveCredentials(REGISTRY_A, { token: "token-a" });
-      await saveCredentials(REGISTRY_B, { token: "token-b" });
-
-      const registries = await listLoggedInRegistries();
-      expect(registries).toContain(REGISTRY_A.toLowerCase());
-      expect(registries).toContain(REGISTRY_B.toLowerCase());
     });
   });
 

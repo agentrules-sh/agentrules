@@ -120,24 +120,6 @@ export async function useRegistry(alias: string) {
   log.debug(`Switched default registry to "${normalizedAlias}"`);
 }
 
-export async function getActiveRegistryUrl(alias?: string) {
-  const config = await loadConfig();
-  if (alias) {
-    const normalizedAlias = normalizeAlias(alias);
-    const entry = config.registries[normalizedAlias];
-    if (!entry) {
-      throw new Error(`Registry "${normalizedAlias}" is not defined.`);
-    }
-    log.debug(`Retrieved registry "${normalizedAlias}"`);
-    return { alias: normalizedAlias, url: entry.url };
-  }
-
-  const activeAlias = config.defaultRegistry;
-  const entry = config.registries[activeAlias];
-  log.debug(`Using default registry "${activeAlias}"`);
-  return { alias: activeAlias, url: entry.url };
-}
-
 export function normalizeAlias(alias: string) {
   const trimmed = alias.trim();
   if (!trimmed) {

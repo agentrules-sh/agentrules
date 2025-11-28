@@ -185,19 +185,3 @@ export async function clearAllCredentials(): Promise<void> {
     // Ignore
   }
 }
-
-/**
- * Checks if the user is logged in to a specific registry
- */
-export async function isLoggedIn(registryUrl: string): Promise<boolean> {
-  const credentials = await getCredentials(registryUrl);
-  return credentials !== null;
-}
-
-/**
- * Lists all registries the user is logged into
- */
-export async function listLoggedInRegistries(): Promise<string[]> {
-  const store = await loadStore();
-  return Object.keys(store);
-}

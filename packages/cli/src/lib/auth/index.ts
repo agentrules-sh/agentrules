@@ -16,8 +16,6 @@ export {
   clearCredentials,
   getCredentials,
   getCredentialsPath,
-  isLoggedIn,
-  listLoggedInRegistries,
   type RegistryCredentials,
   saveCredentials,
 } from "./credentials";
