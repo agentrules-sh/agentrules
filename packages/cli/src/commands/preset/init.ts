@@ -46,10 +46,10 @@ const PLATFORM_DETECTION_PATHS: Record<PlatformId, string[]> = {
 
 /** Default paths for new preset authoring */
 const DEFAULT_PLATFORM_PATHS: Record<PlatformId, string> = {
-  opencode: "opencode/files/.opencode",
-  claude: "claude/files/.claude",
-  cursor: "cursor/files/.cursor",
-  codex: "codex/files/.codex",
+  opencode: "opencode/files/config",
+  claude: "claude/files/config",
+  cursor: "cursor/files/config",
+  codex: "codex/files/config",
 };
 
 /**

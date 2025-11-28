@@ -42,12 +42,10 @@ describe("initPreset", () => {
       platforms: ["opencode", "claude"],
     });
 
-    expect(result.createdDirs).toContain("opencode/files/.opencode");
-    expect(result.createdDirs).toContain("claude/files/.claude");
+    expect(result.createdDirs).toContain("opencode/files/config");
+    expect(result.createdDirs).toContain("claude/files/config");
 
-    const opencodeStat = await stat(
-      join(presetDir, "opencode/files/.opencode")
-    );
+    const opencodeStat = await stat(join(presetDir, "opencode/files/config"));
     expect(opencodeStat.isDirectory()).toBeTrue();
   });
 
