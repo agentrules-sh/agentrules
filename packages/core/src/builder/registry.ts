@@ -77,7 +77,7 @@ export function buildRegistryData(
 
       const files = createBundledFilesFromInputs(platformInput.files);
       const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-      const installMessage = cleanInstallMessage(platformConfig.installMessage);
+      const installMessage = cleanInstallMessage(platformInput.installMessage);
       const features = platformConfig.features ?? [];
 
       const readmeContent = presetInput.readmeContent?.trim() || undefined;

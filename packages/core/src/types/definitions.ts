@@ -87,6 +87,8 @@ export type RegistryFileInput = {
 export type RegistryPlatformInput = {
   platform: PlatformId;
   files: RegistryFileInput[];
+  /** Install message from INSTALL.txt file */
+  installMessage?: string;
 };
 
 export type RegistryPresetInput = {

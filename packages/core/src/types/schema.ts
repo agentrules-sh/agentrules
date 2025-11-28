@@ -98,7 +98,6 @@ export const platformPresetConfigSchema = z
   .object({
     path: pathSchema.optional(),
     features: featuresSchema.optional(),
-    installMessage: installMessageSchema.optional(),
   })
   .strict();
 

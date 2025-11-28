@@ -337,18 +337,8 @@ describe("buildRegistry", () => {
       expect(bundle.installMessage).toBe("OpenCode specific message!");
     });
 
-    it("JSON installMessage used when no INSTALL.txt", async () => {
-      const configWithMessage = {
-        ...VALID_CONFIG,
-        platforms: {
-          opencode: {
-            path: "opencode/files/.opencode",
-            installMessage: "JSON message here",
-          },
-        },
-      };
-
-      await createPreset("test-preset", configWithMessage, {
+    it("no installMessage when no INSTALL.txt", async () => {
+      await createPreset("test-preset", VALID_CONFIG, {
         "AGENT_RULES.md": "# Rules\n",
       });
 
@@ -362,39 +352,7 @@ describe("buildRegistry", () => {
         "utf8"
       );
       const bundle = JSON.parse(bundleContent);
-      expect(bundle.installMessage).toBe("JSON message here");
-    });
-
-    it("INSTALL.txt overrides JSON installMessage", async () => {
-      const configWithMessage = {
-        ...VALID_CONFIG,
-        platforms: {
-          opencode: {
-            path: "opencode/files/.opencode",
-            installMessage: "JSON message (should be overridden)",
-          },
-        },
-      };
-
-      await createPreset("test-preset", configWithMessage, {
-        "AGENT_RULES.md": "# Rules\n",
-      });
-
-      // Add preset-level INSTALL.txt
-      const presetDir = join(inputDir, "test-preset");
-      await writeFile(join(presetDir, "INSTALL.txt"), "INSTALL.txt wins!");
-
-      await buildRegistry({
-        input: inputDir,
-        out: outputDir,
-      });
-
-      const bundleContent = await readFile(
-        join(outputDir, "test-preset/opencode.json"),
-        "utf8"
-      );
-      const bundle = JSON.parse(bundleContent);
-      expect(bundle.installMessage).toBe("INSTALL.txt wins!");
+      expect(bundle.installMessage).toBeUndefined();
     });
   });
 });

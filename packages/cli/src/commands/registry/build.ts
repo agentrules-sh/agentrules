@@ -191,21 +191,15 @@ async function loadPreset(presetDir: string): Promise<RegistryPresetInput> {
     const platformInstallPath = join(presetDir, platformId, INSTALL_FILENAME);
     const platformInstallMessage = await readFileIfExists(platformInstallPath);
 
-    // Resolution order: platform INSTALL.txt > preset INSTALL.txt > JSON field
-    const installMessage =
-      platformInstallMessage ??
-      presetInstallMessage ??
-      platformConfig.installMessage;
-
-    if (installMessage !== undefined) {
-      platformConfig.installMessage = installMessage;
-    }
+    // Resolution order: platform INSTALL.txt > preset INSTALL.txt
+    const installMessage = platformInstallMessage ?? presetInstallMessage;
 
     const files = await collectFiles(platformDir);
 
     platforms.push({
       platform: platformId,
       files,
+      installMessage,
     });
   }
 
