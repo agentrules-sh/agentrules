@@ -99,7 +99,7 @@ export async function addPreset(
   );
 
   log.debug(`Downloading bundle: ${entry.bundlePath}`);
-  const { bundle } = await fetchRegistryBundle(registryUrl, entry.bundlePath);
+  const bundle = await fetchRegistryBundle(registryUrl, entry.bundlePath);
 
   if (bundle.slug !== entry.slug || bundle.platform !== entry.platform) {
     throw new Error(

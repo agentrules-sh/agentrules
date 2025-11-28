@@ -270,7 +270,6 @@ function mockPresetRequests(baseUrl: string, fixture: FixturePayload) {
     {
       expectUrl: new URL(fixture.entry.bundlePath, baseUrl).toString(),
       body: fixture.bundle,
-      headers: { ETag: '"test-etag"' },
     },
   ];
 

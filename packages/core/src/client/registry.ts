@@ -6,11 +6,6 @@ import {
   type RegistryIndex,
 } from "../types";
 
-export type FetchRegistryBundleResult = {
-  bundle: RegistryBundle;
-  etag: string | null;
-};
-
 export async function fetchRegistryIndex(
   baseUrl: string
 ): Promise<RegistryIndex> {
@@ -34,7 +29,7 @@ export async function fetchRegistryIndex(
 export async function fetchRegistryBundle(
   baseUrl: string,
   bundlePath: string
-): Promise<FetchRegistryBundleResult> {
+): Promise<RegistryBundle> {
   const bundleUrl = new URL(bundlePath, baseUrl);
   const response = await fetch(bundleUrl);
   if (!response.ok) {
@@ -44,8 +39,7 @@ export async function fetchRegistryBundle(
   }
 
   try {
-    const bundle = (await response.json()) as RegistryBundle;
-    return { bundle, etag: response.headers.get("etag") };
+    return (await response.json()) as RegistryBundle;
   } catch (error) {
     throw new Error(`Unable to parse bundle JSON: ${(error as Error).message}`);
   }
