@@ -327,12 +327,12 @@ describe("presetConfigSchema", () => {
     expect(
       presetConfigSchema.parse({ ...validConfig, version: "2024.01.01" })
     ).toBeDefined();
-    // With same-day release suffix
+    // With same-day release suffix (dash separator for semver compatibility)
     expect(
-      presetConfigSchema.parse({ ...validConfig, version: "2024.11.26.1" })
+      presetConfigSchema.parse({ ...validConfig, version: "2024.11.26-1" })
     ).toBeDefined();
     expect(
-      presetConfigSchema.parse({ ...validConfig, version: "2024.12.31.42" })
+      presetConfigSchema.parse({ ...validConfig, version: "2024.12.31-42" })
     ).toBeDefined();
     // Invalid formats
     expect(() =>
@@ -344,6 +344,10 @@ describe("presetConfigSchema", () => {
     expect(() =>
       presetConfigSchema.parse({ ...validConfig, version: "2024.01.32" })
     ).toThrow(); // invalid day
+    // Old dot format no longer valid
+    expect(() =>
+      presetConfigSchema.parse({ ...validConfig, version: "2024.11.26.1" })
+    ).toThrow();
   });
 });
 
