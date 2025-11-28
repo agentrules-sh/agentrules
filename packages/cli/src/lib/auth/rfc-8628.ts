@@ -10,6 +10,7 @@
 
 import * as client from "openid-client";
 import { log } from "@/lib/log";
+import { buildUrl } from "@/lib/url";
 
 // Re-export types from openid-client for convenience
 export type {
@@ -56,12 +57,17 @@ export type DeviceCodeRequestResult =
 export async function requestDeviceCode(
   options: DeviceCodeRequestOptions
 ): Promise<DeviceCodeRequestResult> {
-  const issuer = options.issuer.replace(/\/$/, "");
-  const deviceAuthEndpoint = `${issuer}${options.deviceAuthorizationEndpoint ?? DEFAULT_DEVICE_AUTHORIZATION_ENDPOINT}`;
-  const tokenEndpoint = `${issuer}${options.tokenEndpoint ?? DEFAULT_TOKEN_ENDPOINT}`;
+  const deviceAuthEndpoint = buildUrl(
+    options.issuer,
+    options.deviceAuthorizationEndpoint ?? DEFAULT_DEVICE_AUTHORIZATION_ENDPOINT
+  );
+  const tokenEndpoint = buildUrl(
+    options.issuer,
+    options.tokenEndpoint ?? DEFAULT_TOKEN_ENDPOINT
+  );
 
   const serverMetadata: client.ServerMetadata = {
-    issuer,
+    issuer: options.issuer.replace(/\/$/, ""), // OpenID spec expects no trailing slash
     device_authorization_endpoint: deviceAuthEndpoint,
     token_endpoint: tokenEndpoint,
   };
@@ -75,8 +81,8 @@ export async function requestDeviceCode(
 
   // Allow HTTP for localhost
   if (
-    issuer.startsWith("http://localhost") ||
-    issuer.startsWith("http://127.0.0.1")
+    options.issuer.startsWith("http://localhost") ||
+    options.issuer.startsWith("http://127.0.0.1")
   ) {
     client.allowInsecureRequests(config);
   }

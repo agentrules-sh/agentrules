@@ -46,10 +46,17 @@ export function getCredentialsPath(): string {
 }
 
 /**
- * Normalizes a registry URL for use as a key
+ * Normalizes a registry URL for use as a credentials key.
+ * - Lowercases hostname (case-insensitive per spec)
+ * - Normalizes default ports (443 for https, 80 for http)
+ * - Preserves path (case-sensitive)
+ * - Strips trailing slash
+ * - Strips query string and fragment (not relevant for auth)
  */
 function normalizeUrl(url: string): string {
-  return url.replace(/\/$/, "").toLowerCase();
+  const parsed = new URL(url);
+  const path = parsed.pathname.replace(/\/$/, "");
+  return parsed.origin + path;
 }
 
 /**

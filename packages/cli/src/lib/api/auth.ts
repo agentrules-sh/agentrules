@@ -6,6 +6,7 @@
  */
 
 import { log } from "@/lib/log";
+import { buildUrl } from "@/lib/url";
 
 // =============================================================================
 // Endpoints
@@ -55,7 +56,7 @@ export async function fetchSession(
   baseUrl: string,
   token: string
 ): Promise<GetSessionResponse> {
-  const url = `${baseUrl}${AUTH_ENDPOINTS.GET_SESSION}`;
+  const url = buildUrl(baseUrl, AUTH_ENDPOINTS.GET_SESSION);
 
   try {
     log.debug(`GET ${url}`);
