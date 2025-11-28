@@ -8,8 +8,8 @@
 
 import { normalizeAlias } from "@/commands/registry/manage";
 import { fetchSession } from "./api";
-import { getCredentials, type RegistryCredentials } from "./auth/credentials";
 import { type Config, loadConfig } from "./config";
+import { getCredentials, type RegistryCredentials } from "./credentials";
 import { log } from "./log";
 
 /**

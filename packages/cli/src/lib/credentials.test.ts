@@ -10,7 +10,7 @@ import {
   getCredentialsPath,
   type RegistryCredentials,
   saveCredentials,
-} from "@/lib/auth/credentials";
+} from "@/lib/credentials";
 
 let homeDir: string;
 let originalHome: string | undefined;

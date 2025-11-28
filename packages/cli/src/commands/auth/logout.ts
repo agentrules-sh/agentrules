@@ -4,8 +4,8 @@
  * Clears stored credentials from the local machine.
  */
 
-import { clearAllCredentials, clearCredentials } from "@/lib/auth";
 import { useAppContext } from "@/lib/context";
+import { clearAllCredentials, clearCredentials } from "@/lib/credentials";
 import { log } from "@/lib/log";
 
 export type LogoutOptions = {

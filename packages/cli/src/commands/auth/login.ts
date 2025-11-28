@@ -8,9 +8,9 @@
 
 import { exec } from "child_process";
 import { promisify } from "util";
-import { fetchSession } from "@/lib/api";
-import { pollForToken, requestDeviceCode, saveCredentials } from "@/lib/auth";
+import { fetchSession, pollForToken, requestDeviceCode } from "@/lib/api";
 import { useAppContext } from "@/lib/context";
+import { saveCredentials } from "@/lib/credentials";
 import { log } from "@/lib/log";
 
 const execAsync = promisify(exec);

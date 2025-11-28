@@ -3,8 +3,8 @@ import { mkdtemp, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { whoami } from "@/commands/auth/whoami";
-import { type RegistryCredentials, saveCredentials } from "@/lib/auth";
 import { initAppContext } from "@/lib/context";
+import { type RegistryCredentials, saveCredentials } from "@/lib/credentials";
 
 const originalFetch = globalThis.fetch;
 let homeDir: string;

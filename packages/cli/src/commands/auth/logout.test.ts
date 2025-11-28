@@ -3,12 +3,12 @@ import { mkdtemp, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { logout } from "@/commands/auth/logout";
+import { initAppContext } from "@/lib/context";
 import {
   getCredentials,
   type RegistryCredentials,
   saveCredentials,
-} from "@/lib/auth";
-import { initAppContext } from "@/lib/context";
+} from "@/lib/credentials";
 
 let homeDir: string;
 let originalHome: string | undefined;

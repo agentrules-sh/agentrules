@@ -18,10 +18,22 @@
  * - DELETE /api/presets/:slug - Unpublish a preset
  */
 
+// RFC 8628 Device Authorization Grant
+export {
+  type DeviceAuthorizationResponse,
+  type DeviceCodeRequestOptions,
+  type DeviceCodeRequestResult,
+  type PollForTokenOptions,
+  type PollForTokenResult,
+  pollForToken,
+  requestDeviceCode,
+  type TokenEndpointResponse,
+} from "./device-auth";
+// Session endpoint
 export {
   AUTH_ENDPOINTS,
   fetchSession,
   type GetSessionResponse,
   type RegistrySession,
   type RegistryUser,
-} from "./auth";
+} from "./session";
