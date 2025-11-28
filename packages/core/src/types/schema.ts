@@ -150,7 +150,12 @@ export const registryBundleSchema = z.object({
 });
 
 export const registryEntrySchema = registryBundleSchema
-  .omit({ files: true, readmeContent: true, licenseContent: true })
+  .omit({
+    files: true,
+    readmeContent: true,
+    licenseContent: true,
+    installMessage: true,
+  })
   .extend({
     name: z.string().trim().min(1),
     bundlePath: z.string().trim().min(1),

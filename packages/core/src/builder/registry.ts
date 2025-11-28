@@ -94,7 +94,6 @@ export function buildRegistryData(
         author: presetConfig.author,
         license: presetConfig.license,
         features,
-        installMessage,
         bundlePath: getBundlePublicPath(
           bundleBase,
           presetInput.slug,
