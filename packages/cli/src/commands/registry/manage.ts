@@ -138,7 +138,7 @@ export async function getActiveRegistryUrl(alias?: string) {
   return { alias: activeAlias, url: entry.url };
 }
 
-function normalizeAlias(alias: string) {
+export function normalizeAlias(alias: string) {
   const trimmed = alias.trim();
   if (!trimmed) {
     throw new Error("Alias is required.");

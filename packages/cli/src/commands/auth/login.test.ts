@@ -8,6 +8,7 @@ import {
   type RegistryCredentials,
   saveCredentials,
 } from "@/lib/auth";
+import { initAppContext } from "@/lib/context";
 
 const originalFetch = globalThis.fetch;
 let homeDir: string;
@@ -42,6 +43,7 @@ describe("login", () => {
         userEmail: "existing@example.com",
       };
       await saveCredentials(DEFAULT_API_URL, credentials);
+      await initAppContext({ apiUrl: DEFAULT_API_URL });
 
       let fetchCalled = false;
       mockFetchSequence([
@@ -54,7 +56,7 @@ describe("login", () => {
         },
       ]);
 
-      const result = await login({ apiUrl: DEFAULT_API_URL });
+      const result = await login();
 
       expect(result.success).toBeTrue();
       expect(result.alreadyLoggedIn).toBeTrue();
@@ -71,6 +73,7 @@ describe("login", () => {
         userEmail: "existing@example.com",
       };
       await saveCredentials(DEFAULT_API_URL, credentials);
+      await initAppContext({ apiUrl: DEFAULT_API_URL });
 
       mockDeviceCodeFlow({
         deviceCode: "test-device-code",
@@ -83,7 +86,6 @@ describe("login", () => {
       });
 
       const result = await login({
-        apiUrl: DEFAULT_API_URL,
         force: true,
         noBrowser: true,
       });
@@ -99,6 +101,8 @@ describe("login", () => {
 
   describe("device code flow", () => {
     it("completes successful login flow", async () => {
+      await initAppContext({ apiUrl: DEFAULT_API_URL });
+
       mockDeviceCodeFlow({
         deviceCode: "test-device-code",
         userCode: "ABCD-1234",
@@ -113,7 +117,6 @@ describe("login", () => {
       let browserOpenCalled = false;
 
       const result = await login({
-        apiUrl: DEFAULT_API_URL,
         noBrowser: true,
         onDeviceCode: (data) => {
           receivedCode = data.userCode;
@@ -138,6 +141,8 @@ describe("login", () => {
     });
 
     it("handles device code start failure", async () => {
+      await initAppContext({ apiUrl: DEFAULT_API_URL });
+
       mockFetchSequence([
         {
           url: `${DEFAULT_API_URL}/api/auth/device/code`,
@@ -148,7 +153,7 @@ describe("login", () => {
         },
       ]);
 
-      const result = await login({ apiUrl: DEFAULT_API_URL, noBrowser: true });
+      const result = await login({ noBrowser: true });
 
       expect(result.success).toBeFalse();
       // openid-client returns error for HTTP 500
@@ -156,8 +161,9 @@ describe("login", () => {
     });
 
     it("handles authorization pending then success", async () => {
-      let pollCount = 0;
+      await initAppContext({ apiUrl: DEFAULT_API_URL });
 
+      let pollCount = 0;
       mockFetchSequence([
         {
           url: `${DEFAULT_API_URL}/api/auth/device/code`,
@@ -214,7 +220,7 @@ describe("login", () => {
         },
       ]);
 
-      const result = await login({ apiUrl: DEFAULT_API_URL, noBrowser: true });
+      const result = await login({ noBrowser: true });
 
       expect(result.success).toBeTrue();
       expect(result.user?.name).toBe("Polled User");
@@ -222,6 +228,8 @@ describe("login", () => {
     });
 
     it("handles expired device code", async () => {
+      await initAppContext({ apiUrl: DEFAULT_API_URL });
+
       mockFetchSequence([
         {
           url: `${DEFAULT_API_URL}/api/auth/device/code`,
@@ -247,7 +255,7 @@ describe("login", () => {
         },
       ]);
 
-      const result = await login({ apiUrl: DEFAULT_API_URL, noBrowser: true });
+      const result = await login({ noBrowser: true });
 
       expect(result.success).toBeFalse();
       // openid-client times out when expires_in is very short, or returns expired_token error
@@ -259,6 +267,7 @@ describe("login", () => {
 
     it("uses custom API URL when provided", async () => {
       const customUrl = "https://custom.example.com";
+      await initAppContext({ apiUrl: customUrl });
 
       mockFetchSequence([
         {
@@ -306,7 +315,7 @@ describe("login", () => {
         },
       ]);
 
-      const result = await login({ apiUrl: customUrl, noBrowser: true });
+      const result = await login({ noBrowser: true });
 
       expect(result.success).toBeTrue();
 
@@ -318,6 +327,8 @@ describe("login", () => {
 
   describe("error handling", () => {
     it("returns error in result on failure", async () => {
+      await initAppContext({ apiUrl: DEFAULT_API_URL });
+
       mockFetchSequence([
         {
           url: `${DEFAULT_API_URL}/api/auth/device/code`,
@@ -328,7 +339,6 @@ describe("login", () => {
       ]);
 
       const result = await login({
-        apiUrl: DEFAULT_API_URL,
         noBrowser: true,
       });
 

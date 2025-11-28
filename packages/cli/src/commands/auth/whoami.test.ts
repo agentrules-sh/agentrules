@@ -4,6 +4,7 @@ import { tmpdir } from "os";
 import { join } from "path";
 import { whoami } from "@/commands/auth/whoami";
 import { type RegistryCredentials, saveCredentials } from "@/lib/auth";
+import { initAppContext } from "@/lib/context";
 
 const originalFetch = globalThis.fetch;
 let homeDir: string;
@@ -29,7 +30,9 @@ describe("whoami", () => {
   });
 
   it("returns not logged in when no credentials exist", async () => {
-    const result = await whoami({ apiUrl: DEFAULT_API_URL });
+    await initAppContext({ apiUrl: DEFAULT_API_URL });
+
+    const result = await whoami();
 
     expect(result.success).toBeTrue();
     expect(result.loggedIn).toBeFalse();
@@ -46,8 +49,9 @@ describe("whoami", () => {
       userEmail: "test@example.com",
     };
     await saveCredentials(DEFAULT_API_URL, credentials);
+    await initAppContext({ apiUrl: DEFAULT_API_URL });
 
-    const result = await whoami({ apiUrl: DEFAULT_API_URL });
+    const result = await whoami();
 
     expect(result.success).toBeTrue();
     expect(result.loggedIn).toBeTrue();
@@ -64,7 +68,6 @@ describe("whoami", () => {
       expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
     };
     await saveCredentials(DEFAULT_API_URL, credentials);
-
     mockFetch({
       url: `${DEFAULT_API_URL}/api/auth/get-session`,
       response: {
@@ -80,8 +83,9 @@ describe("whoami", () => {
         },
       },
     });
+    await initAppContext({ apiUrl: DEFAULT_API_URL });
 
-    const result = await whoami({ apiUrl: DEFAULT_API_URL });
+    const result = await whoami();
 
     expect(result.success).toBeTrue();
     expect(result.loggedIn).toBeTrue();
@@ -96,14 +100,14 @@ describe("whoami", () => {
       expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
     };
     await saveCredentials(DEFAULT_API_URL, credentials);
-
     mockFetch({
       url: `${DEFAULT_API_URL}/api/auth/get-session`,
       status: 401,
       response: { error: "unauthorized" },
     });
+    await initAppContext({ apiUrl: DEFAULT_API_URL });
 
-    const result = await whoami({ apiUrl: DEFAULT_API_URL });
+    const result = await whoami();
 
     expect(result.success).toBeTrue();
     expect(result.loggedIn).toBeTrue();
@@ -111,12 +115,11 @@ describe("whoami", () => {
     expect(result.apiUrl).toBe(DEFAULT_API_URL);
   });
 
-  it("fetches user info from server when not cached", async () => {
+  it("fetches user info from server when token exists but user not cached", async () => {
     const credentials: RegistryCredentials = {
       token: "test-token",
     };
     await saveCredentials(DEFAULT_API_URL, credentials);
-
     mockFetch({
       url: `${DEFAULT_API_URL}/api/auth/get-session`,
       response: {
@@ -132,8 +135,9 @@ describe("whoami", () => {
         },
       },
     });
+    await initAppContext({ apiUrl: DEFAULT_API_URL });
 
-    const result = await whoami({ apiUrl: DEFAULT_API_URL });
+    const result = await whoami();
 
     expect(result.success).toBeTrue();
     expect(result.loggedIn).toBeTrue();
@@ -145,10 +149,10 @@ describe("whoami", () => {
       token: "test-token",
     };
     await saveCredentials(DEFAULT_API_URL, credentials);
-
     mockFetchError("Network error");
+    await initAppContext({ apiUrl: DEFAULT_API_URL });
 
-    const result = await whoami({ apiUrl: DEFAULT_API_URL });
+    const result = await whoami();
 
     expect(result.success).toBeTrue();
     expect(result.loggedIn).toBeTrue();
@@ -156,15 +160,16 @@ describe("whoami", () => {
     expect(result.apiUrl).toBe(DEFAULT_API_URL);
   });
 
-  it("checks credentials for specific registry when apiUrl provided", async () => {
+  it("checks credentials for specific registry when custom apiUrl used", async () => {
     const customUrl = "https://custom.example.com";
     await saveCredentials(customUrl, {
       token: "custom-token",
       userName: "Custom User",
       userEmail: "custom@example.com",
     });
+    await initAppContext({ apiUrl: customUrl });
 
-    const result = await whoami({ apiUrl: customUrl });
+    const result = await whoami();
 
     expect(result.success).toBeTrue();
     expect(result.loggedIn).toBeTrue();

@@ -8,14 +8,9 @@
 
 import { exec } from "child_process";
 import { promisify } from "util";
-import { getActiveRegistryUrl } from "@/commands/registry/manage";
 import { fetchSession } from "@/lib/api";
-import {
-  getCredentials,
-  pollForToken,
-  requestDeviceCode,
-  saveCredentials,
-} from "@/lib/auth";
+import { pollForToken, requestDeviceCode, saveCredentials } from "@/lib/auth";
+import { useAppContext } from "@/lib/context";
 import { log } from "@/lib/log";
 
 const execAsync = promisify(exec);
@@ -32,10 +27,6 @@ export type DeviceCodeData = {
 };
 
 export type LoginOptions = {
-  /** Registry URL (default: active registry) */
-  apiUrl?: string;
-  /** Registry alias to use instead of URL */
-  registry?: string;
   /** Skip opening browser automatically */
   noBrowser?: boolean;
   /** Force re-login even if already authenticated */
@@ -66,39 +57,28 @@ export type LoginResult = {
  */
 export async function login(options: LoginOptions = {}): Promise<LoginResult> {
   const {
-    apiUrl: explicitUrl,
-    registry,
     noBrowser = false,
     force = false,
     onDeviceCode,
     onBrowserOpen,
   } = options;
 
-  // Resolve registry URL: explicit URL > registry alias > active registry
-  const registryUrl = explicitUrl ?? (await getActiveRegistryUrl(registry)).url;
-  // Extract base URL (origin) for auth - registry URL may have path like /r/
-  const apiUrl = new URL(registryUrl).origin;
+  const ctx = useAppContext();
+  if (!ctx) {
+    throw new Error("App context not initialized");
+  }
 
+  const { apiUrl } = ctx.registry;
   log.debug(`Authenticating with ${apiUrl}`);
 
   // Check if already logged in to this registry
-  if (!force) {
-    const existing = await getCredentials(apiUrl);
-    if (existing) {
-      log.debug("Already logged in, skipping authentication");
-      return {
-        success: true,
-        alreadyLoggedIn: true,
-        user:
-          existing.userName && existing.userEmail
-            ? {
-                id: existing.userId ?? "",
-                name: existing.userName,
-                email: existing.userEmail,
-              }
-            : undefined,
-      };
-    }
+  if (!force && ctx.credentials) {
+    log.debug("Already logged in, skipping authentication");
+    return {
+      success: true,
+      alreadyLoggedIn: true,
+      user: ctx.user ?? undefined,
+    };
   }
 
   try {

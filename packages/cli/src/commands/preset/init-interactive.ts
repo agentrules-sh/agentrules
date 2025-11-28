@@ -9,7 +9,7 @@ import {
 } from "@agentrules/core";
 import * as p from "@clack/prompts";
 import { basename, join } from "path";
-import { whoami } from "@/commands/auth/whoami";
+import { useAppContext } from "@/lib/context";
 import { fileExists } from "@/lib/fs";
 import {
   detectPlatforms,
@@ -53,9 +53,9 @@ export async function initInteractive(
     force = true;
   }
 
-  // Try to get logged in user for author default
-  const userInfo = await whoami();
-  const defaultAuthor = userInfo.loggedIn ? userInfo.user?.name : undefined;
+  // Try to get logged in user for author default (from cached context)
+  const ctx = useAppContext();
+  const defaultAuthor = ctx?.user?.name;
 
   // Detect existing platform configs
   const detected = await detectPlatforms(directory);

@@ -20,6 +20,7 @@ import {
   removeRegistry,
   useRegistry,
 } from "@/commands/registry/manage";
+import { initAppContext } from "@/lib/context";
 import { log, ui } from "@/lib/log";
 
 const require = createRequire(import.meta.url);
@@ -35,10 +36,29 @@ program
   .configureOutput({
     outputError: (str, write) => write(ui.error(str.trim())),
   })
-  .hook("preAction", (thisCommand) => {
+  .hook("preAction", async (thisCommand, actionCommand) => {
     const opts = thisCommand.opts();
     if (opts.verbose) {
       log.setVerbose(true);
+    }
+
+    // Get command-specific options for context initialization
+    const actionOpts = actionCommand.opts() as {
+      registry?: string;
+      apiUrl?: string;
+    };
+
+    // Initialize app context with command options
+    try {
+      await initAppContext({
+        registryAlias: actionOpts.registry,
+        apiUrl: actionOpts.apiUrl,
+      });
+    } catch (error) {
+      // Context init can fail if config doesn't exist yet - that's fine
+      log.debug(
+        `Failed to init context: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   })
   .showHelpAfterError();
@@ -75,7 +95,6 @@ program
         result = await addPreset({
           preset,
           platform,
-          registryAlias: options.registry,
           global: Boolean(options.global),
           directory: options.dir,
           force: Boolean(options.force || options.yes),
@@ -473,7 +492,6 @@ program
       const spinner = await log.spinner("Authenticating...");
 
       const result = await login({
-        apiUrl: options.apiUrl,
         noBrowser: options.browser === false,
         force: Boolean(options.force),
         onDeviceCode: (data) => {

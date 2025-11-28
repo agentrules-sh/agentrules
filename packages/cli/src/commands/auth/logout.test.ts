@@ -8,6 +8,7 @@ import {
   type RegistryCredentials,
   saveCredentials,
 } from "@/lib/auth";
+import { initAppContext } from "@/lib/context";
 
 let homeDir: string;
 let originalHome: string | undefined;
@@ -39,12 +40,12 @@ describe("logout", () => {
       userEmail: "test@example.com",
     };
     await saveCredentials(DEFAULT_API_URL, credentials);
+    await initAppContext({ apiUrl: DEFAULT_API_URL });
 
-    // Verify credentials exist
     const before = await getCredentials(DEFAULT_API_URL);
     expect(before).not.toBeNull();
 
-    const result = await logout({ apiUrl: DEFAULT_API_URL });
+    const result = await logout();
 
     expect(result.success).toBeTrue();
     expect(result.hadCredentials).toBeTrue();
@@ -55,18 +56,36 @@ describe("logout", () => {
   });
 
   it("clears credentials only for specified registry", async () => {
-    await saveCredentials(DEFAULT_API_URL, { token: "token-default" });
-    await saveCredentials(OTHER_API_URL, { token: "token-other" });
+    await saveCredentials(DEFAULT_API_URL, {
+      token: "token-default",
+      userName: "User",
+      userEmail: "user@example.com",
+    });
+    await saveCredentials(OTHER_API_URL, {
+      token: "token-other",
+      userName: "Other",
+      userEmail: "other@example.com",
+    });
+    await initAppContext({ apiUrl: DEFAULT_API_URL });
 
-    await logout({ apiUrl: DEFAULT_API_URL });
+    await logout();
 
     expect(await getCredentials(DEFAULT_API_URL)).toBeNull();
     expect(await getCredentials(OTHER_API_URL)).not.toBeNull();
   });
 
   it("clears all credentials when all option is set", async () => {
-    await saveCredentials(DEFAULT_API_URL, { token: "token-default" });
-    await saveCredentials(OTHER_API_URL, { token: "token-other" });
+    await saveCredentials(DEFAULT_API_URL, {
+      token: "token-default",
+      userName: "User",
+      userEmail: "user@example.com",
+    });
+    await saveCredentials(OTHER_API_URL, {
+      token: "token-other",
+      userName: "Other",
+      userEmail: "other@example.com",
+    });
+    await initAppContext({ apiUrl: DEFAULT_API_URL });
 
     await logout({ all: true });
 
@@ -75,16 +94,23 @@ describe("logout", () => {
   });
 
   it("succeeds even when no credentials exist", async () => {
-    const result = await logout({ apiUrl: DEFAULT_API_URL });
+    await initAppContext({ apiUrl: DEFAULT_API_URL });
+
+    const result = await logout();
 
     expect(result.success).toBeTrue();
     expect(result.hadCredentials).toBeFalse();
   });
 
   it("clears credentials successfully", async () => {
-    await saveCredentials(DEFAULT_API_URL, { token: "test-token" });
+    await saveCredentials(DEFAULT_API_URL, {
+      token: "test-token",
+      userName: "User",
+      userEmail: "user@example.com",
+    });
+    await initAppContext({ apiUrl: DEFAULT_API_URL });
 
-    const result = await logout({ apiUrl: DEFAULT_API_URL });
+    const result = await logout();
 
     expect(result.success).toBeTrue();
     expect(result.hadCredentials).toBeTrue();

@@ -20,12 +20,8 @@ import chalk from "chalk";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { homedir } from "os";
 import { dirname, relative, resolve, sep } from "path";
-import { getActiveRegistryUrl } from "@/commands/registry/manage";
-import {
-  type Config as AgentrulesConfig,
-  loadConfig,
-  saveConfig,
-} from "@/lib/config";
+import { type Config as AgentrulesConfig, saveConfig } from "@/lib/config";
+import { useAppContext } from "@/lib/context";
 import { log } from "@/lib/log";
 
 export type FileWriteStatus =
@@ -38,7 +34,6 @@ export type FileWriteStatus =
 export type AddPresetOptions = {
   preset: string;
   platform?: PlatformId;
-  registryAlias?: string;
   global?: boolean;
   directory?: string;
   force?: boolean;
@@ -85,11 +80,13 @@ export { normalizePlatformInput } from "@agentrules/core";
 export async function addPreset(
   options: AddPresetOptions
 ): Promise<AddPresetResult> {
-  const { alias: registryAlias, url: registryUrl } = await getActiveRegistryUrl(
-    options.registryAlias
-  );
+  const ctx = useAppContext();
+  if (!ctx) {
+    throw new Error("App context not initialized");
+  }
 
-  const config = await loadConfig();
+  const { alias: registryAlias, url: registryUrl } = ctx.registry;
+  const { config } = ctx;
   const dryRun = Boolean(options.dryRun);
 
   log.debug(`Fetching registry index from ${registryUrl}`);

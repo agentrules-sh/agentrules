@@ -4,17 +4,7 @@
  * Displays information about the currently authenticated user.
  */
 
-import { getActiveRegistryUrl } from "@/commands/registry/manage";
-import { fetchSession } from "@/lib/api";
-import { getCredentials } from "@/lib/auth";
-import { log } from "@/lib/log";
-
-export type WhoamiOptions = {
-  /** Registry URL to check (default: active registry) */
-  apiUrl?: string;
-  /** Registry alias to use instead of URL */
-  registry?: string;
-};
+import { useAppContext } from "@/lib/context";
 
 export type WhoamiResult = {
   /** Whether check was successful */
@@ -38,76 +28,19 @@ export type WhoamiResult = {
 /**
  * Returns information about the currently authenticated user
  */
-export async function whoami(
-  options: WhoamiOptions = {}
-): Promise<WhoamiResult> {
-  const { apiUrl: explicitUrl, registry } = options;
-
-  // Resolve registry URL: explicit URL > registry alias > active registry
-  const registryUrl = explicitUrl ?? (await getActiveRegistryUrl(registry)).url;
-  // Extract base URL (origin) for auth - registry URL may have path like /r/
-  const apiUrl = new URL(registryUrl).origin;
-
-  try {
-    const credentials = await getCredentials(apiUrl);
-
-    if (!credentials) {
-      log.debug(`No credentials found for ${apiUrl}`);
-      return {
-        success: true,
-        loggedIn: false,
-        apiUrl,
-      };
-    }
-
-    // If we have cached user info, return it
-    if (credentials.userName && credentials.userEmail) {
-      log.debug("Using cached user info");
-      return {
-        success: true,
-        loggedIn: true,
-        user: {
-          id: credentials.userId ?? "",
-          name: credentials.userName,
-          email: credentials.userEmail,
-        },
-        apiUrl,
-        expiresAt: credentials.expiresAt,
-      };
-    }
-
-    // Otherwise, fetch user info from the server
-    log.debug("Fetching user info from server");
-    const session = await fetchSession(apiUrl, credentials.token);
-
-    if (session?.user) {
-      return {
-        success: true,
-        loggedIn: true,
-        user: {
-          id: session.user.id,
-          name: session.user.name,
-          email: session.user.email,
-        },
-        apiUrl,
-        expiresAt: credentials.expiresAt,
-      };
-    }
-
-    // Token might be invalid or registry doesn't support user info endpoint
-    return {
-      success: true,
-      loggedIn: true,
-      apiUrl,
-      expiresAt: credentials.expiresAt,
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    log.debug(`Error: ${message}`);
-    return {
-      success: false,
-      loggedIn: false,
-      error: message,
-    };
+export async function whoami(): Promise<WhoamiResult> {
+  const ctx = useAppContext();
+  if (!ctx) {
+    throw new Error("App context not initialized");
   }
+
+  const { apiUrl } = ctx.registry;
+
+  return {
+    success: true,
+    loggedIn: ctx.isLoggedIn,
+    user: ctx.user ?? undefined,
+    apiUrl,
+    expiresAt: ctx.credentials?.expiresAt,
+  };
 }

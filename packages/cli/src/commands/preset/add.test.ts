@@ -16,6 +16,7 @@ import {
   loadConfig,
   saveConfig,
 } from "@/lib/config";
+import { initAppContext } from "@/lib/context";
 
 type FixturePayload = {
   index: RegistryIndex;
@@ -53,6 +54,8 @@ describe("addPreset", () => {
     // Set HOME so ~ expansion works in tests
     originalUserHome = process.env.HOME;
     process.env.HOME = homeDir;
+    // Init context (will use default 'main' registry from config)
+    await initAppContext();
   });
 
   afterEach(async () => {
@@ -242,12 +245,14 @@ describe("addPreset", () => {
     };
     await saveConfig(config);
 
+    // Reinit context with alt registry alias
+    await initAppContext({ registryAlias: "alt" });
+
     const fixture = createFixtures("# Alt registry\n");
     mockPresetRequests(altUrl, fixture);
 
     const result = await addPreset({
       preset: PRESET_SLUG,
-      registryAlias: "alt",
       dryRun: true,
     });
 
