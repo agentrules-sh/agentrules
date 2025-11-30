@@ -6,7 +6,7 @@
   "workspaces": [
     "packages/*"
   ],
-  "packageManager": "bun@1.3.2",
+  "packageManager": "bun@1.3.3",
   "scripts": {
     "build": "turbo run build",
     "check": "biome check --write",
@@ -29,7 +29,7 @@
   },
   "catalog": {
     "@types/node": "22.10.2",
-    "@types/bun": "1.3.2",
+    "@types/bun": "1.3.3",
     "typescript": "5.7.2",
     "zod": "^4.1.12"
   }
