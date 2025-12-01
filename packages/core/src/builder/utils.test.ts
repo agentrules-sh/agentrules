@@ -66,6 +66,28 @@ describe("validatePresetConfig", () => {
       /missing a title/
     );
   });
+
+  it("throws for unknown platform", () => {
+    const withUnknownPlatform = {
+      ...MINIMAL_PRESET,
+      platform: "windsurf",
+    };
+    expect(() => validatePresetConfig(withUnknownPlatform, "starter")).toThrow(
+      /unknown platform.*windsurf.*Supported platforms/i
+    );
+  });
+
+  it("throws for missing platform", () => {
+    const withoutPlatform = {
+      name: "starter",
+      title: "Starter",
+      description: "Desc",
+      license: "MIT",
+    };
+    expect(() => validatePresetConfig(withoutPlatform, "starter")).toThrow(
+      /missing a platform/i
+    );
+  });
 });
 
 describe("generateDateVersion", () => {

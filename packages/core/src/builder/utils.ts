@@ -1,4 +1,5 @@
 import type { BundledFile, PlatformId, PresetConfig } from "../types";
+import { PLATFORM_IDS } from "../types/platform";
 import { encodeUtf8, toPosixPath } from "../utils/encoding";
 
 /**
@@ -75,6 +76,14 @@ export function validatePresetConfig(
   }
   if (!preset.platform || typeof preset.platform !== "string") {
     throw new Error(`Preset ${slug} is missing a platform`);
+  }
+
+  // Validate that the platform is supported
+  if (!PLATFORM_IDS.includes(preset.platform as PlatformId)) {
+    throw new Error(
+      `Preset ${slug} has unknown platform: ${preset.platform}. ` +
+        `Supported platforms: ${PLATFORM_IDS.join(", ")}`
+    );
   }
 
   return preset as PresetConfig;

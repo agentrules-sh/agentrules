@@ -125,25 +125,32 @@ export async function buildRegistry(
 }
 
 async function discoverPresetDirs(inputDir: string): Promise<string[]> {
-  const entries = await readdir(inputDir, { withFileTypes: true });
   const presetDirs: string[] = [];
 
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
+  async function searchDir(dir: string, depth: number): Promise<void> {
+    if (depth > 3) return; // Limit recursion depth
 
-    const presetDir = join(inputDir, entry.name);
-    const configPath = join(presetDir, PRESET_CONFIG_FILENAME);
+    const entries = await readdir(dir, { withFileTypes: true });
 
-    if (await fileExists(configPath)) {
-      presetDirs.push(presetDir);
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+
+      const subDir = join(dir, entry.name);
+      const configPath = join(subDir, PRESET_CONFIG_FILENAME);
+
+      if (await fileExists(configPath)) {
+        presetDirs.push(subDir);
+      } else {
+        await searchDir(subDir, depth + 1);
+      }
     }
   }
 
+  await searchDir(inputDir, 0);
   return presetDirs.sort();
 }
 
 async function loadPreset(presetDir: string): Promise<RegistryPresetInput> {
-  const slug = basename(presetDir);
   const configPath = join(presetDir, PRESET_CONFIG_FILENAME);
   const configRaw = await readFile(configPath, "utf8");
 
@@ -154,7 +161,8 @@ async function loadPreset(presetDir: string): Promise<RegistryPresetInput> {
     throw new Error(`Invalid JSON in ${configPath}`);
   }
 
-  const config = validatePresetConfig(configJson, slug);
+  const config = validatePresetConfig(configJson, basename(presetDir));
+  const slug = config.name;
 
   // Read INSTALL.txt for install message
   const installPath = join(presetDir, INSTALL_FILENAME);
