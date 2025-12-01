@@ -73,8 +73,8 @@ export function validatePresetConfig(
       `Preset ${slug} is missing a license (SPDX identifier required)`
     );
   }
-  if (!preset.platforms || typeof preset.platforms !== "object") {
-    throw new Error(`Preset ${slug} is missing platforms map`);
+  if (!preset.platform || typeof preset.platform !== "string") {
+    throw new Error(`Preset ${slug} is missing a platform`);
   }
 
   return preset as PresetConfig;

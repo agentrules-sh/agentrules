@@ -25,7 +25,7 @@ describe("initPreset", () => {
     expect(result.preset.title).toBe("My Preset");
     expect(result.preset.version).toBeUndefined(); // Version is auto-generated on publish
     expect(result.preset.license).toBe("MIT"); // Default license
-    expect(result.preset.platforms.opencode).toBeDefined();
+    expect(result.preset.platform).toBe("opencode");
 
     const content = await readFile(result.configPath, "utf8");
     const parsed = JSON.parse(content);
@@ -34,19 +34,18 @@ describe("initPreset", () => {
     );
   });
 
-  it("creates platform directories", async () => {
+  it("creates files directory", async () => {
     const presetDir = join(testDir, "my-preset");
 
     const result = await initPreset({
       directory: presetDir,
-      platforms: ["opencode", "claude"],
+      platform: "opencode",
     });
 
-    expect(result.createdDirs).toContain("opencode/files/config");
-    expect(result.createdDirs).toContain("claude/files/config");
+    expect(result.createdDir).toBe("files");
 
-    const opencodeStat = await stat(join(presetDir, "opencode/files/config"));
-    expect(opencodeStat.isDirectory()).toBeTrue();
+    const filesStat = await stat(join(presetDir, "files"));
+    expect(filesStat.isDirectory()).toBeTrue();
   });
 
   it("uses provided options", async () => {
@@ -57,6 +56,7 @@ describe("initPreset", () => {
       name: "custom-name",
       title: "Custom Title",
       description: "Custom description",
+      platform: "claude",
       author: "Test Author",
       license: "MIT",
     });
@@ -64,6 +64,7 @@ describe("initPreset", () => {
     expect(result.preset.name).toBe("custom-name");
     expect(result.preset.title).toBe("Custom Title");
     expect(result.preset.description).toBe("Custom description");
+    expect(result.preset.platform).toBe("claude");
     expect(result.preset.author?.name).toBe("Test Author");
     expect(result.preset.license).toBe("MIT");
   });
@@ -105,7 +106,7 @@ describe("initPreset", () => {
     await expect(
       initPreset({
         directory: presetDir,
-        platforms: ["unknown" as string],
+        platform: "unknown",
       })
     ).rejects.toThrow(/Unknown platform/);
   });

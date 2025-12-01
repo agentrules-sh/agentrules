@@ -17,25 +17,17 @@ describe("buildRegistryData", () => {
             // version is now optional in source config
             description: "Test preset",
             tags: ["test"],
+            features: ["Example"],
             author: { name: "Tester" },
             license: "MIT",
-            platforms: {
-              opencode: {
-                path: ".opencode",
-                features: ["Example"],
-                installMessage: "Enjoy!",
-              },
-            },
+            platform: "opencode",
+            path: ".opencode",
           },
-          platforms: [
-            {
-              platform: "opencode",
-              files: [
-                { path: "README.md", contents: "# Hello\n" },
-                { path: "config.json", contents: '{"key": "value"}' },
-              ],
-            },
+          files: [
+            { path: "README.md", contents: "# Hello\n" },
+            { path: "config.json", contents: '{"key": "value"}' },
           ],
+          installMessage: "Enjoy!",
         },
       ],
     });
@@ -70,16 +62,10 @@ describe("buildRegistryData", () => {
             title: "Auto Version Test",
             description: "Should get auto-generated version",
             license: "MIT",
-            platforms: {
-              opencode: { path: ".opencode" },
-            },
+            platform: "opencode",
+            path: ".opencode",
           },
-          platforms: [
-            {
-              platform: "opencode",
-              files: [{ path: "test.md", contents: "# Test\n" }],
-            },
-          ],
+          files: [{ path: "test.md", contents: "# Test\n" }],
         },
       ],
     });
@@ -101,21 +87,13 @@ describe("buildRegistryData", () => {
               title: "Bad",
               description: "Contains binary",
               license: "MIT",
-              platforms: {
-                opencode: {
-                  path: ".opencode",
-                },
-              },
+              platform: "opencode",
+              path: ".opencode",
             },
-            platforms: [
+            files: [
               {
-                platform: "opencode",
-                files: [
-                  {
-                    path: "bin/blob",
-                    contents: new Uint8Array([0xff, 0x00, 0xaa]),
-                  },
-                ],
+                path: "bin/blob",
+                contents: new Uint8Array([0xff, 0x00, 0xaa]),
               },
             ],
           },

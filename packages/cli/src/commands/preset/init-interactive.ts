@@ -56,14 +56,14 @@ export async function initInteractive(
   const ctx = useAppContext();
   const defaultAuthor = ctx?.user?.name;
 
-  // Detect existing platform configs
+  // Detect existing platform config directories
   const detected = await detectPlatforms(directory);
   const detectedMap = new Map(detected.map((d) => [d.id, d]));
 
   if (detected.length > 0) {
     p.note(
       detected.map((d) => `${d.id} → ${d.path}`).join("\n"),
-      "Detected platform configs"
+      "Detected platform directories"
     );
   }
 
@@ -101,19 +101,16 @@ export async function initInteractive(
           validate: validateDescription,
         }),
 
-      platforms: () =>
-        p.multiselect({
-          message: "Platforms",
+      platform: () =>
+        p.select({
+          message: "Platform",
           options: PLATFORM_IDS.map((id) => ({
             value: id,
             label: detectedMap.has(id) ? `${id} (detected)` : id,
             hint: detectedMap.get(id)?.path,
           })),
-          initialValues:
-            detected.length > 0
-              ? detected.map((d) => d.id)
-              : ["opencode" as PlatformId],
-          required: true,
+          initialValue:
+            detected.length > 0 ? detected[0].id : ("opencode" as PlatformId),
         }),
 
       license: async () => {
@@ -157,22 +154,16 @@ export async function initInteractive(
     }
   );
 
-  // Build detected platforms map for selected platforms
-  const detectedPlatforms: Partial<Record<PlatformId, string>> = {};
-  for (const platformId of result.platforms) {
-    const det = detectedMap.get(platformId);
-    if (det) {
-      detectedPlatforms[platformId] = det.path;
-    }
-  }
+  // Get detected path for selected platform
+  const detectedPath = detectedMap.get(result.platform as PlatformId)?.path;
 
   const initOptions: InitOptions = {
     directory,
     name: result.name,
     title: result.title as string,
     description: result.description as string,
-    platforms: result.platforms,
-    detectedPlatforms,
+    platform: result.platform as string,
+    detectedPath,
     author: result.author || undefined,
     license: result.license as string,
     force,

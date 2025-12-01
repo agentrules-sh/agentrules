@@ -94,24 +94,6 @@ export function validateLicense(value: string): string | undefined {
 
 const pathSchema = z.string().trim().min(1);
 
-export const platformPresetConfigSchema = z
-  .object({
-    path: pathSchema.optional(),
-    features: featuresSchema.optional(),
-  })
-  .strict();
-
-// Build platforms schema dynamically from PLATFORM_IDS
-const platformsObjectSchema = z
-  .object(
-    Object.fromEntries(
-      PLATFORM_IDS.map((id) => [id, platformPresetConfigSchema.optional()])
-    ) as Record<string, z.ZodOptional<typeof platformPresetConfigSchema>>
-  )
-  .refine((p) => Object.keys(p).length > 0, {
-    message: "At least one platform must be configured",
-  });
-
 export const presetConfigSchema = z
   .object({
     $schema: z.string().optional(),
@@ -120,9 +102,11 @@ export const presetConfigSchema = z
     version: versionSchema.optional(), // Version is auto-generated at build time
     description: descriptionSchema,
     tags: tagsSchema.optional(),
+    features: featuresSchema.optional(),
     author: authorSchema.optional(),
     license: licenseSchema, // Required SPDX license identifier
-    platforms: platformsObjectSchema,
+    platform: platformIdSchema,
+    path: pathSchema.optional(), // Path to config files, defaults to platform's projectDir
   })
   .strict();
 

@@ -31,20 +31,14 @@ const result = buildRegistryData({
       config: {
         name: "my-preset",
         title: "My Preset",
-        version: "1.0.0",
         description: "A helpful preset",
-        platforms: {
-          opencode: { path: ".opencode" },
-        },
+        license: "MIT",
+        platform: "opencode",
+        path: ".opencode",
       },
-      platforms: [
-        {
-          platform: "opencode",
-          files: [
-            { path: "AGENT_RULES.md", contents: "# Rules\n" },
-            { path: "config.json", contents: '{"key": "value"}' },
-          ],
-        },
+      files: [
+        { path: "AGENT_RULES.md", contents: "# Rules\n" },
+        { path: "config.json", contents: '{"key": "value"}' },
       ],
     },
   ],
@@ -52,7 +46,7 @@ const result = buildRegistryData({
 
 // result.entries  → array for registry.json
 // result.index    → object for registry.index.json
-// result.bundles  → per-platform bundle payloads
+// result.bundles  → bundle payloads
 ```
 
 ### Validating Preset Config
@@ -115,18 +109,13 @@ Presets use `agentrules.json`:
   "$schema": "https://agentrules.directory/schema/agentrules.json",
   "name": "my-preset",
   "title": "My Preset",
-  "version": "1.0.0",
   "description": "Description here",
   "author": { "name": "Your Name" },
   "license": "MIT",
   "tags": ["starter", "typescript"],
-  "platforms": {
-    "opencode": {
-      "path": "opencode/files/.opencode",
-      "features": ["Feature 1", "Feature 2"],
-      "installMessage": "Thanks for installing!"
-    }
-  }
+  "features": ["Feature 1", "Feature 2"],
+  "platform": "opencode",
+  "path": "files"
 }
 ```
 

@@ -208,7 +208,10 @@ program
   .option("-n, --name <name>", "Preset name")
   .option("-t, --title <title>", "Display title")
   .option("--description <text>", "Preset description")
-  .option("-p, --platforms <platforms>", "Comma-separated platforms")
+  .option(
+    "-p, --platform <platform>",
+    "Target platform (opencode, claude, cursor, codex)"
+  )
   .option("-a, --author <name>", "Author name")
   .option("-l, --license <license>", "License (e.g., MIT)")
   .option("-f, --force", "Overwrite existing agentrules.json")
@@ -224,7 +227,7 @@ program
         options.name ||
         options.title ||
         options.description ||
-        options.platforms ||
+        options.platform ||
         options.author ||
         options.license;
 
@@ -237,17 +240,15 @@ program
           force: options.force,
         });
 
-        if (result && result.createdDirs.length > 0) {
-          log.print(
-            `\n${ui.header("Directories created", result.createdDirs.length)}`
-          );
-          log.print(ui.list(result.createdDirs.map((d) => ui.path(d))));
+        if (result?.createdDir) {
+          log.print(`\n${ui.header("Directory created")}`);
+          log.print(ui.list([ui.path(result.createdDir)]));
         }
 
         log.print(`\n${ui.header("Next steps")}`);
         log.print(
           ui.numberedList([
-            "Add your config files to the platform directories",
+            "Add your config files to the files directory",
             `Run ${ui.command("agentrules validate")} to check your preset`,
           ])
         );
@@ -256,28 +257,18 @@ program
 
       // Non-interactive mode
       const detected = await detectPlatforms(targetDir);
-      const detectedPlatforms: Record<string, string> = {};
-      for (const d of detected) {
-        detectedPlatforms[d.id] = d.path;
-      }
 
-      // Use detected platforms if no explicit platforms provided
-      const platforms = options.platforms
-        ? options.platforms
-            .split(",")
-            .map((p: string) => p.trim())
-            .filter(Boolean)
-        : detected.length > 0
-          ? detected.map((d) => d.id)
-          : ["opencode"];
+      // Use explicit platform, or first detected, or default to opencode
+      const platform = options.platform ?? detected[0]?.id ?? "opencode";
+      const detectedPath = detected.find((d) => d.id === platform)?.path;
 
       const result = await initPreset({
         directory: targetDir,
         name: options.name,
         title: options.title,
         description: options.description,
-        platforms,
-        detectedPlatforms,
+        platform,
+        detectedPath,
         author: options.author,
         license: options.license,
         force: options.force,
@@ -285,17 +276,15 @@ program
 
       log.success(`Created ${ui.path(result.configPath)}`);
 
-      if (result.createdDirs.length > 0) {
-        log.print(
-          `\n${ui.header("Directories created", result.createdDirs.length)}`
-        );
-        log.print(ui.list(result.createdDirs.map((d) => ui.path(d))));
+      if (result.createdDir) {
+        log.print(`\n${ui.header("Directory created")}`);
+        log.print(ui.list([ui.path(result.createdDir)]));
       }
 
       log.print(`\n${ui.header("Next steps")}`);
       log.print(
         ui.numberedList([
-          "Add your config files to the platform directories",
+          "Add your config files to the files directory",
           `Run ${ui.command("agentrules validate")} to check your preset`,
         ])
       );
@@ -316,13 +305,12 @@ program
 
       if (result.valid && result.preset) {
         const p = result.preset;
-        const platforms = Object.keys(p.platforms);
 
         log.success(p.title);
         log.print(ui.keyValue("Description", p.description));
         if (p.author?.name) log.print(ui.keyValue("Author", p.author.name));
         log.print(ui.keyValue("License", p.license));
-        log.print(ui.keyValue("Platforms", platforms.join(", ")));
+        log.print(ui.keyValue("Platform", p.platform));
         if (p.tags?.length) log.print(ui.keyValue("Tags", p.tags.join(", ")));
       } else if (!result.valid) {
         log.error(`Invalid: ${ui.path(result.configPath)}`);

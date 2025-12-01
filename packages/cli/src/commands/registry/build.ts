@@ -2,7 +2,6 @@ import {
   buildRegistryData,
   generateDateVersion,
   normalizeBundlePublicBase,
-  PLATFORM_IDS,
   PLATFORMS,
   PRESET_CONFIG_FILENAME,
   type RegistryPresetInput,
@@ -157,9 +156,9 @@ async function loadPreset(presetDir: string): Promise<RegistryPresetInput> {
 
   const config = validatePresetConfig(configJson, slug);
 
-  // Read preset-level INSTALL.txt (default for all platforms)
-  const presetInstallPath = join(presetDir, INSTALL_FILENAME);
-  const presetInstallMessage = await readFileIfExists(presetInstallPath);
+  // Read INSTALL.txt for install message
+  const installPath = join(presetDir, INSTALL_FILENAME);
+  const installMessage = await readFileIfExists(installPath);
 
   // Read preset README.md for registry display
   const readmePath = join(presetDir, README_FILENAME);
@@ -169,47 +168,25 @@ async function loadPreset(presetDir: string): Promise<RegistryPresetInput> {
   const licensePath = join(presetDir, LICENSE_FILENAME);
   const licenseContent = await readFileIfExists(licensePath);
 
-  const platforms: RegistryPresetInput["platforms"] = [];
+  // Default to platform's standard projectDir if path not specified
+  const filesPath = config.path ?? PLATFORMS[config.platform].projectDir;
+  const filesDir = join(presetDir, filesPath);
 
-  for (const platformId of PLATFORM_IDS) {
-    const platformConfig = config.platforms[platformId];
-    if (!platformConfig) continue;
-
-    // Default to platform's standard projectDir if path not specified
-    const platformPath =
-      platformConfig.path ?? PLATFORMS[platformId].projectDir;
-    const platformDir = join(presetDir, platformPath);
-
-    if (!(await directoryExists(platformDir))) {
-      throw new Error(
-        `Platform directory not found: ${platformDir} (referenced in ${configPath})`
-      );
-    }
-
-    // Read platform-level INSTALL.txt (overrides preset-level)
-    // Platform INSTALL.txt is at {presetDir}/{platformId}/INSTALL.txt
-    const platformInstallPath = join(presetDir, platformId, INSTALL_FILENAME);
-    const platformInstallMessage = await readFileIfExists(platformInstallPath);
-
-    // Resolution order: platform INSTALL.txt > preset INSTALL.txt
-    const installMessage = platformInstallMessage ?? presetInstallMessage;
-
-    const files = await collectFiles(platformDir);
-
-    platforms.push({
-      platform: platformId,
-      files,
-      installMessage,
-    });
-  }
-
-  if (platforms.length === 0) {
+  if (!(await directoryExists(filesDir))) {
     throw new Error(
-      `No valid platforms found in ${configPath}. Check that platform paths exist.`
+      `Files directory not found: ${filesDir} (referenced in ${configPath})`
     );
   }
 
-  return { slug, config, platforms, readmeContent, licenseContent };
+  const files = await collectFiles(filesDir);
+
+  if (files.length === 0) {
+    throw new Error(
+      `No files found in ${filesDir}. Presets must include at least one file.`
+    );
+  }
+
+  return { slug, config, files, installMessage, readmeContent, licenseContent };
 }
 
 async function collectFiles(

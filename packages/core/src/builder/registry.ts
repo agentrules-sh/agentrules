@@ -54,77 +54,62 @@ export function buildRegistryData(
       presetInput.slug
     );
 
-    if (presetInput.platforms.length === 0) {
-      throw new Error(`Preset ${presetInput.slug} has no platform inputs.`);
+    const platform = presetConfig.platform;
+    ensureKnownPlatform(platform, presetInput.slug);
+
+    if (presetInput.files.length === 0) {
+      throw new Error(`Preset ${presetInput.slug} does not include any files.`);
     }
 
-    for (const platformInput of presetInput.platforms) {
-      const platform = platformInput.platform;
-      ensureKnownPlatform(platform, presetInput.slug);
+    const files = createBundledFilesFromInputs(presetInput.files);
+    const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+    const installMessage = cleanInstallMessage(presetInput.installMessage);
+    const features = presetConfig.features ?? [];
 
-      const platformConfig = presetConfig.platforms?.[platform];
-      if (!platformConfig) {
-        throw new Error(
-          `Preset ${presetInput.slug} has files for platform "${platform}" but no config entry.`
-        );
-      }
+    const readmeContent = presetInput.readmeContent?.trim() || undefined;
+    const licenseContent = presetInput.licenseContent?.trim() || undefined;
 
-      if (platformInput.files.length === 0) {
-        throw new Error(
-          `Preset ${presetInput.slug}/${platform} does not include any files.`
-        );
-      }
-
-      const files = createBundledFilesFromInputs(platformInput.files);
-      const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-      const installMessage = cleanInstallMessage(platformInput.installMessage);
-      const features = platformConfig.features ?? [];
-
-      const readmeContent = presetInput.readmeContent?.trim() || undefined;
-      const licenseContent = presetInput.licenseContent?.trim() || undefined;
-
-      const entry: RegistryEntry = {
-        name: encodeItemName(presetInput.slug, platform),
-        slug: presetInput.slug,
+    const entry: RegistryEntry = {
+      name: encodeItemName(presetInput.slug, platform),
+      slug: presetInput.slug,
+      platform,
+      title: presetConfig.title,
+      version: buildVersion,
+      description: presetConfig.description,
+      tags: presetConfig.tags ?? [],
+      author: presetConfig.author,
+      license: presetConfig.license,
+      features,
+      bundlePath: getBundlePublicPath(
+        bundleBase,
+        presetInput.slug,
         platform,
-        title: presetConfig.title,
-        version: buildVersion,
-        description: presetConfig.description,
-        tags: presetConfig.tags ?? [],
-        author: presetConfig.author,
-        license: presetConfig.license,
-        features,
-        bundlePath: getBundlePublicPath(
-          bundleBase,
-          presetInput.slug,
-          platform,
-          buildVersion
-        ),
-        fileCount: files.length,
-        totalSize,
-        hasReadmeContent: Boolean(readmeContent),
-        hasLicenseContent: Boolean(licenseContent),
-      };
+        buildVersion
+      ),
+      fileCount: files.length,
+      totalSize,
+      hasReadmeContent: Boolean(readmeContent),
+      hasLicenseContent: Boolean(licenseContent),
+    };
 
-      const bundle: RegistryBundle = {
-        slug: presetInput.slug,
-        platform,
-        title: presetConfig.title,
-        version: buildVersion,
-        description: presetConfig.description,
-        tags: presetConfig.tags ?? [],
-        author: presetConfig.author,
-        license: presetConfig.license,
-        licenseContent,
-        readmeContent,
-        features,
-        installMessage,
-        files,
-      };
+    const bundle: RegistryBundle = {
+      slug: presetInput.slug,
+      platform,
+      title: presetConfig.title,
+      version: buildVersion,
+      description: presetConfig.description,
+      tags: presetConfig.tags ?? [],
+      author: presetConfig.author,
+      license: presetConfig.license,
+      licenseContent,
+      readmeContent,
+      features,
+      installMessage,
+      files,
+    };
 
-      entries.push(entry);
-      bundles.push(bundle);
-    }
+    entries.push(entry);
+    bundles.push(bundle);
   }
 
   sortBySlugAndPlatform(entries);

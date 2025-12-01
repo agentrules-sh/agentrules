@@ -14,11 +14,8 @@ const VALID_CONFIG = {
   title: "Test Preset",
   description: "A test preset",
   license: "MIT",
-  platforms: {
-    opencode: {
-      path: "opencode/files/.opencode",
-    },
-  },
+  platform: "opencode",
+  path: "files",
 };
 
 async function createPreset(
@@ -27,12 +24,12 @@ async function createPreset(
   files: Record<string, string>
 ) {
   const presetDir = join(inputDir, name);
-  const platformDir = join(presetDir, "opencode/files/.opencode");
-  await mkdir(platformDir, { recursive: true });
+  const filesDir = join(presetDir, "files");
+  await mkdir(filesDir, { recursive: true });
   await writeFile(join(presetDir, "agentrules.json"), JSON.stringify(config));
 
   for (const [filePath, contents] of Object.entries(files)) {
-    const fullPath = join(platformDir, filePath);
+    const fullPath = join(filesDir, filePath);
     await mkdir(join(fullPath, ".."), { recursive: true });
     await writeFile(fullPath, contents);
   }
@@ -127,20 +124,20 @@ describe("buildRegistry", () => {
     ).rejects.toThrow(/No presets found/);
   });
 
-  it("throws for missing platform directory", async () => {
+  it("throws for missing files directory", async () => {
     const presetDir = join(inputDir, "bad-preset");
     await mkdir(presetDir, { recursive: true });
     await writeFile(
       join(presetDir, "agentrules.json"),
       JSON.stringify({ ...VALID_CONFIG, name: "bad-preset" })
     );
-    // Don't create platform directory
+    // Don't create files directory
 
     await expect(
       buildRegistry({
         input: inputDir,
       })
-    ).rejects.toThrow(/Platform directory not found/);
+    ).rejects.toThrow(/Files directory not found/);
   });
 
   it("uses custom bundle base", async () => {
@@ -304,37 +301,6 @@ describe("buildRegistry", () => {
       );
       const bundle = JSON.parse(bundleContent);
       expect(bundle.installMessage).toBe("Welcome to the preset!\n\nEnjoy!");
-    });
-
-    it("platform INSTALL.txt overrides preset-level", async () => {
-      await createPreset("test-preset", VALID_CONFIG, {
-        "AGENT_RULES.md": "# Rules\n",
-      });
-
-      const presetDir = join(inputDir, "test-preset");
-
-      // Add preset-level INSTALL.txt
-      await writeFile(join(presetDir, "INSTALL.txt"), "Default message");
-
-      // Add platform-level INSTALL.txt (overrides)
-      const platformDir = join(presetDir, "opencode");
-      await mkdir(platformDir, { recursive: true });
-      await writeFile(
-        join(platformDir, "INSTALL.txt"),
-        "OpenCode specific message!"
-      );
-
-      await buildRegistry({
-        input: inputDir,
-        out: outputDir,
-      });
-
-      const bundleContent = await readFile(
-        join(outputDir, "test-preset/opencode.json"),
-        "utf8"
-      );
-      const bundle = JSON.parse(bundleContent);
-      expect(bundle.installMessage).toBe("OpenCode specific message!");
     });
 
     it("no installMessage when no INSTALL.txt", async () => {

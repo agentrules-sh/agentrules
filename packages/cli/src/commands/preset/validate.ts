@@ -74,45 +74,30 @@ export async function validatePreset(
     );
   }
 
-  // Check platforms
+  // Check platform
   const presetDir = dirname(configPath);
-  const declaredPlatformKeys = Object.keys(preset.platforms);
+  const platform = preset.platform;
 
-  log.debug(
-    `Checking ${declaredPlatformKeys.length} platform(s): ${declaredPlatformKeys.join(", ")}`
-  );
+  log.debug(`Checking platform: ${platform}`);
 
-  if (declaredPlatformKeys.length === 0) {
-    errors.push("No platforms defined. At least one platform is required.");
-  }
-
-  for (const key of declaredPlatformKeys) {
-    if (!isSupportedPlatform(key)) {
-      errors.push(
-        `Unknown platform "${key}". Supported: ${PLATFORM_IDS.join(", ")}`
-      );
-      log.debug(`Platform "${key}" is not supported`);
-      continue;
-    }
-
-    // key is now narrowed to PlatformId
-    const platformConfig = preset.platforms[key];
-    if (!platformConfig) {
-      continue;
-    }
-
+  if (isSupportedPlatform(platform)) {
     // Default to platform's standard projectDir if path not specified
-    const platformPath = platformConfig.path ?? PLATFORMS[key].projectDir;
-    const platformDir = join(presetDir, platformPath);
-    const platformExists = await directoryExists(platformDir);
+    const filesPath = preset.path ?? PLATFORMS[platform].projectDir;
+    const filesDir = join(presetDir, filesPath);
+    const filesExists = await directoryExists(filesDir);
 
     log.debug(
-      `Platform "${key}" directory check: ${platformDir} - ${platformExists ? "exists" : "not found"}`
+      `Files directory check: ${filesDir} - ${filesExists ? "exists" : "not found"}`
     );
 
-    if (!platformExists) {
-      errors.push(`Platform directory not found: ${platformPath} (for ${key})`);
+    if (!filesExists) {
+      errors.push(`Files directory not found: ${filesPath}`);
     }
+  } else {
+    errors.push(
+      `Unknown platform "${platform}". Supported: ${PLATFORM_IDS.join(", ")}`
+    );
+    log.debug(`Platform "${platform}" is not supported`);
   }
 
   // Check optional fields

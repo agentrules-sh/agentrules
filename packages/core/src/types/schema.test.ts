@@ -259,15 +259,15 @@ describe("presetConfigSchema", () => {
     title: "Test Preset",
     description: "A test preset",
     license: "MIT",
-    platforms: {
-      opencode: { path: ".opencode" },
-    },
+    platform: "opencode",
+    path: ".opencode",
   };
 
   it("accepts valid preset config without version", () => {
     const result = presetConfigSchema.parse(validConfig);
     expect(result.name).toBe("test-preset");
-    expect(result.platforms.opencode?.path).toBe(".opencode");
+    expect(result.platform).toBe("opencode");
+    expect(result.path).toBe(".opencode");
     expect(result.version).toBeUndefined();
   });
 
@@ -283,16 +283,29 @@ describe("presetConfigSchema", () => {
     const result = presetConfigSchema.parse({
       ...validConfig,
       tags: ["test", "example"],
+      features: ["Feature 1", "Feature 2"],
       author: { name: "Test Author" },
     });
     expect(result.tags).toEqual(["test", "example"]);
+    expect(result.features).toEqual(["Feature 1", "Feature 2"]);
     expect(result.author?.name).toBe("Test Author");
     expect(result.license).toBe("MIT");
+  });
+
+  it("accepts config without path (defaults to platform projectDir)", () => {
+    const { path: _path, ...configWithoutPath } = validConfig;
+    const result = presetConfigSchema.parse(configWithoutPath);
+    expect(result.path).toBeUndefined();
   });
 
   it("rejects config without license", () => {
     const { license: _license, ...configWithoutLicense } = validConfig;
     expect(() => presetConfigSchema.parse(configWithoutLicense)).toThrow();
+  });
+
+  it("rejects config without platform", () => {
+    const { platform: _platform, ...configWithoutPlatform } = validConfig;
+    expect(() => presetConfigSchema.parse(configWithoutPlatform)).toThrow();
   });
 
   it("rejects invalid slug format", () => {
@@ -310,9 +323,9 @@ describe("presetConfigSchema", () => {
     ).toThrow(); // semver no longer accepted
   });
 
-  it("rejects empty platforms", () => {
+  it("rejects invalid platform", () => {
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, platforms: {} })
+      presetConfigSchema.parse({ ...validConfig, platform: "invalid" })
     ).toThrow();
   });
 

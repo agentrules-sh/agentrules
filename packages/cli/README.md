@@ -46,7 +46,7 @@ Options:
   -n, --name <name>          Preset name (default: directory name)
   -t, --title <title>        Display title
   --description <text>       Preset description
-  -p, --platforms <list>     Comma-separated platforms (default: opencode)
+  -p, --platform <platform>  Target platform (opencode, claude, cursor, codex)
   -a, --author <name>        Author name
   -l, --license <license>    License (e.g., MIT)
   -f, --force                Overwrite existing config
@@ -55,7 +55,7 @@ Options:
 Example:
 ```bash
 mkdir my-preset && cd my-preset
-agentrules init --platforms opencode,claude --author "Your Name" --license MIT
+agentrules init --platform opencode --author "Your Name" --license MIT
 ```
 
 ```bash

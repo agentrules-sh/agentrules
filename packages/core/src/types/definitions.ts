@@ -6,13 +6,6 @@ export type AuthorInfo = {
   url?: string;
 };
 
-export type PlatformPresetConfig = {
-  /** Path to platform config files. Defaults to platform's projectDir (e.g., ".opencode") */
-  path?: string;
-  features?: string[];
-  installMessage?: string;
-};
-
 export type PresetConfig = {
   $schema?: string;
   name: string;
@@ -20,9 +13,12 @@ export type PresetConfig = {
   version?: string; // Optional - auto-generated at build time if not provided
   description: string;
   tags?: string[];
+  features?: string[];
   author?: AuthorInfo;
   license: string; // Required SPDX license identifier
-  platforms: Partial<Record<PlatformId, PlatformPresetConfig>>;
+  platform: PlatformId;
+  /** Path to config files. Defaults to platform's projectDir (e.g., ".claude") */
+  path?: string;
 };
 
 export type BundledFile = {
@@ -84,17 +80,12 @@ export type RegistryFileInput = {
   contents: ArrayBuffer | ArrayBufferView | string;
 };
 
-export type RegistryPlatformInput = {
-  platform: PlatformId;
-  files: RegistryFileInput[];
-  /** Install message from INSTALL.txt file */
-  installMessage?: string;
-};
-
 export type RegistryPresetInput = {
   slug: string;
   config: PresetConfig;
-  platforms: RegistryPlatformInput[];
+  files: RegistryFileInput[];
+  /** Install message from INSTALL.txt file */
+  installMessage?: string;
   readmeContent?: string; // Content from README.md
   licenseContent?: string; // Content from LICENSE.md
 };

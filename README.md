@@ -50,18 +50,13 @@ Presets use `agentrules.json` for configuration:
   "$schema": "https://agentrules.directory/schema/agentrules.json",
   "name": "my-preset",
   "title": "My Preset",
-  "version": "1.0.0",
   "description": "A helpful preset",
   "author": { "name": "Your Name" },
   "license": "MIT",
   "tags": ["starter"],
-  "platforms": {
-    "opencode": {
-      "path": "opencode/files/.opencode",
-      "features": ["Feature 1"],
-      "installMessage": "Thanks for installing!"
-    }
-  }
+  "features": ["Feature 1", "Feature 2"],
+  "platform": "opencode",
+  "path": "files"
 }
 ```
 

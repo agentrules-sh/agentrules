@@ -17,9 +17,9 @@ export type InitOptions = {
   name?: string;
   title?: string;
   description?: string;
-  platforms?: string[];
-  /** Map of platform to detected path (e.g., { opencode: ".opencode" }) */
-  detectedPlatforms?: Partial<Record<PlatformId, string>>;
+  platform?: string;
+  /** Detected path for the platform (e.g., ".opencode") */
+  detectedPath?: string;
   author?: string;
   license?: string;
   force?: boolean;
@@ -28,7 +28,7 @@ export type InitOptions = {
 export type InitResult = {
   configPath: string;
   preset: PresetConfig;
-  createdDirs: string[];
+  createdDir?: string;
 };
 
 export type DetectedPlatform = {
@@ -44,13 +44,8 @@ const PLATFORM_DETECTION_PATHS: Record<PlatformId, string[]> = {
   codex: [".codex"],
 };
 
-/** Default paths for new preset authoring */
-const DEFAULT_PLATFORM_PATHS: Record<PlatformId, string> = {
-  opencode: "opencode/files/config",
-  claude: "claude/files/config",
-  cursor: "cursor/files/config",
-  codex: "codex/files/config",
-};
+/** Default path for new preset authoring */
+const DEFAULT_FILES_PATH = "files";
 
 /**
  * Detect existing platform config directories in a directory
@@ -85,12 +80,12 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
   const name = normalizeName(options.name ?? dirName);
   const title = options.title ?? toTitleCase(name);
   const description = options.description ?? `${title} preset`;
-  const platforms = normalizePlatforms(options.platforms ?? ["opencode"]);
-  const detectedPlatforms = options.detectedPlatforms ?? {};
+  const platform = normalizePlatform(options.platform ?? "opencode");
+  const detectedPath = options.detectedPath;
   const author = options.author ? { name: options.author } : undefined;
   const license = options.license ?? "MIT"; // Default to MIT if not specified
 
-  log.debug(`Preset name: ${name}, platforms: ${platforms.join(", ")}`);
+  log.debug(`Preset name: ${name}, platform: ${platform}`);
 
   const configPath = join(directory, PRESET_CONFIG_FILENAME);
 
@@ -101,21 +96,10 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
     );
   }
 
-  // Build platform configs
-  // Only include path if it differs from the platform's default projectDir
-  const platformConfigs: PresetConfig["platforms"] = {};
-  for (const platform of platforms) {
-    const detectedPath = detectedPlatforms[platform];
-    const defaultPath = PLATFORMS[platform].projectDir;
-    const effectivePath = detectedPath ?? DEFAULT_PLATFORM_PATHS[platform];
-
-    // Only include path in config if it's not the default
-    if (effectivePath === defaultPath) {
-      platformConfigs[platform] = {};
-    } else {
-      platformConfigs[platform] = { path: effectivePath };
-    }
-  }
+  // Determine the files path
+  // Use detected path if provided, otherwise use default
+  const defaultPath = PLATFORMS[platform].projectDir;
+  const effectivePath = detectedPath ?? DEFAULT_FILES_PATH;
 
   const preset: PresetConfig = {
     $schema: PRESET_SCHEMA_URL,
@@ -123,8 +107,13 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
     title,
     description,
     license,
-    platforms: platformConfigs,
+    platform,
   };
+
+  // Only include path in config if it's not the platform's default projectDir
+  if (effectivePath !== defaultPath) {
+    preset.path = effectivePath;
+  }
 
   if (author) {
     preset.author = author;
@@ -139,33 +128,25 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
   await writeFile(configPath, content, "utf8");
   log.debug(`Wrote config file: ${configPath}`);
 
-  // Create platform directories (only for non-detected platforms)
-  const createdDirs: string[] = [];
-  for (const platform of platforms) {
-    // Skip if this platform was detected (directory already exists)
-    if (detectedPlatforms[platform]) {
-      log.debug(
-        `Using detected platform directory: ${detectedPlatforms[platform]}`
-      );
-      continue;
-    }
-
-    const platformPath = DEFAULT_PLATFORM_PATHS[platform];
-    const fullPath = join(directory, platformPath);
+  // Create files directory (only if not using detected path)
+  let createdDir: string | undefined;
+  if (detectedPath) {
+    log.debug(`Using detected platform directory: ${detectedPath}`);
+  } else {
+    const filesPath = effectivePath;
+    const fullPath = join(directory, filesPath);
 
     if (await directoryExists(fullPath)) {
-      log.debug(`Platform directory already exists: ${platformPath}`);
+      log.debug(`Files directory already exists: ${filesPath}`);
     } else {
       await mkdir(fullPath, { recursive: true });
-      createdDirs.push(platformPath);
-      log.debug(`Created platform directory: ${platformPath}`);
+      createdDir = filesPath;
+      log.debug(`Created files directory: ${filesPath}`);
     }
   }
 
-  log.debug(
-    `Preset initialization complete. Created ${createdDirs.length} directories.`
-  );
-  return { configPath, preset, createdDirs };
+  log.debug("Preset initialization complete.");
+  return { configPath, preset, createdDir };
 }
 
 function normalizeName(input: string): string {
@@ -183,20 +164,12 @@ function toTitleCase(input: string): string {
     .join(" ");
 }
 
-function normalizePlatforms(input: string[]): PlatformId[] {
-  const platforms: PlatformId[] = [];
-
-  for (const value of input) {
-    const normalized = value.toLowerCase();
-    if (!isSupportedPlatform(normalized)) {
-      throw new Error(
-        `Unknown platform "${value}". Supported: ${PLATFORM_IDS.join(", ")}`
-      );
-    }
-    if (!platforms.includes(normalized)) {
-      platforms.push(normalized);
-    }
+function normalizePlatform(input: string): PlatformId {
+  const normalized = input.toLowerCase();
+  if (!isSupportedPlatform(normalized)) {
+    throw new Error(
+      `Unknown platform "${input}". Supported: ${PLATFORM_IDS.join(", ")}`
+    );
   }
-
-  return platforms;
+  return normalized;
 }

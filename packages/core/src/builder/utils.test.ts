@@ -13,7 +13,8 @@ const MINIMAL_PRESET = {
   title: "Starter",
   description: "Desc",
   license: "MIT",
-  platforms: { opencode: { path: ".opencode" } },
+  platform: "opencode" as const,
+  path: ".opencode",
 };
 
 describe("normalizeBundlePublicBase", () => {
