@@ -65,7 +65,7 @@ export async function buildRegistry(
     presets.push(preset);
   }
 
-  const result = buildRegistryData({ bundleBase, presets, version });
+  const result = await buildRegistryData({ bundleBase, presets, version });
 
   if (validateOnly || !outputDir) {
     return {

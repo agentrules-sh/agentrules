@@ -5,7 +5,6 @@ import type {
   RegistryEntry,
   RegistryIndex,
 } from "@agentrules/core";
-import { createHash } from "crypto";
 import { access, appendFile, mkdtemp, readFile, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
@@ -76,7 +75,7 @@ describe("addPreset", () => {
   });
 
   it("performs a dry run without writing files", async () => {
-    const fixture = createFixtures("# Initial contents\n");
+    const fixture = await createFixtures("# Initial contents\n");
     mockPresetRequests(DEFAULT_BASE_URL, fixture);
 
     const result = await addPreset({ preset: PRESET_SLUG, dryRun: true });
@@ -93,7 +92,7 @@ describe("addPreset", () => {
   });
 
   it("writes files and updates metadata when not a dry run", async () => {
-    const fixture = createFixtures("# Initial contents\n");
+    const fixture = await createFixtures("# Initial contents\n");
     mockPresetRequests(DEFAULT_BASE_URL, fixture);
 
     const result = await addPreset({ preset: PRESET_SLUG });
@@ -112,14 +111,14 @@ describe("addPreset", () => {
   });
 
   it("skips conflicting files when --skip-conflicts is provided", async () => {
-    let fixture = createFixtures("# Initial contents\n");
+    let fixture = await createFixtures("# Initial contents\n");
     mockPresetRequests(DEFAULT_BASE_URL, fixture);
     await addPreset({ preset: PRESET_SLUG, force: true });
 
     const rulesPath = join(projectDir, ".opencode/AGENT_RULES.md");
     await appendFile(rulesPath, "\n# Local customization\n");
 
-    fixture = createFixtures("# Initial contents\n");
+    fixture = await createFixtures("# Initial contents\n");
     mockPresetRequests(DEFAULT_BASE_URL, fixture);
     const result = await addPreset({
       preset: PRESET_SLUG,
@@ -135,7 +134,7 @@ describe("addPreset", () => {
   });
 
   it("returns conflicts when files differ and force is not provided", async () => {
-    let fixture = createFixtures("# First install\n");
+    let fixture = await createFixtures("# First install\n");
     mockPresetRequests(DEFAULT_BASE_URL, fixture);
     await addPreset({ preset: PRESET_SLUG, force: true });
     await appendFile(
@@ -143,7 +142,7 @@ describe("addPreset", () => {
       "\n# Local\n"
     );
 
-    fixture = createFixtures("# Updated contents\n");
+    fixture = await createFixtures("# Updated contents\n");
     mockPresetRequests(DEFAULT_BASE_URL, fixture);
 
     const result = await addPreset({ preset: PRESET_SLUG });
@@ -154,7 +153,7 @@ describe("addPreset", () => {
   });
 
   it("installs into custom directories when --dir is provided", async () => {
-    const fixture = createFixtures("# Custom dir\n");
+    const fixture = await createFixtures("# Custom dir\n");
     mockPresetRequests(DEFAULT_BASE_URL, fixture);
 
     const customDir = join(projectDir, "custom-target");
@@ -166,7 +165,7 @@ describe("addPreset", () => {
   });
 
   it("installs into global path when --global is set", async () => {
-    const fixture = createFixtures("# Global install\n");
+    const fixture = await createFixtures("# Global install\n");
     mockPresetRequests(DEFAULT_BASE_URL, fixture);
     // Use force to handle any existing files (os.homedir() may not respect HOME env var)
     const result = await addPreset({
@@ -185,7 +184,10 @@ describe("addPreset", () => {
 
   it("skips root files during global install and reports them", async () => {
     // Create a fixture with both config files and root files
-    const fixture = createFixturesWithRootFiles("# Config\n", "# README\n");
+    const fixture = await createFixturesWithRootFiles(
+      "# Config\n",
+      "# README\n"
+    );
     mockPresetRequests(DEFAULT_BASE_URL, fixture);
     // Use force to handle any existing files
     const result = await addPreset({
@@ -202,7 +204,10 @@ describe("addPreset", () => {
   });
 
   it("installs root files to project root during project install", async () => {
-    const fixture = createFixturesWithRootFiles("# Config\n", "# README\n");
+    const fixture = await createFixturesWithRootFiles(
+      "# Config\n",
+      "# README\n"
+    );
     mockPresetRequests(DEFAULT_BASE_URL, fixture);
     const result = await addPreset({ preset: PRESET_SLUG });
 
@@ -218,8 +223,10 @@ describe("addPreset", () => {
   });
 
   it("installs the requested platform variant when multiple entries exist", async () => {
-    const opFixture = createFixtures("# OpenCode\n", { platform: "opencode" });
-    const claudeFixture = createFixtures("# Claude variant\n", {
+    const opFixture = await createFixtures("# OpenCode\n", {
+      platform: "opencode",
+    });
+    const claudeFixture = await createFixtures("# Claude variant\n", {
       platform: "claude",
       filePath: "config/config.md",
     });
@@ -248,7 +255,7 @@ describe("addPreset", () => {
     // Reinit context with alt registry alias
     await initAppContext({ registryAlias: "alt" });
 
-    const fixture = createFixtures("# Alt registry\n");
+    const fixture = await createFixtures("# Alt registry\n");
     mockPresetRequests(altUrl, fixture);
 
     const result = await addPreset({
@@ -309,23 +316,29 @@ function mockFetchSequence(steps: MockStep[]) {
   globalThis.fetch = mockedFetch;
 }
 
-function createFixtures(
+async function sha256Hex(data: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const dataBuffer = encoder.encode(data);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", dataBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function createFixtures(
   fileContents: string,
   options: {
     platform?: PlatformId;
     filePath?: string;
     slug?: string;
   } = {}
-): FixturePayload {
+): Promise<FixturePayload> {
   const platform = options.platform ?? PLATFORM;
   const slug = options.slug ?? PRESET_SLUG;
   // Convention: files under config/ map to platform dir
   const relativePath = options.filePath ?? "config/AGENT_RULES.md";
 
   const size = Buffer.byteLength(fileContents);
-  const checksum = createHash("sha256")
-    .update(fileContents, "utf8")
-    .digest("hex");
+  const checksum = await sha256Hex(fileContents);
   const file = {
     path: relativePath,
     size,
@@ -374,17 +387,15 @@ function createFixtures(
   };
 }
 
-function createFixturesWithRootFiles(
+async function createFixturesWithRootFiles(
   configContents: string,
   rootContents: string
-): FixturePayload {
+): Promise<FixturePayload> {
   const platform = PLATFORM;
   const slug = PRESET_SLUG;
 
   const configSize = Buffer.byteLength(configContents);
-  const configChecksum = createHash("sha256")
-    .update(configContents, "utf8")
-    .digest("hex");
+  const configChecksum = await sha256Hex(configContents);
   const configFile = {
     path: "config/AGENT_RULES.md",
     size: configSize,
@@ -394,9 +405,7 @@ function createFixturesWithRootFiles(
   };
 
   const rootSize = Buffer.byteLength(rootContents);
-  const rootChecksum = createHash("sha256")
-    .update(rootContents, "utf8")
-    .digest("hex");
+  const rootChecksum = await sha256Hex(rootContents);
   const rootFile = {
     path: "README.md",
     size: rootSize,

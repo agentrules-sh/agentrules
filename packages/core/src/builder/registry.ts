@@ -1,4 +1,3 @@
-import { createHash } from "crypto";
 import {
   type BundledFile,
   isSupportedPlatform,
@@ -21,6 +20,15 @@ import {
 
 const NAME_PATTERN = /^[a-z0-9-]+$/;
 
+/**
+ * Compute SHA-256 hash using Web Crypto API (works in browser and Node.js 15+)
+ */
+async function sha256(data: Uint8Array): Promise<string> {
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 export type BuildRegistryDataOptions = {
   presets: RegistryPresetInput[];
   bundleBase?: string;
@@ -34,9 +42,9 @@ export type BuildRegistryDataResult = {
   bundles: RegistryBundle[];
 };
 
-export function buildRegistryData(
+export async function buildRegistryData(
   options: BuildRegistryDataOptions
-): BuildRegistryDataResult {
+): Promise<BuildRegistryDataResult> {
   const bundleBase = normalizeBundlePublicBase(options.bundleBase ?? "/r");
   const buildVersion = options.version ?? generateDateVersion();
   const entries: RegistryEntry[] = [];
@@ -61,7 +69,7 @@ export function buildRegistryData(
       throw new Error(`Preset ${presetInput.slug} does not include any files.`);
     }
 
-    const files = createBundledFilesFromInputs(presetInput.files);
+    const files = await createBundledFilesFromInputs(presetInput.files);
     const totalSize = files.reduce((sum, file) => sum + file.size, 0);
     const installMessage = cleanInstallMessage(presetInput.installMessage);
     const features = presetConfig.features ?? [];
@@ -123,14 +131,14 @@ export function buildRegistryData(
   return { entries, index, bundles };
 }
 
-function createBundledFilesFromInputs(
+async function createBundledFilesFromInputs(
   files: RegistryFileInput[]
-): BundledFile[] {
-  return files
-    .map((file) => {
+): Promise<BundledFile[]> {
+  const results = await Promise.all(
+    files.map(async (file) => {
       const payload = normalizeFilePayload(file.contents);
       const contents = encodeFilePayload(payload, file.path);
-      const checksum = createHash("sha256").update(payload).digest("hex");
+      const checksum = await sha256(payload);
       return {
         path: toPosixPath(file.path),
         size: payload.length,
@@ -138,34 +146,38 @@ function createBundledFilesFromInputs(
         contents,
       } satisfies BundledFile;
     })
-    .sort((a, b) => a.path.localeCompare(b.path));
+  );
+  return results.sort((a, b) => a.path.localeCompare(b.path));
 }
 
-function normalizeFilePayload(contents: RegistryFileInput["contents"]): Buffer {
+function normalizeFilePayload(
+  contents: RegistryFileInput["contents"]
+): Uint8Array {
   if (typeof contents === "string") {
-    return Buffer.from(contents, "utf8");
+    return new TextEncoder().encode(contents);
   }
   if (contents instanceof ArrayBuffer) {
-    return Buffer.from(contents);
+    return new Uint8Array(contents);
   }
   if (ArrayBuffer.isView(contents)) {
-    return Buffer.from(
+    return new Uint8Array(
       contents.buffer,
       contents.byteOffset,
       contents.byteLength
     );
   }
-  return Buffer.from(contents as ArrayBuffer);
+  return new Uint8Array(contents as ArrayBuffer);
 }
 
-function encodeFilePayload(buffer: Buffer, filePath: string): string {
-  const utf8 = buffer.toString("utf8");
-  if (!Buffer.from(utf8, "utf8").equals(buffer)) {
+function encodeFilePayload(data: Uint8Array, filePath: string): string {
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  try {
+    return decoder.decode(data);
+  } catch {
     throw new Error(
       `Binary files are not supported: "${filePath}". Only UTF-8 text files are allowed.`
     );
   }
-  return utf8;
 }
 
 function getBundlePublicPath(

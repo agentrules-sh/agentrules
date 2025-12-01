@@ -4,8 +4,8 @@ import { buildRegistryData } from "./registry";
 describe("buildRegistryData", () => {
   const TEST_VERSION = "2024.11.26";
 
-  it("produces registry entries and bundles from preset inputs", () => {
-    const result = buildRegistryData({
+  it("produces registry entries and bundles from preset inputs", async () => {
+    const result = await buildRegistryData({
       bundleBase: "/r",
       version: TEST_VERSION,
       presets: [
@@ -50,8 +50,8 @@ describe("buildRegistryData", () => {
     expect(filesByPath["config.json"]?.contents).toBe('{"key": "value"}');
   });
 
-  it("auto-generates version if not provided", () => {
-    const result = buildRegistryData({
+  it("auto-generates version if not provided", async () => {
+    const result = await buildRegistryData({
       bundleBase: "/r",
       // no version provided - should auto-generate
       presets: [
@@ -74,8 +74,8 @@ describe("buildRegistryData", () => {
     expect(result.entries[0]?.version).toMatch(/^\d{4}\.\d{2}\.\d{2}$/);
   });
 
-  it("rejects binary files", () => {
-    expect(() =>
+  it("rejects binary files", async () => {
+    await expect(
       buildRegistryData({
         bundleBase: "/r",
         version: TEST_VERSION,
@@ -99,6 +99,6 @@ describe("buildRegistryData", () => {
           },
         ],
       })
-    ).toThrow(/Binary files are not supported/);
+    ).rejects.toThrow(/Binary files are not supported/);
   });
 });
