@@ -15,7 +15,7 @@ import {
   validatePresetConfig,
 } from "@agentrules/core";
 import { readdir, readFile, stat } from "fs/promises";
-import { basename, dirname, join, relative } from "path";
+import { dirname, join, relative } from "path";
 import { publishPreset } from "@/lib/api/presets";
 import { useAppContext } from "@/lib/context";
 import { directoryExists, fileExists } from "@/lib/fs";
@@ -311,7 +311,12 @@ async function loadPreset(presetDir: string): Promise<RegistryPresetInput> {
     throw new Error(`Invalid JSON in ${configPath}`);
   }
 
-  const config = validatePresetConfig(configJson, basename(presetDir));
+  // Use name from config if available, otherwise show path for clarity
+  const configObj = configJson as Record<string, unknown> | null;
+  const identifier =
+    typeof configObj?.name === "string" ? configObj.name : configPath;
+
+  const config = validatePresetConfig(configJson, identifier);
   const slug = config.name;
 
   // Read INSTALL.txt for install message
