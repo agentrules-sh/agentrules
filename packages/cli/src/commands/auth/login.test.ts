@@ -34,38 +34,7 @@ describe("login", () => {
   });
 
   describe("when already logged in", () => {
-    it("returns alreadyLoggedIn without making API calls", async () => {
-      const credentials: RegistryCredentials = {
-        token: "existing-token",
-        expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
-        userId: "user-123",
-        userName: "Existing User",
-        userEmail: "existing@example.com",
-      };
-      await saveCredentials(DEFAULT_API_URL, credentials);
-      await initAppContext({ apiUrl: DEFAULT_API_URL });
-
-      let fetchCalled = false;
-      mockFetchSequence([
-        {
-          url: `${DEFAULT_API_URL}/api/auth/device/code`,
-          handler: () => {
-            fetchCalled = true;
-            return { status: 200, body: {} };
-          },
-        },
-      ]);
-
-      const result = await login();
-
-      expect(result.success).toBeTrue();
-      expect(result.alreadyLoggedIn).toBeTrue();
-      expect(result.user?.name).toBe("Existing User");
-      expect(result.user?.email).toBe("existing@example.com");
-      expect(fetchCalled).toBeFalse();
-    });
-
-    it("re-authenticates when force option is set", async () => {
+    it("re-authenticates and replaces existing credentials", async () => {
       const credentials: RegistryCredentials = {
         token: "existing-token",
         expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
@@ -85,13 +54,9 @@ describe("login", () => {
         userEmail: "new@example.com",
       });
 
-      const result = await login({
-        force: true,
-        noBrowser: true,
-      });
+      const result = await login({ noBrowser: true });
 
       expect(result.success).toBeTrue();
-      expect(result.alreadyLoggedIn).toBeUndefined();
       expect(result.user?.name).toBe("New User");
 
       const stored = await getCredentials(DEFAULT_API_URL);

@@ -9,7 +9,11 @@
 import { normalizeAlias } from "@/commands/registry/manage";
 import { fetchSession } from "./api";
 import { type Config, loadConfig } from "./config";
-import { getCredentials, type RegistryCredentials } from "./credentials";
+import {
+  getCredentials,
+  type RegistryCredentials,
+  saveCredentials,
+} from "./credentials";
 import { log } from "./log";
 
 /**
@@ -90,7 +94,7 @@ export async function createAppContext(
         email: credentials.userEmail,
       };
     } else {
-      // Fetch from server if not cached
+      // Fetch from server if not cached (e.g., credentials file was corrupted)
       log.debug("Fetching user info from server");
       try {
         const session = await fetchSession(registry.apiUrl, credentials.token);
@@ -100,6 +104,14 @@ export async function createAppContext(
             name: session.user.name,
             email: session.user.email,
           };
+          // Cache it so we don't fetch again
+          await saveCredentials(registry.apiUrl, {
+            ...credentials,
+            userId: session.user.id,
+            userName: session.user.name,
+            userEmail: session.user.email,
+          });
+          log.debug("Saved fetched user info to credentials");
         }
       } catch (error) {
         log.debug(

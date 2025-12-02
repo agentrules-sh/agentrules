@@ -476,14 +476,12 @@ program
   .description("Authenticate with the registry")
   .option("--api-url <url>", "API URL")
   .option("--no-browser", "Skip opening browser")
-  .option("-f, --force", "Force re-login")
   .action(
     handle(async (options) => {
       const spinner = await log.spinner("Authenticating...");
 
       const result = await login({
         noBrowser: options.browser === false,
-        force: Boolean(options.force),
         onDeviceCode: (data) => {
           spinner.stop();
           log.print("");
@@ -512,18 +510,6 @@ program
           log.print("");
         },
       });
-
-      if (result.alreadyLoggedIn) {
-        spinner.success("Already logged in");
-        if (result.user) {
-          log.print(
-            `${ui.indent()}${result.user.name} ${ui.muted(
-              `<${result.user.email}>`
-            )}`
-          );
-        }
-        return;
-      }
 
       if (!result.success) {
         spinner.fail(result.error || "Login failed");

@@ -29,8 +29,6 @@ export type DeviceCodeData = {
 export type LoginOptions = {
   /** Skip opening browser automatically */
   noBrowser?: boolean;
-  /** Force re-login even if already authenticated */
-  force?: boolean;
   /** Called when device code is received - display this to the user (essential for UX) */
   onDeviceCode?: (data: DeviceCodeData) => void;
   /** Called after browser open attempt - true if opened, false if manual entry needed (essential for UX) */
@@ -48,20 +46,13 @@ export type LoginResult = {
     name: string;
     email: string;
   };
-  /** Whether login was skipped because already authenticated */
-  alreadyLoggedIn?: boolean;
 };
 
 /**
  * Performs device code flow login to an agentrules registry.
  */
 export async function login(options: LoginOptions = {}): Promise<LoginResult> {
-  const {
-    noBrowser = false,
-    force = false,
-    onDeviceCode,
-    onBrowserOpen,
-  } = options;
+  const { noBrowser = false, onDeviceCode, onBrowserOpen } = options;
 
   const ctx = useAppContext();
   if (!ctx) {
@@ -70,16 +61,6 @@ export async function login(options: LoginOptions = {}): Promise<LoginResult> {
 
   const { apiUrl } = ctx.registry;
   log.debug(`Authenticating with ${apiUrl}`);
-
-  // Check if already logged in to this registry
-  if (!force && ctx.credentials) {
-    log.debug("Already logged in, skipping authentication");
-    return {
-      success: true,
-      alreadyLoggedIn: true,
-      user: ctx.user ?? undefined,
-    };
-  }
 
   try {
     // Step 1: Request device code
