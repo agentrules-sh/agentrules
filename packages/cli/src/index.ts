@@ -13,6 +13,7 @@ import {
 import { detectPlatforms, initPreset } from "@/commands/preset/init";
 import { initInteractive } from "@/commands/preset/init-interactive";
 import { validatePreset } from "@/commands/preset/validate";
+import { publish } from "@/commands/publish";
 import { buildRegistry } from "@/commands/registry/build";
 import {
   addRegistry,
@@ -20,6 +21,7 @@ import {
   removeRegistry,
   useRegistry,
 } from "@/commands/registry/manage";
+import { unpublish } from "@/commands/unpublish";
 import { initAppContext } from "@/lib/context";
 import { log, ui } from "@/lib/log";
 
@@ -604,6 +606,48 @@ program
             }`
           )
         );
+      }
+    })
+  );
+
+// =============================================================================
+// publish - Publish preset to registry
+// =============================================================================
+
+program
+  .command("publish")
+  .description("Publish a preset to the registry")
+  .argument("[path]", "Path to agentrules.json or directory containing it")
+  .option("--dry-run", "Preview what would be published without publishing")
+  .action(
+    handle(async (path: string | undefined, options) => {
+      const result = await publish({
+        path,
+        dryRun: Boolean(options.dryRun),
+      });
+
+      if (!result.success) {
+        process.exitCode = 1;
+      }
+    })
+  );
+
+// =============================================================================
+// unpublish - Remove preset version from registry
+// =============================================================================
+
+program
+  .command("unpublish")
+  .description("Remove a preset version from the registry")
+  .argument("<slug>", "Preset slug (e.g., my-preset)")
+  .argument("<platform>", "Platform (e.g., opencode, claude)")
+  .argument("<version>", "Version to unpublish (e.g., 2025.01.15)")
+  .action(
+    handle(async (slug: string, platform: string, version: string) => {
+      const result = await unpublish({ slug, platform, version });
+
+      if (!result.success) {
+        process.exitCode = 1;
       }
     })
   );

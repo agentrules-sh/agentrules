@@ -12,10 +12,9 @@
  * - POST /api/auth/device/token - RFC 8628 token exchange
  * - GET  /api/auth/get-session - Get current user/session info
  *
- * ### Presets (coming soon)
- * - GET  /api/presets/:slug - Fetch a preset
- * - POST /api/presets - Publish a preset
- * - DELETE /api/presets/:slug - Unpublish a preset
+ * ### Presets
+ * - POST   /api/presets - Publish a preset bundle
+ * - DELETE /api/presets/:slug/:platform/:version - Unpublish a preset version
  */
 
 // RFC 8628 Device Authorization Grant
@@ -29,6 +28,17 @@ export {
   requestDeviceCode,
   type TokenEndpointResponse,
 } from "./device-auth";
+// Preset endpoints
+export {
+  type ErrorResponse,
+  PRESET_ENDPOINTS,
+  type PublishResponse,
+  type PublishResult,
+  publishPreset,
+  type UnpublishResponse,
+  type UnpublishResult,
+  unpublishPreset,
+} from "./presets";
 // Session endpoint
 export {
   AUTH_ENDPOINTS,
