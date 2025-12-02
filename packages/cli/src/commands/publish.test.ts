@@ -19,7 +19,6 @@ const VALID_CONFIG = {
   name: "test-preset",
   title: "Test Preset",
   description: "A test preset for publishing",
-  author: { name: "Test Author" },
   license: "MIT",
   tags: ["test", "example"],
   platform: "opencode",

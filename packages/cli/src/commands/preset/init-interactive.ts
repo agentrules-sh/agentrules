@@ -10,7 +10,6 @@ import {
 } from "@agentrules/core";
 import * as p from "@clack/prompts";
 import { basename, join } from "path";
-import { useAppContext } from "@/lib/context";
 import { fileExists } from "@/lib/fs";
 import {
   detectPlatforms,
@@ -52,10 +51,6 @@ export async function initInteractive(
     force = true;
   }
 
-  // Try to get logged in user for author default (from cached context)
-  const ctx = useAppContext();
-  const defaultAuthor = ctx?.user?.name;
-
   // Detect existing platform config directories
   const detected = await detectPlatforms(directory);
   const detectedMap = new Map(detected.map((d) => [d.id, d]));
@@ -84,13 +79,6 @@ export async function initInteractive(
           placeholder: toTitleCase(results.name ?? dirName),
           defaultValue: toTitleCase(results.name ?? dirName),
           validate: validateTitle,
-        }),
-
-      author: () =>
-        p.text({
-          message: "Author",
-          placeholder: defaultAuthor ?? "Your name (optional)",
-          defaultValue: defaultAuthor,
         }),
 
       description: ({ results }) =>
@@ -164,7 +152,6 @@ export async function initInteractive(
     description: result.description as string,
     platform: result.platform as string,
     detectedPath,
-    author: result.author || undefined,
     license: result.license as string,
     force,
   };

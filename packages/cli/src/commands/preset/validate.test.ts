@@ -11,7 +11,6 @@ const VALID_CONFIG = {
   name: "test-preset",
   title: "Test Preset",
   description: "A test preset",
-  author: { name: "Test Author" },
   license: "MIT",
   tags: ["test"],
   platform: "opencode",
@@ -113,7 +112,6 @@ describe("validatePreset", () => {
     const result = await validatePreset({ path: presetDir });
 
     expect(result.valid).toBeTrue();
-    expect(result.warnings.some((w) => w.includes("author"))).toBeTrue();
     expect(result.warnings.some((w) => w.includes("tags"))).toBeTrue();
   });
 

@@ -214,7 +214,6 @@ program
     "-p, --platform <platform>",
     "Target platform (opencode, claude, cursor, codex)"
   )
-  .option("-a, --author <name>", "Author name")
   .option("-l, --license <license>", "License (e.g., MIT)")
   .option("-f, --force", "Overwrite existing agentrules.json")
   .action(
@@ -230,7 +229,6 @@ program
         options.title ||
         options.description ||
         options.platform ||
-        options.author ||
         options.license;
 
       const useInteractive =
@@ -271,7 +269,6 @@ program
         description: options.description,
         platform,
         detectedPath,
-        author: options.author,
         license: options.license,
         force: options.force,
       });
@@ -310,7 +307,6 @@ program
 
         log.success(p.title);
         log.print(ui.keyValue("Description", p.description));
-        if (p.author?.name) log.print(ui.keyValue("Author", p.author.name));
         log.print(ui.keyValue("License", p.license));
         log.print(ui.keyValue("Platform", p.platform));
         if (p.tags?.length) log.print(ui.keyValue("Tags", p.tags.join(", ")));

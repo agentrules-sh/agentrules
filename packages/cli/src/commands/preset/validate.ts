@@ -101,11 +101,6 @@ export async function validatePreset(
   }
 
   // Check optional fields
-  if (!preset.author?.name) {
-    warnings.push("No author name specified.");
-    log.debug("Author name not specified");
-  }
-
   if (!preset.tags || preset.tags.length === 0) {
     warnings.push("No tags specified. Tags help with discoverability.");
     log.debug("No tags specified");

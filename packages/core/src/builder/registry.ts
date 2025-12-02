@@ -85,7 +85,6 @@ export async function buildRegistryData(
       version: buildVersion,
       description: presetConfig.description,
       tags: presetConfig.tags ?? [],
-      author: presetConfig.author,
       license: presetConfig.license,
       features,
       bundlePath: getBundlePublicPath(
@@ -107,7 +106,6 @@ export async function buildRegistryData(
       version: buildVersion,
       description: presetConfig.description,
       tags: presetConfig.tags ?? [],
-      author: presetConfig.author,
       license: presetConfig.license,
       licenseContent,
       readmeContent,

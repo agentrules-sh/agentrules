@@ -20,7 +20,6 @@ export type InitOptions = {
   platform?: string;
   /** Detected path for the platform (e.g., ".opencode") */
   detectedPath?: string;
-  author?: string;
   license?: string;
   force?: boolean;
 };
@@ -82,7 +81,6 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
   const description = options.description ?? `${title} preset`;
   const platform = normalizePlatform(options.platform ?? "opencode");
   const detectedPath = options.detectedPath;
-  const author = options.author ? { name: options.author } : undefined;
   const license = options.license ?? "MIT"; // Default to MIT if not specified
 
   log.debug(`Preset name: ${name}, platform: ${platform}`);
@@ -113,10 +111,6 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
   // Only include path in config if it's not the platform's default projectDir
   if (effectivePath !== defaultPath) {
     preset.path = effectivePath;
-  }
-
-  if (author) {
-    preset.author = author;
   }
 
   // Create directory if needed

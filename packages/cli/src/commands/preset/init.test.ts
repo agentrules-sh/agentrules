@@ -57,7 +57,6 @@ describe("initPreset", () => {
       title: "Custom Title",
       description: "Custom description",
       platform: "claude",
-      author: "Test Author",
       license: "MIT",
     });
 
@@ -65,7 +64,6 @@ describe("initPreset", () => {
     expect(result.preset.title).toBe("Custom Title");
     expect(result.preset.description).toBe("Custom description");
     expect(result.preset.platform).toBe("claude");
-    expect(result.preset.author?.name).toBe("Test Author");
     expect(result.preset.license).toBe("MIT");
   });
 

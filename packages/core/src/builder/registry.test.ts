@@ -18,7 +18,6 @@ describe("buildRegistryData", () => {
             description: "Test preset",
             tags: ["test"],
             features: ["Example"],
-            author: { name: "Tester" },
             license: "MIT",
             platform: "opencode",
             path: ".opencode",

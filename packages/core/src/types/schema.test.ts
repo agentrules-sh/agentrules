@@ -1,6 +1,5 @@
 import { describe, expect, it } from "bun:test";
 import {
-  authorSchema,
   COMMON_LICENSES,
   descriptionSchema,
   licenseSchema,
@@ -218,40 +217,6 @@ describe("COMMON_LICENSES", () => {
   });
 });
 
-describe("authorSchema", () => {
-  it("accepts valid author with name only", () => {
-    const result = authorSchema.parse({ name: "Test Author" });
-    expect(result.name).toBe("Test Author");
-  });
-
-  it("accepts author with all fields", () => {
-    const result = authorSchema.parse({
-      name: "Test Author",
-      email: "test@example.com",
-      url: "https://example.com",
-    });
-    expect(result.name).toBe("Test Author");
-    expect(result.email).toBe("test@example.com");
-    expect(result.url).toBe("https://example.com");
-  });
-
-  it("rejects empty name", () => {
-    expect(() => authorSchema.parse({ name: "" })).toThrow();
-  });
-
-  it("rejects invalid email", () => {
-    expect(() =>
-      authorSchema.parse({ name: "Test", email: "not-an-email" })
-    ).toThrow();
-  });
-
-  it("rejects invalid URL", () => {
-    expect(() =>
-      authorSchema.parse({ name: "Test", url: "not-a-url" })
-    ).toThrow();
-  });
-});
-
 describe("presetConfigSchema", () => {
   // Version is now optional in source config (auto-generated at build time)
   const validConfig = {
@@ -284,11 +249,9 @@ describe("presetConfigSchema", () => {
       ...validConfig,
       tags: ["test", "example"],
       features: ["Feature 1", "Feature 2"],
-      author: { name: "Test Author" },
     });
     expect(result.tags).toEqual(["test", "example"]);
     expect(result.features).toEqual(["Feature 1", "Feature 2"]);
-    expect(result.author?.name).toBe("Test Author");
     expect(result.license).toBe("MIT");
   });
 

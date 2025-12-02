@@ -1,11 +1,5 @@
 import type { PlatformId } from "./platform";
 
-export type AuthorInfo = {
-  name: string;
-  email?: string;
-  url?: string;
-};
-
 export type PresetConfig = {
   $schema?: string;
   name: string;
@@ -14,7 +8,6 @@ export type PresetConfig = {
   description: string;
   tags?: string[];
   features?: string[];
-  author?: AuthorInfo;
   license: string; // Required SPDX license identifier
   platform: PlatformId;
   /** Path to config files. Defaults to platform's projectDir (e.g., ".claude") */
@@ -36,7 +29,6 @@ export type RegistryBundle = {
   version: string;
   description: string;
   tags: string[];
-  author?: AuthorInfo;
   license: string; // Required SPDX license identifier
   licenseContent?: string; // Bundled from LICENSE.md
   readmeContent?: string; // Bundled from README.md
@@ -53,7 +45,6 @@ export type RegistryEntry = {
   version: string;
   description: string;
   tags: string[];
-  author?: AuthorInfo;
   license: string; // Required SPDX license identifier
   features?: string[];
   installMessage?: string;

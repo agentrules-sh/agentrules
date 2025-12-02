@@ -7,14 +7,6 @@ const DATE_VERSION_REGEX =
 
 export const platformIdSchema = z.enum(PLATFORM_IDS);
 
-export const authorSchema = z
-  .object({
-    name: z.string().trim().min(1),
-    email: z.email().trim().optional(),
-    url: z.url().trim().optional(),
-  })
-  .strict();
-
 export const titleSchema = z.string().trim().min(1).max(120);
 export const descriptionSchema = z.string().trim().min(1).max(500);
 
@@ -103,7 +95,6 @@ export const presetConfigSchema = z
     description: descriptionSchema,
     tags: tagsSchema.optional(),
     features: featuresSchema.optional(),
-    author: authorSchema.optional(),
     license: licenseSchema, // Required SPDX license identifier
     platform: platformIdSchema,
     path: pathSchema.optional(), // Path to config files, defaults to platform's projectDir
@@ -124,7 +115,6 @@ export const registryBundleSchema = z.object({
   version: versionSchema,
   description: descriptionSchema,
   tags: tagsSchema,
-  author: authorSchema.optional(),
   license: licenseSchema, // Required SPDX license identifier
   licenseContent: contentSchema.optional(), // Bundled from LICENSE.md
   readmeContent: contentSchema.optional(), // Bundled from README.md
