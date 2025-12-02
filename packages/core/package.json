@@ -41,7 +41,8 @@
     "build": "tsdown",
     "dev": "tsdown --watch",
     "typecheck": "tsc --noEmit",
-    "test": "bun test"
+    "test": "bun test",
+    "clean": "rm -rf node_modules dist .turbo"
   },
   "dependencies": {
     "diff": "^8.0.2",

@@ -3,4 +3,4 @@ set -e
 
 bun run check
 bun run typecheck
-bun test
+bun run test
