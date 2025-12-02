@@ -110,7 +110,6 @@ Presets use `agentrules.json`:
   "name": "my-preset",
   "title": "My Preset",
   "description": "Description here",
-  "author": { "name": "Your Name" },
   "license": "MIT",
   "tags": ["starter", "typescript"],
   "features": ["Feature 1", "Feature 2"],

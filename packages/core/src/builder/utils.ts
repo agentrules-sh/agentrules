@@ -1,6 +1,5 @@
-import type { BundledFile, PlatformId, PresetConfig } from "../types";
+import type { PlatformId, PresetConfig } from "../types";
 import { PLATFORM_IDS } from "../types/platform";
-import { encodeUtf8, toPosixPath } from "../utils/encoding";
 
 /**
  * Generates a date-based version string in format YYYY.MM.DD
@@ -29,7 +28,7 @@ export function normalizeBundlePublicBase(value: string) {
   return normalized === "" ? "/" : normalized;
 }
 
-export function isAbsoluteUrl(value: string) {
+function isAbsoluteUrl(value: string) {
   return /^[a-zA-Z][a-zA-Z\d+-.]*:/.test(value);
 }
 
@@ -87,21 +86,4 @@ export function validatePresetConfig(
   }
 
   return preset as PresetConfig;
-}
-
-export function collectBundledFiles(
-  files: Record<string, string>
-): BundledFile[] {
-  return Object.entries(files)
-    .map(([path, contents]) => {
-      const normalizedPath = toPosixPath(path);
-      const payload = encodeUtf8(contents);
-      return {
-        path: normalizedPath,
-        size: payload.length,
-        checksum: "",
-        contents,
-      } satisfies BundledFile;
-    })
-    .sort((a, b) => a.path.localeCompare(b.path));
 }

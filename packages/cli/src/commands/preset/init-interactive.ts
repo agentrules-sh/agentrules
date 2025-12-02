@@ -11,6 +11,7 @@ import {
 import * as p from "@clack/prompts";
 import { basename, join } from "path";
 import { fileExists } from "@/lib/fs";
+import { normalizeName, toTitleCase } from "@/lib/preset-utils";
 import {
   detectPlatforms,
   type InitOptions,
@@ -162,19 +163,4 @@ export async function initInteractive(
   p.outro(`Created ${initResult.configPath}`);
 
   return initResult;
-}
-
-function normalizeName(input: string): string {
-  return input
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
-function toTitleCase(input: string): string {
-  return input
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
 }

@@ -2,14 +2,14 @@ import {
   isSupportedPlatform,
   PLATFORM_IDS,
   PLATFORMS,
-  PRESET_CONFIG_FILENAME,
   type PresetConfig,
   validatePresetConfig,
 } from "@agentrules/core";
-import { readFile, stat } from "fs/promises";
+import { readFile } from "fs/promises";
 import { basename, dirname, join } from "path";
 import { directoryExists } from "@/lib/fs";
 import { log } from "@/lib/log";
+import { resolveConfigPath } from "@/lib/preset-utils";
 
 export type ValidateOptions = {
   path?: string;
@@ -118,18 +118,4 @@ export async function validatePreset(
     errors,
     warnings,
   };
-}
-
-async function resolveConfigPath(inputPath?: string): Promise<string> {
-  if (!inputPath) {
-    return join(process.cwd(), PRESET_CONFIG_FILENAME);
-  }
-
-  const stats = await stat(inputPath).catch(() => null);
-
-  if (stats?.isDirectory()) {
-    return join(inputPath, PRESET_CONFIG_FILENAME);
-  }
-
-  return inputPath;
 }

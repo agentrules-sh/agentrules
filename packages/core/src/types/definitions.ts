@@ -58,13 +58,7 @@ export type RegistryEntry = {
   hasLicenseContent?: boolean;
 };
 
-export type RegistryData = {
-  $schema: string;
-  items: RegistryEntry[];
-};
-
 export type RegistryIndex = Record<string, RegistryEntry>;
-export type RegistryIndexItem = RegistryEntry;
 
 export type RegistryFileInput = {
   path: string;

@@ -11,6 +11,7 @@ import { mkdir, writeFile } from "fs/promises";
 import { basename, join } from "path";
 import { directoryExists, fileExists } from "@/lib/fs";
 import { log } from "@/lib/log";
+import { normalizeName, toTitleCase } from "@/lib/preset-utils";
 
 export type InitOptions = {
   directory?: string;
@@ -141,21 +142,6 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
 
   log.debug("Preset initialization complete.");
   return { configPath, preset, createdDir };
-}
-
-function normalizeName(input: string): string {
-  return input
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
-function toTitleCase(input: string): string {
-  return input
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
 }
 
 function normalizePlatform(input: string): PlatformId {

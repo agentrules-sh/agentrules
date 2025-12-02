@@ -32,7 +32,7 @@ bun run typecheck
 npx @agentrules/cli add agentic-dev-starter
 
 # Initialize a new preset
-npx @agentrules/cli init --name my-preset --author "Your Name"
+npx @agentrules/cli init --name my-preset
 
 # Validate a preset
 npx @agentrules/cli validate ./my-preset
@@ -51,7 +51,6 @@ Presets use `agentrules.json` for configuration:
   "name": "my-preset",
   "title": "My Preset",
   "description": "A helpful preset",
-  "author": { "name": "Your Name" },
   "license": "MIT",
   "tags": ["starter"],
   "features": ["Feature 1", "Feature 2"],
@@ -73,9 +72,19 @@ packages/
   cli/                  # Command-line interface
     src/
       commands/
-        add.ts          # Install presets
-        preset/         # init, validate
-        registry/       # build, manage endpoints
+        auth/
+          login.ts      # Authenticate with registry
+          logout.ts     # Log out
+          whoami.ts     # Show current user
+        preset/
+          add.ts        # Install presets
+          init.ts       # Initialize new preset
+          validate.ts   # Validate preset config
+        registry/
+          build.ts      # Build registry from presets
+          manage.ts     # Manage registry
+        publish.ts      # Publish preset to registry
+        unpublish.ts    # Remove preset from registry
       lib/              # Config management
 ```
 

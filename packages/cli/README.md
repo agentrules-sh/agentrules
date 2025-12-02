@@ -38,8 +38,11 @@ agentrules add agentic-dev-starter --dry-run
 ### Preset Authoring
 
 ```bash
-# Initialize a new preset
-agentrules init [options]
+# Initialize a new preset (interactive mode)
+agentrules init [directory]
+
+# Initialize with explicit options (non-interactive)
+agentrules init [directory] [options]
 
 Options:
   -d, --directory <path>     Directory to initialize (default: cwd)
@@ -49,12 +52,22 @@ Options:
   -p, --platform <platform>  Target platform (opencode, claude, cursor, codex)
   -l, --license <license>    License (e.g., MIT)
   -f, --force                Overwrite existing config
+  -y, --yes                  Accept defaults without prompting (skip interactive mode)
 ```
+
+**Interactive mode** is used by default when no options are provided and stdin is a TTY. It will prompt you for name, title, description, platform, and license.
 
 Example:
 ```bash
+# Interactive mode - prompts for all values
 mkdir my-preset && cd my-preset
+agentrules init
+
+# Non-interactive with explicit options
 agentrules init --platform opencode --license MIT
+
+# Non-interactive with defaults (uses directory name, MIT license, etc.)
+agentrules init --yes
 ```
 
 ```bash
@@ -99,6 +112,28 @@ Example:
 agentrules registry build -i ./presets -o ./public/r
 ```
 
+### Authentication Commands
+
+#### `agentrules login`
+Authenticate with the registry using device flow authentication. Opens a browser for OAuth.
+
+#### `agentrules logout`
+Log out and clear stored credentials.
+
+#### `agentrules whoami`
+Show the currently authenticated user.
+
+### Publishing Commands
+
+#### `agentrules publish [path]`
+Publish a preset to the registry. Requires authentication.
+
+Options:
+- `--dry-run` - Preview what would be published without actually publishing
+
+#### `agentrules unpublish <name>`
+Remove a preset from the registry. Requires authentication.
+
 ## Configuration
 
 Config is stored at `~/.agentrules/config.json` (or `$AGENT_RULES_HOME/config.json`).
@@ -111,12 +146,6 @@ Config is stored at `~/.agentrules/config.json` (or `$AGENT_RULES_HOME/config.js
       "url": "https://agentrules.directory/r/",
       "lastSyncedAt": null
     }
-  },
-  "platformPaths": {
-    "opencode": { "project": ".opencode", "global": "~/.config/opencode" },
-    "claude": { "project": ".claude", "global": "~/.claude" },
-    "cursor": { "project": ".cursor", "global": "~/.cursor" },
-    "codex": { "project": ".codex", "global": "~/.codex" }
   }
 }
 ```

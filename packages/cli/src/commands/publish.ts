@@ -14,12 +14,13 @@ import {
   type RegistryPresetInput,
   validatePresetConfig,
 } from "@agentrules/core";
-import { readdir, readFile, stat } from "fs/promises";
+import { readdir, readFile } from "fs/promises";
 import { dirname, join, relative } from "path";
 import { publishPreset } from "@/lib/api/presets";
 import { useAppContext } from "@/lib/context";
 import { directoryExists, fileExists } from "@/lib/fs";
 import { log } from "@/lib/log";
+import { resolveConfigPath } from "@/lib/preset-utils";
 import { ui } from "@/lib/ui";
 
 const INSTALL_FILENAME = "INSTALL.txt";
@@ -273,23 +274,6 @@ export async function publish(
       bundleUrl: data.bundleUrl,
     },
   };
-}
-
-/**
- * Resolve path to agentrules.json config file
- */
-async function resolveConfigPath(inputPath?: string): Promise<string> {
-  if (!inputPath) {
-    return join(process.cwd(), PRESET_CONFIG_FILENAME);
-  }
-
-  const stats = await stat(inputPath).catch(() => null);
-
-  if (stats?.isDirectory()) {
-    return join(inputPath, PRESET_CONFIG_FILENAME);
-  }
-
-  return inputPath;
 }
 
 /**
