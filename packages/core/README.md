@@ -31,6 +31,7 @@ const result = buildRegistryData({
       config: {
         name: "my-preset",
         title: "My Preset",
+        version: 1,
         description: "A helpful preset",
         license: "MIT",
         platform: "opencode",
@@ -109,6 +110,7 @@ Presets use `agentrules.json`:
   "$schema": "https://agentrules.directory/schema/agentrules.json",
   "name": "my-preset",
   "title": "My Preset",
+  "version": 1,
   "description": "Description here",
   "license": "MIT",
   "tags": ["starter", "typescript"],
@@ -117,6 +119,12 @@ Presets use `agentrules.json`:
   "path": "files"
 }
 ```
+
+### Versioning
+
+Presets use two-segment versioning (`MAJOR.MINOR`):
+- **Major version**: Set by the publisher in config (defaults to 1)
+- **Minor version**: Auto-incremented by the registry on each publish
 
 ## Development
 

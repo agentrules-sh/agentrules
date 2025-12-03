@@ -1,6 +1,5 @@
 import {
   buildRegistryData,
-  generateDateVersion,
   normalizeBundlePublicBase,
   PLATFORMS,
   PRESET_CONFIG_FILENAME,
@@ -24,7 +23,6 @@ export type BuildResult = {
   presets: number;
   entries: number;
   bundles: number;
-  version: string;
   outputDir: string | null;
   validateOnly: boolean;
 };
@@ -41,9 +39,6 @@ export async function buildRegistry(
   const bundleBase = normalizeBundlePublicBase(options.bundleBase ?? "/r");
   const compact = Boolean(options.compact);
   const validateOnly = Boolean(options.validateOnly);
-
-  // Generate date-based version for this build
-  const version = generateDateVersion();
 
   log.debug(`Discovering presets in ${inputDir}`);
   const presetDirs = await discoverPresetDirs(inputDir);
@@ -65,14 +60,13 @@ export async function buildRegistry(
     presets.push(preset);
   }
 
-  const result = await buildRegistryData({ bundleBase, presets, version });
+  const result = await buildRegistryData({ bundleBase, presets });
 
   if (validateOnly || !outputDir) {
     return {
       presets: presets.length,
       entries: result.entries.length,
       bundles: result.bundles.length,
-      version,
       outputDir: null,
       validateOnly,
     };
@@ -118,7 +112,6 @@ export async function buildRegistry(
     presets: presets.length,
     entries: result.entries.length,
     bundles: result.bundles.length,
-    version,
     outputDir,
     validateOnly: false,
   };

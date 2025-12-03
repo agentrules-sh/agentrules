@@ -23,7 +23,7 @@ describe("initPreset", () => {
     expect(result.configPath).toBe(join(presetDir, "agentrules.json"));
     expect(result.preset.name).toBe("my-preset");
     expect(result.preset.title).toBe("My Preset");
-    expect(result.preset.version).toBeUndefined(); // Version is auto-generated on publish
+    expect(result.preset.version).toBe(1);
     expect(result.preset.license).toBe("MIT"); // Default license
     expect(result.preset.platform).toBe("opencode");
 

@@ -8,7 +8,7 @@ let testDir: string;
 let inputDir: string;
 let outputDir: string;
 
-// Version is now optional in source config - auto-generated at build time
+// Version is optional in source config - defaults to major 1, minor 0
 const VALID_CONFIG = {
   name: "test-preset",
   title: "Test Preset",
@@ -62,8 +62,6 @@ describe("buildRegistry", () => {
     expect(result.entries).toBe(1);
     expect(result.bundles).toBe(1);
     expect(result.outputDir).toBe(outputDir);
-    // Version is auto-generated in YYYY.MM.DD format
-    expect(result.version).toMatch(/^\d{4}\.\d{2}\.\d{2}$/);
 
     // Check output files exist
     const indexContent = await readFile(
@@ -145,7 +143,7 @@ describe("buildRegistry", () => {
       "AGENT_RULES.md": "# Rules\n",
     });
 
-    const result = await buildRegistry({
+    await buildRegistry({
       input: inputDir,
       out: outputDir,
       bundleBase: "/custom/path",
@@ -156,9 +154,9 @@ describe("buildRegistry", () => {
       "utf8"
     );
     const index = JSON.parse(indexContent);
-    // bundlePath now includes version
+    // bundlePath includes version from config (default: 1.0)
     expect(index["test-preset.opencode"].bundlePath).toBe(
-      `/custom/path/test-preset/opencode.${result.version}.json`
+      "/custom/path/test-preset/opencode.1.0.json"
     );
   });
 

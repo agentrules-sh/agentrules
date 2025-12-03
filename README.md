@@ -37,7 +37,11 @@ npx @agentrules/cli init --name my-preset
 # Validate a preset
 npx @agentrules/cli validate ./my-preset
 
-# Build registry from presets
+# Publish a preset
+npx @agentrules/cli publish ./my-preset
+npx @agentrules/cli publish ./my-preset --version 2  # Publish to major version 2
+
+# Build registry from presets (for self-hosted registries)
 npx @agentrules/cli registry build -i ./presets -o ./public/r
 ```
 
@@ -50,6 +54,7 @@ Presets use `agentrules.json` for configuration:
   "$schema": "https://agentrules.directory/schema/agentrules.json",
   "name": "my-preset",
   "title": "My Preset",
+  "version": 1,
   "description": "A helpful preset",
   "license": "MIT",
   "tags": ["starter"],
@@ -58,6 +63,14 @@ Presets use `agentrules.json` for configuration:
   "path": "files"
 }
 ```
+
+### Versioning
+
+Presets use two-segment versioning (`MAJOR.MINOR`):
+- **Major version**: Set by the publisher in `agentrules.json` (defaults to 1)
+- **Minor version**: Auto-incremented by the registry on each publish
+
+When you publish, the registry assigns the next available minor version for your major. For example, if you publish with `"version": 2` and versions 2.0-2.5 exist, you'll get 2.6.
 
 ## Project Structure
 

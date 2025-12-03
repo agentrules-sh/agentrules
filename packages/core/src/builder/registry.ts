@@ -3,6 +3,7 @@ import {
   isSupportedPlatform,
   PLATFORM_IDS,
   type PlatformId,
+  type PublishInput,
   type RegistryBundle,
   type RegistryEntry,
   type RegistryFileInput,
@@ -13,7 +14,6 @@ import { toPosixPath } from "../utils/encoding";
 import {
   cleanInstallMessage,
   encodeItemName,
-  generateDateVersion,
   normalizeBundlePublicBase,
   validatePresetConfig,
 } from "./utils";
@@ -29,11 +29,74 @@ async function sha256(data: Uint8Array): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/**
+ * Options for building a PublishInput (for CLI publish command).
+ */
+export type BuildPublishInputOptions = {
+  preset: RegistryPresetInput;
+  /** Major version. Defaults to 1 if not specified. */
+  version?: number;
+};
+
+/**
+ * Builds a PublishInput from preset input.
+ * Used by CLI to prepare data for publishing to a registry.
+ */
+export async function buildPublishInput(
+  options: BuildPublishInputOptions
+): Promise<PublishInput> {
+  const { preset: presetInput, version } = options;
+
+  if (!NAME_PATTERN.test(presetInput.slug)) {
+    throw new Error(
+      `Invalid slug "${presetInput.slug}". Slugs must be lowercase kebab-case.`
+    );
+  }
+
+  const presetConfig = validatePresetConfig(
+    presetInput.config,
+    presetInput.slug
+  );
+
+  const platform = presetConfig.platform;
+  ensureKnownPlatform(platform, presetInput.slug);
+
+  if (presetInput.files.length === 0) {
+    throw new Error(`Preset ${presetInput.slug} does not include any files.`);
+  }
+
+  const files = await createBundledFilesFromInputs(presetInput.files);
+  const installMessage = cleanInstallMessage(presetInput.installMessage);
+  const features = presetConfig.features ?? [];
+
+  const readmeContent = presetInput.readmeContent?.trim() || undefined;
+  const licenseContent = presetInput.licenseContent?.trim() || undefined;
+
+  // Use CLI version if provided, otherwise fall back to config version
+  const majorVersion = version ?? presetConfig.version;
+
+  return {
+    slug: presetInput.slug,
+    platform,
+    title: presetConfig.title,
+    description: presetConfig.description,
+    tags: presetConfig.tags ?? [],
+    license: presetConfig.license,
+    licenseContent,
+    readmeContent,
+    features,
+    installMessage,
+    files,
+    ...(majorVersion !== undefined && { version: majorVersion }),
+  };
+}
+
+/**
+ * Options for building a static registry.
+ */
 export type BuildRegistryDataOptions = {
   presets: RegistryPresetInput[];
   bundleBase?: string;
-  /** Override the auto-generated version. If not provided, uses current UTC date. */
-  version?: string;
 };
 
 export type BuildRegistryDataResult = {
@@ -42,11 +105,15 @@ export type BuildRegistryDataResult = {
   bundles: RegistryBundle[];
 };
 
+/**
+ * Builds a static registry with entries, index, and bundles.
+ * Used for building static registry files (e.g., community-presets).
+ * Each preset uses its version from config (default: major 1, minor 0).
+ */
 export async function buildRegistryData(
   options: BuildRegistryDataOptions
 ): Promise<BuildRegistryDataResult> {
   const bundleBase = normalizeBundlePublicBase(options.bundleBase ?? "/r");
-  const buildVersion = options.version ?? generateDateVersion();
   const entries: RegistryEntry[] = [];
   const bundles: RegistryBundle[] = [];
 
@@ -77,12 +144,16 @@ export async function buildRegistryData(
     const readmeContent = presetInput.readmeContent?.trim() || undefined;
     const licenseContent = presetInput.licenseContent?.trim() || undefined;
 
+    // Use version from config (default: 1), append .0 for minor (static builds don't track minor)
+    const majorVersion = presetConfig.version ?? 1;
+    const version = `${majorVersion}.0`;
+
     const entry: RegistryEntry = {
       name: encodeItemName(presetInput.slug, platform),
       slug: presetInput.slug,
       platform,
       title: presetConfig.title,
-      version: buildVersion,
+      version,
       description: presetConfig.description,
       tags: presetConfig.tags ?? [],
       license: presetConfig.license,
@@ -91,19 +162,20 @@ export async function buildRegistryData(
         bundleBase,
         presetInput.slug,
         platform,
-        buildVersion
+        version
       ),
       fileCount: files.length,
       totalSize,
       hasReadmeContent: Boolean(readmeContent),
       hasLicenseContent: Boolean(licenseContent),
     };
+    entries.push(entry);
 
     const bundle: RegistryBundle = {
       slug: presetInput.slug,
       platform,
       title: presetConfig.title,
-      version: buildVersion,
+      version,
       description: presetConfig.description,
       tags: presetConfig.tags ?? [],
       license: presetConfig.license,
@@ -113,8 +185,6 @@ export async function buildRegistryData(
       installMessage,
       files,
     };
-
-    entries.push(entry);
     bundles.push(bundle);
   }
 

@@ -412,7 +412,6 @@ registry
           result.presets === 1 ? "" : "s"
         } ${ui.muted(`→ ${result.entries} entries, ${result.bundles} bundles`)}`
       );
-      log.print(ui.keyValue("Version", ui.version(result.version)));
       log.print(ui.keyValue("Output", ui.path(result.outputDir)));
     })
   );
@@ -603,11 +602,13 @@ program
   .command("publish")
   .description("Publish a preset to the registry")
   .argument("[path]", "Path to agentrules.json or directory containing it")
+  .option("-V, --version <major>", "Major version", Number.parseInt)
   .option("--dry-run", "Preview what would be published without publishing")
   .action(
     handle(async (path: string | undefined, options) => {
       const result = await publish({
         path,
+        version: options.version,
         dryRun: Boolean(options.dryRun),
       });
 
@@ -626,7 +627,7 @@ program
   .description("Remove a preset version from the registry")
   .argument("<slug>", "Preset slug (e.g., my-preset)")
   .argument("<platform>", "Platform (e.g., opencode, claude)")
-  .argument("<version>", "Version to unpublish (e.g., 2025.01.15)")
+  .argument("<version>", "Version to unpublish (e.g., 1.1, 2.3)")
   .action(
     handle(async (slug: string, platform: string, version: string) => {
       const result = await unpublish({ slug, platform, version });

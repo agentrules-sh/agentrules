@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { generateDateVersion } from "@agentrules/core";
 import { mkdir, mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { initAppContext } from "../lib/context";
 import { saveCredentials } from "../lib/credentials";
 import { publish } from "./publish";
+
+// Version assigned by registry in test responses
+const TEST_VERSION = "1";
 
 const originalFetch = globalThis.fetch;
 let testDir: string;
@@ -107,7 +109,6 @@ describe("publish", () => {
     await setupLoggedInContext();
 
     const presetDir = await createValidPreset(testDir, "my-preset");
-    const expectedVersion = generateDateVersion();
 
     mockFetch({
       url: `${DEFAULT_API_URL}/api/presets`,
@@ -118,9 +119,9 @@ describe("publish", () => {
         slug: "my-preset",
         platform: "opencode",
         title: "Test Preset",
-        version: expectedVersion,
+        version: TEST_VERSION,
         isNewPreset: true,
-        bundleUrl: `https://cdn.example.com/presets/my-preset/opencode.${expectedVersion}.json`,
+        bundleUrl: `https://cdn.example.com/presets/my-preset/opencode.${TEST_VERSION}.json`,
       },
     });
 
@@ -132,7 +133,7 @@ describe("publish", () => {
     expect(result.preset?.slug).toBe("my-preset");
     expect(result.preset?.platform).toBe("opencode");
     expect(result.preset?.title).toBe("Test Preset");
-    expect(result.preset?.version).toBe(expectedVersion);
+    expect(result.preset?.version).toBe(TEST_VERSION);
     expect(result.preset?.isNewPreset).toBeTrue();
     expect(result.preset?.bundleUrl).toContain("my-preset");
   });
@@ -147,7 +148,7 @@ describe("publish", () => {
       method: "POST",
       status: 409,
       response: {
-        error: 'Version 2025.01.15 of "error-preset" already exists.',
+        error: 'Version 1.0 of "error-preset" already exists.',
       },
     });
 
@@ -176,7 +177,6 @@ describe("publish", () => {
     await initAppContext({ apiUrl: customUrl });
 
     const presetDir = await createValidPreset(testDir, "custom-url-preset");
-    const expectedVersion = generateDateVersion();
 
     let calledUrl = "";
     mockFetch({
@@ -188,7 +188,7 @@ describe("publish", () => {
         slug: "custom-url-preset",
         platform: "opencode",
         title: "Test Preset",
-        version: expectedVersion,
+        version: TEST_VERSION,
         isNewPreset: true,
         bundleUrl: "",
       },
@@ -207,7 +207,6 @@ describe("publish", () => {
     await setupLoggedInContext("my-secret-token");
 
     const presetDir = await createValidPreset(testDir, "auth-test-preset");
-    const expectedVersion = generateDateVersion();
 
     let capturedHeaders: Headers | undefined;
     mockFetch({
@@ -219,7 +218,7 @@ describe("publish", () => {
         slug: "auth-test-preset",
         platform: "opencode",
         title: "Test Preset",
-        version: expectedVersion,
+        version: TEST_VERSION,
         isNewPreset: true,
         bundleUrl: "",
       },
@@ -242,7 +241,6 @@ describe("publish", () => {
     await setupLoggedInContext();
 
     const presetDir = await createValidPreset(testDir, "bundle-test-preset");
-    const expectedVersion = generateDateVersion();
 
     let sentBody: unknown;
     mockFetch({
@@ -254,7 +252,7 @@ describe("publish", () => {
         slug: "bundle-test-preset",
         platform: "opencode",
         title: "Test Preset",
-        version: expectedVersion,
+        version: TEST_VERSION,
         isNewPreset: true,
         bundleUrl: "",
       },
@@ -269,15 +267,15 @@ describe("publish", () => {
     const bundle = sentBody as {
       slug: string;
       platform: string;
-      version: string;
+      version?: string;
       files: Array<{ path: string; contents: string }>;
     };
     expect(bundle).toBeDefined();
 
-    // Verify bundle structure
+    // Verify bundle structure (version is NOT sent by client - assigned by registry)
     expect(bundle.slug).toBe("bundle-test-preset");
     expect(bundle.platform).toBe("opencode");
-    expect(bundle.version).toBe(expectedVersion);
+    expect(bundle.version).toBeUndefined(); // Client doesn't send version
     expect(Array.isArray(bundle.files)).toBeTrue();
     expect(bundle.files.length).toBeGreaterThan(0);
 
@@ -321,7 +319,6 @@ describe("publish", () => {
       await setupLoggedInContext();
 
       const presetDir = await createValidPreset(testDir, "dry-run-preset");
-      const expectedVersion = generateDateVersion();
 
       let apiCalled = false;
       mockFetch({
@@ -343,7 +340,7 @@ describe("publish", () => {
       expect(result.preview).toBeDefined();
       expect(result.preview?.slug).toBe("dry-run-preset");
       expect(result.preview?.platform).toBe("opencode");
-      expect(result.preview?.version).toBe(expectedVersion);
+      // Version is not in preview - it's assigned by registry on actual publish
       expect(result.preview?.totalSize).toBeGreaterThan(0);
       expect(result.preview?.fileCount).toBeGreaterThan(0);
       expect(result.preset).toBeUndefined();
@@ -418,7 +415,6 @@ describe("publish", () => {
       await setupLoggedInContext();
 
       const presetDir = await createValidPreset(testDir, "normal-size-preset");
-      const expectedVersion = generateDateVersion();
 
       mockFetch({
         url: `${DEFAULT_API_URL}/api/presets`,
@@ -429,7 +425,7 @@ describe("publish", () => {
           slug: "normal-size-preset",
           platform: "opencode",
           title: "Test Preset",
-          version: expectedVersion,
+          version: TEST_VERSION,
           isNewPreset: true,
           bundleUrl: "",
         },

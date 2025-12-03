@@ -129,7 +129,17 @@ Show the currently authenticated user.
 Publish a preset to the registry. Requires authentication.
 
 Options:
+- `-v, --version <major>` - Major version to publish (overrides config, default: 1)
 - `--dry-run` - Preview what would be published without actually publishing
+
+Example:
+```bash
+agentrules publish ./my-preset
+agentrules publish ./my-preset --version 2  # Publish to major version 2
+agentrules publish --dry-run                # Preview without publishing
+```
+
+**Versioning:** Presets use `MAJOR.MINOR` versioning. You set the major version, and the registry auto-increments the minor version on each publish.
 
 #### `agentrules unpublish <name>`
 Remove a preset from the registry. Requires authentication.

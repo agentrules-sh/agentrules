@@ -2,7 +2,6 @@ import { describe, expect, it } from "bun:test";
 import {
   cleanInstallMessage,
   encodeItemName,
-  generateDateVersion,
   normalizeBundlePublicBase,
   validatePresetConfig,
 } from "./utils";
@@ -56,7 +55,7 @@ describe("validatePresetConfig", () => {
   });
 
   it("accepts presets with optional version", () => {
-    const withVersion = { ...MINIMAL_PRESET, version: "2024.11.26" };
+    const withVersion = { ...MINIMAL_PRESET, version: 2 };
     expect(validatePresetConfig(withVersion, "starter")).toEqual(withVersion);
   });
 
@@ -87,27 +86,5 @@ describe("validatePresetConfig", () => {
     expect(() => validatePresetConfig(withoutPlatform, "starter")).toThrow(
       /missing a platform/i
     );
-  });
-});
-
-describe("generateDateVersion", () => {
-  it("generates version in YYYY.MM.DD format", () => {
-    const version = generateDateVersion();
-    expect(version).toMatch(/^\d{4}\.\d{2}\.\d{2}$/);
-  });
-
-  it("uses UTC date", () => {
-    const date = new Date("2024-06-15T12:00:00Z");
-    expect(generateDateVersion(date)).toBe("2024.06.15");
-  });
-
-  it("zero-pads month and day", () => {
-    const date = new Date("2024-01-05T00:00:00Z");
-    expect(generateDateVersion(date)).toBe("2024.01.05");
-  });
-
-  it("handles end of month dates", () => {
-    const date = new Date("2024-12-31T23:59:59Z");
-    expect(generateDateVersion(date)).toBe("2024.12.31");
   });
 });

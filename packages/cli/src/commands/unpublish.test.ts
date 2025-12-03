@@ -50,7 +50,7 @@ describe("unpublish", () => {
     const result = await unpublish({
       slug: "",
       platform: "opencode",
-      version: "2025.01.15",
+      version: "1.0",
     });
 
     expect(result.success).toBeFalse();
@@ -63,7 +63,7 @@ describe("unpublish", () => {
     const result = await unpublish({
       slug: "my-preset",
       platform: "",
-      version: "2025.01.15",
+      version: "1.0",
     });
 
     expect(result.success).toBeFalse();
@@ -89,7 +89,7 @@ describe("unpublish", () => {
     const result = await unpublish({
       slug: "my-preset",
       platform: "opencode",
-      version: "2025.01.15",
+      version: "1.0",
     });
 
     expect(result.success).toBeFalse();
@@ -100,32 +100,32 @@ describe("unpublish", () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_API_URL}/api/presets/my-preset/opencode/2025.01.15`,
+      url: `${DEFAULT_API_URL}/api/presets/my-preset/opencode/1.0`,
       method: "DELETE",
       response: {
         slug: "my-preset",
         platform: "opencode",
-        version: "2025.01.15",
+        version: "1.0",
       },
     });
 
     const result = await unpublish({
       slug: "my-preset",
       platform: "opencode",
-      version: "2025.01.15",
+      version: "1.0",
     });
 
     expect(result.success).toBeTrue();
     expect(result.preset?.slug).toBe("my-preset");
     expect(result.preset?.platform).toBe("opencode");
-    expect(result.preset?.version).toBe("2025.01.15");
+    expect(result.preset?.version).toBe("1.0");
   });
 
   it("handles 404 errors for non-existent presets", async () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_API_URL}/api/presets/nonexistent/opencode/2025.01.15`,
+      url: `${DEFAULT_API_URL}/api/presets/nonexistent/opencode/1.0`,
       method: "DELETE",
       status: 404,
       response: {
@@ -136,7 +136,7 @@ describe("unpublish", () => {
     const result = await unpublish({
       slug: "nonexistent",
       platform: "opencode",
-      version: "2025.01.15",
+      version: "1.0",
     });
 
     expect(result.success).toBeFalse();
@@ -147,7 +147,7 @@ describe("unpublish", () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_API_URL}/api/presets/not-yours/opencode/2025.01.15`,
+      url: `${DEFAULT_API_URL}/api/presets/not-yours/opencode/1.0`,
       method: "DELETE",
       status: 403,
       response: {
@@ -158,7 +158,7 @@ describe("unpublish", () => {
     const result = await unpublish({
       slug: "not-yours",
       platform: "opencode",
-      version: "2025.01.15",
+      version: "1.0",
     });
 
     expect(result.success).toBeFalse();
@@ -173,7 +173,7 @@ describe("unpublish", () => {
     const result = await unpublish({
       slug: "my-preset",
       platform: "opencode",
-      version: "2025.01.15",
+      version: "1.0",
     });
 
     expect(result.success).toBeFalse();
@@ -187,12 +187,12 @@ describe("unpublish", () => {
 
     let calledUrl = "";
     mockFetch({
-      url: `${customUrl}/api/presets/custom-preset/opencode/2025.01.15`,
+      url: `${customUrl}/api/presets/custom-preset/opencode/1.0`,
       method: "DELETE",
       response: {
         slug: "custom-preset",
         platform: "opencode",
-        version: "2025.01.15",
+        version: "1.0",
       },
       onCall: (url) => {
         calledUrl = url;
@@ -202,7 +202,7 @@ describe("unpublish", () => {
     const result = await unpublish({
       slug: "custom-preset",
       platform: "opencode",
-      version: "2025.01.15",
+      version: "1.0",
     });
 
     expect(result.success).toBeTrue();
@@ -214,12 +214,12 @@ describe("unpublish", () => {
 
     let capturedHeaders: Headers | Record<string, string> | undefined;
     mockFetch({
-      url: `${DEFAULT_API_URL}/api/presets/auth-test/opencode/2025.01.15`,
+      url: `${DEFAULT_API_URL}/api/presets/auth-test/opencode/1.0`,
       method: "DELETE",
       response: {
         slug: "auth-test",
         platform: "opencode",
-        version: "2025.01.15",
+        version: "1.0",
       },
       onCall: (_url, init) => {
         capturedHeaders = init?.headers as
@@ -232,7 +232,7 @@ describe("unpublish", () => {
     await unpublish({
       slug: "auth-test",
       platform: "opencode",
-      version: "2025.01.15",
+      version: "1.0",
     });
 
     const authHeader =
@@ -246,7 +246,7 @@ describe("unpublish", () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_API_URL}/api/presets/error-preset/opencode/2025.01.15`,
+      url: `${DEFAULT_API_URL}/api/presets/error-preset/opencode/1.0`,
       method: "DELETE",
       status: 500,
       response: {
@@ -257,7 +257,7 @@ describe("unpublish", () => {
     const result = await unpublish({
       slug: "error-preset",
       platform: "opencode",
-      version: "2025.01.15",
+      version: "1.0",
     });
 
     expect(result.success).toBeFalse();
@@ -269,12 +269,12 @@ describe("unpublish", () => {
 
     let calledUrl = "";
     mockFetch({
-      url: `${DEFAULT_API_URL}/api/presets/my%2Fslug/opencode/2025.01.15`,
+      url: `${DEFAULT_API_URL}/api/presets/my%2Fslug/opencode/1.0`,
       method: "DELETE",
       response: {
         slug: "my/slug",
         platform: "opencode",
-        version: "2025.01.15",
+        version: "1.0",
       },
       onCall: (url) => {
         calledUrl = url;
@@ -284,7 +284,7 @@ describe("unpublish", () => {
     const result = await unpublish({
       slug: "my/slug",
       platform: "opencode",
-      version: "2025.01.15",
+      version: "1.0",
     });
 
     expect(result.success).toBeTrue();

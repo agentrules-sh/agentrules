@@ -4,7 +4,7 @@
  * Publish and unpublish endpoints for managing presets in the registry.
  */
 
-import type { RegistryBundle } from "@agentrules/core";
+import type { PublishInput } from "@agentrules/core";
 import { log } from "@/lib/log";
 
 // =============================================================================
@@ -12,7 +12,7 @@ import { log } from "@/lib/log";
 // =============================================================================
 
 export const PRESET_ENDPOINTS = {
-  /** Publish a preset bundle. POST with RegistryBundle body. */
+  /** Publish a preset. POST with PublishInput body (no version - registry assigns). */
   PUBLISH: "/api/presets",
   /** Unpublish a preset version. DELETE with slug/platform/version in path. */
   UNPUBLISH: (slug: string, platform: string, version: string) =>
@@ -57,12 +57,13 @@ export type PublishResult =
   | { success: false; error: string; issues?: ErrorResponse["issues"] };
 
 /**
- * Publishes a preset bundle to the registry.
+ * Publishes a preset to the registry.
+ * Sends PublishInput (no version) - registry assigns version.
  */
 export async function publishPreset(
   baseUrl: string,
   token: string,
-  bundle: RegistryBundle
+  input: PublishInput
 ): Promise<PublishResult> {
   const url = `${baseUrl}${PRESET_ENDPOINTS.PUBLISH}`;
 
@@ -75,7 +76,7 @@ export async function publishPreset(
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(bundle),
+      body: JSON.stringify(input),
     });
 
     log.debug(`Response status: ${response.status}`);

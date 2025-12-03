@@ -104,6 +104,7 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
     $schema: PRESET_SCHEMA_URL,
     name,
     title,
+    version: 1,
     description,
     license,
     platform,

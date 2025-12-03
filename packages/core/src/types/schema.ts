@@ -1,9 +1,10 @@
 import { z } from "zod";
 import { PLATFORM_IDS } from "./platform";
 
-// Date-based version: YYYY.MM.DD or YYYY.MM.DD-N for same-day releases
-const DATE_VERSION_REGEX =
-  /^\d{4}\.(0[1-9]|1[0-2])\.(0[1-9]|[12]\d|3[01])(-\d+)?$/;
+// Version format: MAJOR.MINOR (e.g., "1.0", "2.15")
+// MAJOR: set by publisher
+// MINOR: auto-incremented by registry
+const VERSION_REGEX = /^[1-9]\d*\.\d+$/;
 
 export const platformIdSchema = z.enum(PLATFORM_IDS);
 
@@ -25,13 +26,17 @@ export function validateDescription(value: string): string | undefined {
   if (trimmed.length > 500) return "Description must be 500 characters or less";
   return;
 }
+// Schema for stored versions (MAJOR.MINOR format)
 const versionSchema = z
   .string()
   .trim()
-  .regex(
-    DATE_VERSION_REGEX,
-    "Version must be date-based (YYYY.MM.DD or YYYY.MM.DD-N)"
-  );
+  .regex(VERSION_REGEX, "Version must be in MAJOR.MINOR format (e.g., 1.3)");
+
+// Schema for input major version (positive integer)
+const majorVersionSchema = z
+  .number()
+  .int()
+  .positive("Major version must be a positive integer");
 const tagSchema = z.string().trim().min(1).max(48);
 const tagsSchema = z.array(tagSchema).max(10);
 const featureSchema = z.string().trim().min(1).max(160);
@@ -91,7 +96,7 @@ export const presetConfigSchema = z
     $schema: z.string().optional(),
     name: slugSchema,
     title: titleSchema,
-    version: versionSchema.optional(), // Version is auto-generated at build time
+    version: majorVersionSchema.optional(), // Major version. Registry assigns minor.
     description: descriptionSchema,
     tags: tagsSchema.optional(),
     features: featuresSchema.optional(),
@@ -108,11 +113,14 @@ export const bundledFileSchema = z.object({
   contents: z.string(),
 });
 
-export const registryBundleSchema = z.object({
+/**
+ * Schema for what clients send to publish a preset.
+ * Version is optional major version. Registry assigns full MAJOR.MINOR.
+ */
+export const publishInputSchema = z.object({
   slug: z.string().trim().min(1),
   platform: platformIdSchema,
   title: titleSchema,
-  version: versionSchema,
   description: descriptionSchema,
   tags: tagsSchema,
   license: licenseSchema, // Required SPDX license identifier
@@ -121,7 +129,20 @@ export const registryBundleSchema = z.object({
   features: featuresSchema.optional(),
   installMessage: installMessageSchema.optional(),
   files: z.array(bundledFileSchema).min(1),
+  /** Major version. Defaults to 1 if not specified. */
+  version: majorVersionSchema.optional(),
 });
+
+/**
+ * Schema for what registries store and return.
+ * Includes version (required) - full MAJOR.MINOR format assigned by registry.
+ */
+export const registryBundleSchema = publishInputSchema
+  .omit({ version: true })
+  .extend({
+    /** Full version in MAJOR.MINOR format (e.g., "1.3", "2.1") */
+    version: versionSchema,
+  });
 
 export const registryEntrySchema = registryBundleSchema
   .omit({

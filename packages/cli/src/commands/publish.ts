@@ -6,11 +6,10 @@
  */
 
 import {
-  buildRegistryData,
-  generateDateVersion,
+  buildPublishInput,
   PLATFORMS,
   PRESET_CONFIG_FILENAME,
-  type RegistryBundle,
+  type PublishInput,
   type RegistryPresetInput,
   validatePresetConfig,
 } from "@agentrules/core";
@@ -42,6 +41,8 @@ function formatBytes(bytes: number): string {
 export type PublishOptions = {
   /** Path to agentrules.json or directory containing it */
   path?: string;
+  /** Major version. Defaults to 1 if not specified. */
+  version?: number;
   /** Preview what would be published without actually publishing */
   dryRun?: boolean;
 };
@@ -65,7 +66,6 @@ export type PublishResult = {
     slug: string;
     platform: string;
     title: string;
-    version: string;
     totalSize: number;
     fileCount: number;
   };
@@ -77,7 +77,7 @@ export type PublishResult = {
 export async function publish(
   options: PublishOptions = {}
 ): Promise<PublishResult> {
-  const { path, dryRun = false } = options;
+  const { path, version, dryRun = false } = options;
 
   log.debug(
     `Publishing preset from path: ${path ?? process.cwd()}${
@@ -131,22 +131,17 @@ export async function publish(
     };
   }
 
-  // Build bundle
+  // Build publish input (version is assigned by registry)
   spinner.update("Building bundle...");
 
-  const version = generateDateVersion();
-  let bundle: RegistryBundle;
+  let publishInput: PublishInput;
 
   try {
-    const result = await buildRegistryData({
-      presets: [presetInput],
+    publishInput = await buildPublishInput({
+      preset: presetInput,
       version,
     });
-    if (result.bundles.length === 0) {
-      throw new Error("No bundle was generated");
-    }
-    bundle = result.bundles[0];
-    log.debug(`Built bundle for ${bundle.platform} with version ${version}`);
+    log.debug(`Built publish input for ${publishInput.platform}`);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     spinner.fail("Failed to build bundle");
@@ -158,16 +153,18 @@ export async function publish(
   }
 
   // Calculate size for validation and display
-  const bundleJson = JSON.stringify(bundle);
-  const bundleSize = Buffer.byteLength(bundleJson, "utf8");
-  const fileCount = bundle.files.length;
+  const inputJson = JSON.stringify(publishInput);
+  const inputSize = Buffer.byteLength(inputJson, "utf8");
+  const fileCount = publishInput.files.length;
 
-  log.debug(`Bundle size: ${formatBytes(bundleSize)}, files: ${fileCount}`);
+  log.debug(
+    `Publish input size: ${formatBytes(inputSize)}, files: ${fileCount}`
+  );
 
-  // Validate bundle size
-  if (bundleSize > MAX_BUNDLE_SIZE_BYTES) {
+  // Validate input size
+  if (inputSize > MAX_BUNDLE_SIZE_BYTES) {
     const errorMessage = `Bundle exceeds maximum size (${formatBytes(
-      bundleSize
+      inputSize
     )} > ${formatBytes(MAX_BUNDLE_SIZE_BYTES)})`;
     spinner.fail("Bundle too large");
     log.error(errorMessage);
@@ -182,25 +179,29 @@ export async function publish(
     spinner.success("Dry run complete");
     log.print("");
     log.print(ui.header("Publish Preview"));
-    log.print(ui.keyValue("Preset", presetInput.config.title));
-    log.print(ui.keyValue("Slug", presetInput.slug));
-    log.print(ui.keyValue("Platform", bundle.platform));
-    log.print(ui.keyValue("Version", ui.version(version)));
+    log.print(ui.keyValue("Preset", publishInput.title));
+    log.print(ui.keyValue("Slug", publishInput.slug));
+    log.print(ui.keyValue("Platform", publishInput.platform));
+    log.print(
+      ui.keyValue(
+        "Version",
+        version ? `${version}.x (auto-assigned minor)` : "1.x (auto-assigned)"
+      )
+    );
     log.print(
       ui.keyValue("Files", `${fileCount} file${fileCount === 1 ? "" : "s"}`)
     );
-    log.print(ui.keyValue("Size", formatBytes(bundleSize)));
+    log.print(ui.keyValue("Size", formatBytes(inputSize)));
     log.print("");
     log.print(ui.hint("Run without --dry-run to publish."));
 
     return {
       success: true,
       preview: {
-        slug: presetInput.slug,
-        platform: bundle.platform,
-        title: presetInput.config.title,
-        version,
-        totalSize: bundleSize,
+        slug: publishInput.slug,
+        platform: publishInput.platform,
+        title: publishInput.title,
+        totalSize: inputSize,
         fileCount,
       },
     };
@@ -208,9 +209,7 @@ export async function publish(
 
   // Publish to the API
   spinner.update(
-    `Publishing ${presetInput.config.title} ${ui.version(version)} (${
-      bundle.platform
-    })...`
+    `Publishing ${publishInput.title} (${publishInput.platform})...`
   );
 
   // At this point we know credentials exist (checked earlier, and dry-run exits before here)
@@ -221,7 +220,7 @@ export async function publish(
   const result = await publishPreset(
     ctx.registry.apiUrl,
     ctx.credentials.token,
-    bundle
+    publishInput
   );
 
   if (!result.success) {

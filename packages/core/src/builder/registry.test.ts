@@ -2,19 +2,16 @@ import { describe, expect, it } from "bun:test";
 import { buildRegistryData } from "./registry";
 
 describe("buildRegistryData", () => {
-  const TEST_VERSION = "2024.11.26";
-
   it("produces registry entries and bundles from preset inputs", async () => {
     const result = await buildRegistryData({
       bundleBase: "/r",
-      version: TEST_VERSION,
       presets: [
         {
           slug: "starter",
           config: {
             name: "starter",
             title: "Fixture",
-            // version is now optional in source config
+            // version defaults to 1 when not specified
             description: "Test preset",
             tags: ["test"],
             features: ["Example"],
@@ -32,15 +29,13 @@ describe("buildRegistryData", () => {
     });
 
     expect(result.entries).toHaveLength(1);
-    // bundlePath now includes version
-    expect(result.entries[0]?.bundlePath).toBe(
-      `/r/starter/opencode.${TEST_VERSION}.json`
-    );
-    expect(result.entries[0]?.version).toBe(TEST_VERSION);
+    // bundlePath includes version (default: 1.0)
+    expect(result.entries[0]?.bundlePath).toBe("/r/starter/opencode.1.0.json");
+    expect(result.entries[0]?.version).toBe("1.0");
     expect(result.entries[0]?.fileCount).toBe(2);
     expect(result.index["starter.opencode"]).toEqual(result.entries[0]);
     expect(result.bundles).toHaveLength(1);
-    expect(result.bundles[0]?.version).toBe(TEST_VERSION);
+    expect(result.bundles[0]?.version).toBe("1.0");
 
     const filesByPath = Object.fromEntries(
       result.bundles[0]?.files.map((file) => [file.path, file]) ?? []
@@ -49,35 +44,35 @@ describe("buildRegistryData", () => {
     expect(filesByPath["config.json"]?.contents).toBe('{"key": "value"}');
   });
 
-  it("auto-generates version if not provided", async () => {
+  it("uses version from config when specified", async () => {
     const result = await buildRegistryData({
       bundleBase: "/r",
-      // no version provided - should auto-generate
       presets: [
         {
-          slug: "auto-version",
+          slug: "versioned",
           config: {
-            name: "auto-version",
-            title: "Auto Version Test",
-            description: "Should get auto-generated version",
+            name: "versioned",
+            title: "Versioned Preset",
+            version: 2, // Major version 2
+            description: "Has explicit version",
             license: "MIT",
-            platform: "opencode",
-            path: ".opencode",
+            platform: "claude",
+            path: ".claude",
           },
-          files: [{ path: "test.md", contents: "# Test\n" }],
+          files: [{ path: "rules.md", contents: "# Rules\n" }],
         },
       ],
     });
 
-    // Version should be in YYYY.MM.DD format
-    expect(result.entries[0]?.version).toMatch(/^\d{4}\.\d{2}\.\d{2}$/);
+    expect(result.entries[0]?.version).toBe("2.0");
+    expect(result.bundles[0]?.version).toBe("2.0");
+    expect(result.entries[0]?.bundlePath).toBe("/r/versioned/claude.2.0.json");
   });
 
   it("rejects binary files", async () => {
     await expect(
       buildRegistryData({
         bundleBase: "/r",
-        version: TEST_VERSION,
         presets: [
           {
             slug: "bad-preset",

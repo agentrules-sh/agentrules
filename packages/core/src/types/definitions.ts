@@ -4,7 +4,7 @@ export type PresetConfig = {
   $schema?: string;
   name: string;
   title: string;
-  version?: string; // Optional - auto-generated at build time if not provided
+  version?: number; // Optional major version. Registry assigns minor.
   description: string;
   tags?: string[];
   features?: string[];
@@ -22,11 +22,14 @@ export type BundledFile = {
   contents: string;
 };
 
-export type RegistryBundle = {
+/**
+ * What clients send to publish a preset.
+ * Version is optional major version. Registry assigns full MAJOR.MINOR.
+ */
+export type PublishInput = {
   slug: string;
   platform: PlatformId;
   title: string;
-  version: string;
   description: string;
   tags: string[];
   license: string; // Required SPDX license identifier
@@ -35,6 +38,17 @@ export type RegistryBundle = {
   features?: string[];
   installMessage?: string;
   files: BundledFile[];
+  /** Major version. Defaults to 1 if not specified. */
+  version?: number;
+};
+
+/**
+ * What registries store and return.
+ * Includes version (required) - full MAJOR.MINOR format assigned by registry.
+ */
+export type RegistryBundle = Omit<PublishInput, "version"> & {
+  /** Full version in MAJOR.MINOR format (e.g., "1.3", "2.1") */
+  version: string;
 };
 
 export type RegistryEntry = {
