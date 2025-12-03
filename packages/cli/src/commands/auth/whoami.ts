@@ -17,8 +17,8 @@ export type WhoamiResult = {
     name: string;
     email: string;
   };
-  /** API URL of the registry */
-  apiUrl?: string;
+  /** Registry URL */
+  registryUrl?: string;
   /** Token expiration date */
   expiresAt?: string;
   /** Error message if something went wrong */
@@ -34,13 +34,13 @@ export async function whoami(): Promise<WhoamiResult> {
     throw new Error("App context not initialized");
   }
 
-  const { apiUrl } = ctx.registry;
+  const { url: registryUrl } = ctx.registry;
 
   return {
     success: true,
     loggedIn: ctx.isLoggedIn,
     user: ctx.user ?? undefined,
-    apiUrl,
+    registryUrl,
     expiresAt: ctx.credentials?.expiresAt,
   };
 }

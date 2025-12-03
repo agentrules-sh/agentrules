@@ -153,7 +153,7 @@ Config is stored at `~/.agentrules/config.json` (or `$AGENT_RULES_HOME/config.js
   "defaultRegistry": "main",
   "registries": {
     "main": {
-      "url": "https://agentrules.directory/r/",
+      "url": "https://agentrules.directory/",
       "lastSyncedAt": null
     }
   }

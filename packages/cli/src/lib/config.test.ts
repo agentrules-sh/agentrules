@@ -44,7 +44,7 @@ describe("config module", () => {
   it("persists changes made via saveConfig", async () => {
     const config = await loadConfig();
     config.registries.dev = {
-      url: "https://example.dev/r/",
+      url: "https://example.dev/",
       lastSyncedAt: "2024-01-01T00:00:00.000Z",
     };
     config.defaultRegistry = "dev";
@@ -53,12 +53,22 @@ describe("config module", () => {
 
     const reloaded = await loadConfig();
     expect(reloaded.defaultRegistry).toBe("dev");
-    expect(reloaded.registries.dev?.url).toBe("https://example.dev/r/");
+    expect(reloaded.registries.dev?.url).toBe("https://example.dev/");
   });
 
-  it("normalizes registry URLs and enforces trailing slash", () => {
+  it("normalizes registry URLs with trailing slash", () => {
+    // Paths are preserved, trailing slash is ensured
     expect(normalizeRegistryUrl("https://example.com/foo")).toBe(
       "https://example.com/foo/"
+    );
+    expect(normalizeRegistryUrl("https://example.com/custom/")).toBe(
+      "https://example.com/custom/"
+    );
+    expect(normalizeRegistryUrl("https://example.com")).toBe(
+      "https://example.com/"
+    );
+    expect(normalizeRegistryUrl("https://example.com/")).toBe(
+      "https://example.com/"
     );
 
     expect(() => normalizeRegistryUrl("not-a-url")).toThrowError(

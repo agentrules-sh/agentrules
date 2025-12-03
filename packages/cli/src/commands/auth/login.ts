@@ -66,14 +66,14 @@ export async function login(options: LoginOptions = {}): Promise<LoginResult> {
     throw new Error("App context not initialized");
   }
 
-  const { apiUrl } = ctx.registry;
-  log.debug(`Authenticating with ${apiUrl}`);
+  const { url: registryUrl } = ctx.registry;
+  log.debug(`Authenticating with ${registryUrl}`);
 
   try {
     // Step 1: Request device code
     log.debug("Requesting device code");
     const codeResult = await requestDeviceCode({
-      issuer: apiUrl,
+      issuer: registryUrl,
       clientId: CLIENT_ID,
     });
 
@@ -127,7 +127,7 @@ export async function login(options: LoginOptions = {}): Promise<LoginResult> {
     const token = pollResult.token.access_token;
 
     log.debug("Fetching user info");
-    const session = await fetchSession(apiUrl, token);
+    const session = await fetchSession(registryUrl, token);
     const user = session?.user;
     const sessionExpiresAt = session?.session?.expiresAt;
 
@@ -141,7 +141,7 @@ export async function login(options: LoginOptions = {}): Promise<LoginResult> {
         : undefined);
 
     log.debug("Saving credentials");
-    await saveCredentials(apiUrl, {
+    await saveCredentials(registryUrl, {
       token,
       expiresAt,
       userId: user?.id,

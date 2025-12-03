@@ -22,8 +22,8 @@ export type {
 // Configuration
 // =============================================================================
 
-const DEFAULT_DEVICE_AUTHORIZATION_ENDPOINT = "/api/auth/device/code";
-const DEFAULT_TOKEN_ENDPOINT = "/api/auth/device/token";
+const DEFAULT_DEVICE_AUTHORIZATION_ENDPOINT = "api/auth/device/code";
+const DEFAULT_TOKEN_ENDPOINT = "api/auth/device/token";
 
 export type DeviceCodeRequestOptions = {
   /** The authorization server's issuer URL */

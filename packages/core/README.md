@@ -74,10 +74,10 @@ import {
   resolveRegistryEntry,
 } from "@agentrules/core";
 
-const index = await fetchRegistryIndex("https://agentrules.directory/r/");
+const index = await fetchRegistryIndex("https://agentrules.directory/");
 const entry = resolveRegistryEntry(index, "agentic-dev-starter", "opencode");
-const { bundle } = await fetchRegistryBundle(
-  "https://agentrules.directory/r/",
+const bundle = await fetchRegistryBundle(
+  "https://agentrules.directory/",
   entry.bundlePath
 );
 ```

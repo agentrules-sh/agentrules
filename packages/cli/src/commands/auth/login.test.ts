@@ -14,7 +14,7 @@ const originalFetch = globalThis.fetch;
 let homeDir: string;
 let originalHome: string | undefined;
 
-const DEFAULT_API_URL = "https://agentrules.directory";
+const DEFAULT_REGISTRY_URL = "https://agentrules.directory/";
 
 describe("login", () => {
   beforeEach(async () => {
@@ -41,8 +41,8 @@ describe("login", () => {
         userName: "Existing User",
         userEmail: "existing@example.com",
       };
-      await saveCredentials(DEFAULT_API_URL, credentials);
-      await initAppContext({ apiUrl: DEFAULT_API_URL });
+      await saveCredentials(DEFAULT_REGISTRY_URL, credentials);
+      await initAppContext({ url: DEFAULT_REGISTRY_URL });
 
       mockDeviceCodeFlow({
         deviceCode: "test-device-code",
@@ -59,14 +59,14 @@ describe("login", () => {
       expect(result.success).toBeTrue();
       expect(result.user?.name).toBe("New User");
 
-      const stored = await getCredentials(DEFAULT_API_URL);
+      const stored = await getCredentials(DEFAULT_REGISTRY_URL);
       expect(stored?.token).toBe("new-access-token");
     });
   });
 
   describe("device code flow", () => {
     it("completes successful login flow", async () => {
-      await initAppContext({ apiUrl: DEFAULT_API_URL });
+      await initAppContext({ url: DEFAULT_REGISTRY_URL });
 
       mockDeviceCodeFlow({
         deviceCode: "test-device-code",
@@ -97,7 +97,7 @@ describe("login", () => {
       expect(result.user?.email).toBe("test@example.com");
 
       // Verify credentials were saved
-      const stored = await getCredentials(DEFAULT_API_URL);
+      const stored = await getCredentials(DEFAULT_REGISTRY_URL);
       expect(stored?.token).toBe("new-access-token");
 
       // Verify callbacks were called
@@ -106,11 +106,11 @@ describe("login", () => {
     });
 
     it("handles device code start failure", async () => {
-      await initAppContext({ apiUrl: DEFAULT_API_URL });
+      await initAppContext({ url: DEFAULT_REGISTRY_URL });
 
       mockFetchSequence([
         {
-          url: `${DEFAULT_API_URL}/api/auth/device/code`,
+          url: `${DEFAULT_REGISTRY_URL}api/auth/device/code`,
           handler: () => ({
             status: 500,
             body: { error: "server_error", error_description: "Server error" },
@@ -126,12 +126,12 @@ describe("login", () => {
     });
 
     it("handles authorization pending then success", async () => {
-      await initAppContext({ apiUrl: DEFAULT_API_URL });
+      await initAppContext({ url: DEFAULT_REGISTRY_URL });
 
       let pollCount = 0;
       mockFetchSequence([
         {
-          url: `${DEFAULT_API_URL}/api/auth/device/code`,
+          url: `${DEFAULT_REGISTRY_URL}api/auth/device/code`,
           handler: () => ({
             status: 200,
             body: {
@@ -146,7 +146,7 @@ describe("login", () => {
           }),
         },
         {
-          url: `${DEFAULT_API_URL}/api/auth/device/token`,
+          url: `${DEFAULT_REGISTRY_URL}api/auth/device/token`,
           handler: () => {
             pollCount += 1;
             if (pollCount < 2) {
@@ -166,7 +166,7 @@ describe("login", () => {
           },
         },
         {
-          url: `${DEFAULT_API_URL}/api/auth/get-session`,
+          url: `${DEFAULT_REGISTRY_URL}api/auth/get-session`,
           handler: () => ({
             status: 200,
             body: {
@@ -193,11 +193,11 @@ describe("login", () => {
     });
 
     it("handles expired device code", async () => {
-      await initAppContext({ apiUrl: DEFAULT_API_URL });
+      await initAppContext({ url: DEFAULT_REGISTRY_URL });
 
       mockFetchSequence([
         {
-          url: `${DEFAULT_API_URL}/api/auth/device/code`,
+          url: `${DEFAULT_REGISTRY_URL}api/auth/device/code`,
           handler: () => ({
             status: 200,
             body: {
@@ -212,7 +212,7 @@ describe("login", () => {
           }),
         },
         {
-          url: `${DEFAULT_API_URL}/api/auth/device/token`,
+          url: `${DEFAULT_REGISTRY_URL}api/auth/device/token`,
           handler: () => ({
             status: 400,
             body: { error: "expired_token" },
@@ -231,12 +231,12 @@ describe("login", () => {
     });
 
     it("uses custom API URL when provided", async () => {
-      const customUrl = "https://custom.example.com";
-      await initAppContext({ apiUrl: customUrl });
+      const customUrl = "https://custom.example.com/";
+      await initAppContext({ url: customUrl });
 
       mockFetchSequence([
         {
-          url: `${customUrl}/api/auth/device/code`,
+          url: `${customUrl}api/auth/device/code`,
           handler: () => ({
             status: 200,
             body: {
@@ -250,7 +250,7 @@ describe("login", () => {
           }),
         },
         {
-          url: `${customUrl}/api/auth/device/token`,
+          url: `${customUrl}api/auth/device/token`,
           handler: () => ({
             status: 200,
             body: {
@@ -261,7 +261,7 @@ describe("login", () => {
           }),
         },
         {
-          url: `${customUrl}/api/auth/get-session`,
+          url: `${customUrl}api/auth/get-session`,
           handler: () => ({
             status: 200,
             body: {
@@ -292,11 +292,11 @@ describe("login", () => {
 
   describe("error handling", () => {
     it("returns error in result on failure", async () => {
-      await initAppContext({ apiUrl: DEFAULT_API_URL });
+      await initAppContext({ url: DEFAULT_REGISTRY_URL });
 
       mockFetchSequence([
         {
-          url: `${DEFAULT_API_URL}/api/auth/device/code`,
+          url: `${DEFAULT_REGISTRY_URL}api/auth/device/code`,
           handler: () => {
             throw new Error("Network failure");
           },
@@ -372,21 +372,21 @@ type DeviceFlowOptions = {
 function mockDeviceCodeFlow(options: DeviceFlowOptions) {
   mockFetchSequence([
     {
-      url: `${DEFAULT_API_URL}/api/auth/device/code`,
+      url: `${DEFAULT_REGISTRY_URL}api/auth/device/code`,
       handler: () => ({
         status: 200,
         body: {
           device_code: options.deviceCode,
           user_code: options.userCode,
-          verification_uri: `${DEFAULT_API_URL}/auth/device`,
-          verification_uri_complete: `${DEFAULT_API_URL}/auth/device?code=${options.userCode}`,
+          verification_uri: `${DEFAULT_REGISTRY_URL}/auth/device`,
+          verification_uri_complete: `${DEFAULT_REGISTRY_URL}/auth/device?code=${options.userCode}`,
           expires_in: 300,
           interval: 0.01, // Very short interval for testing
         },
       }),
     },
     {
-      url: `${DEFAULT_API_URL}/api/auth/device/token`,
+      url: `${DEFAULT_REGISTRY_URL}api/auth/device/token`,
       handler: () => ({
         status: 200,
         body: {
@@ -397,7 +397,7 @@ function mockDeviceCodeFlow(options: DeviceFlowOptions) {
       }),
     },
     {
-      url: `${DEFAULT_API_URL}/api/auth/get-session`,
+      url: `${DEFAULT_REGISTRY_URL}api/auth/get-session`,
       handler: () => ({
         status: 200,
         body: {

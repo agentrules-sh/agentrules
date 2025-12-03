@@ -83,14 +83,14 @@ export async function unpublish(
     };
   }
 
-  log.debug(`Authenticated, unpublishing from ${ctx.registry.apiUrl}`);
+  log.debug(`Authenticated, unpublishing from ${ctx.registry.url}`);
 
   const spinner = await log.spinner(
     `Unpublishing ${ui.code(slug)}.${platform} ${ui.version(version)}...`
   );
 
   const result = await unpublishPreset(
-    ctx.registry.apiUrl,
+    ctx.registry.url,
     ctx.credentials.token,
     slug,
     platform,

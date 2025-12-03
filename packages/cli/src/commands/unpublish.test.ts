@@ -10,21 +10,21 @@ const originalFetch = globalThis.fetch;
 let homeDir: string;
 let originalHome: string | undefined;
 
-const DEFAULT_API_URL = "https://agentrules.directory";
+const DEFAULT_REGISTRY_URL = "https://agentrules.directory/";
 
 /**
  * Sets up a logged-in context for testing
  */
 async function setupLoggedInContext(token = "test-token") {
-  await saveCredentials(DEFAULT_API_URL, { token });
-  await initAppContext({ apiUrl: DEFAULT_API_URL });
+  await saveCredentials(DEFAULT_REGISTRY_URL, { token });
+  await initAppContext({ url: DEFAULT_REGISTRY_URL });
 }
 
 /**
  * Sets up a logged-out context for testing
  */
 async function setupLoggedOutContext() {
-  await initAppContext({ apiUrl: DEFAULT_API_URL });
+  await initAppContext({ url: DEFAULT_REGISTRY_URL });
 }
 
 describe("unpublish", () => {
@@ -100,7 +100,7 @@ describe("unpublish", () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_API_URL}/api/presets/my-preset/opencode/1.0`,
+      url: `${DEFAULT_REGISTRY_URL}api/presets/my-preset/opencode/1.0`,
       method: "DELETE",
       response: {
         slug: "my-preset",
@@ -125,7 +125,7 @@ describe("unpublish", () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_API_URL}/api/presets/nonexistent/opencode/1.0`,
+      url: `${DEFAULT_REGISTRY_URL}api/presets/nonexistent/opencode/1.0`,
       method: "DELETE",
       status: 404,
       response: {
@@ -147,7 +147,7 @@ describe("unpublish", () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_API_URL}/api/presets/not-yours/opencode/1.0`,
+      url: `${DEFAULT_REGISTRY_URL}api/presets/not-yours/opencode/1.0`,
       method: "DELETE",
       status: 403,
       response: {
@@ -181,13 +181,13 @@ describe("unpublish", () => {
   });
 
   it("uses custom API URL from registry config", async () => {
-    const customUrl = "https://custom.example.com";
+    const customUrl = "https://custom.example.com/";
     await saveCredentials(customUrl, { token: "custom-token" });
-    await initAppContext({ apiUrl: customUrl });
+    await initAppContext({ url: customUrl });
 
     let calledUrl = "";
     mockFetch({
-      url: `${customUrl}/api/presets/custom-preset/opencode/1.0`,
+      url: `${customUrl}api/presets/custom-preset/opencode/1.0`,
       method: "DELETE",
       response: {
         slug: "custom-preset",
@@ -214,7 +214,7 @@ describe("unpublish", () => {
 
     let capturedHeaders: Headers | Record<string, string> | undefined;
     mockFetch({
-      url: `${DEFAULT_API_URL}/api/presets/auth-test/opencode/1.0`,
+      url: `${DEFAULT_REGISTRY_URL}api/presets/auth-test/opencode/1.0`,
       method: "DELETE",
       response: {
         slug: "auth-test",
@@ -246,7 +246,7 @@ describe("unpublish", () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_API_URL}/api/presets/error-preset/opencode/1.0`,
+      url: `${DEFAULT_REGISTRY_URL}api/presets/error-preset/opencode/1.0`,
       method: "DELETE",
       status: 500,
       response: {
@@ -269,7 +269,7 @@ describe("unpublish", () => {
 
     let calledUrl = "";
     mockFetch({
-      url: `${DEFAULT_API_URL}/api/presets/my%2Fslug/opencode/1.0`,
+      url: `${DEFAULT_REGISTRY_URL}api/presets/my%2Fslug/opencode/1.0`,
       method: "DELETE",
       response: {
         slug: "my/slug",

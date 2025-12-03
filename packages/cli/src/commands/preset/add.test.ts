@@ -32,7 +32,7 @@ type MockStep = {
 const PRESET_SLUG = "agentic-dev-starter";
 const PLATFORM: PlatformId = "opencode";
 const TITLE = "Agentic Dev Starter Kit";
-const DEFAULT_BASE_URL = "https://agentrules.directory/r/";
+const DEFAULT_BASE_URL = "https://agentrules.directory/";
 
 const originalFetch = globalThis.fetch;
 let originalCwd: string;
@@ -244,7 +244,7 @@ describe("addPreset", () => {
   });
 
   it("uses registryAlias overrides for alternate base URLs", async () => {
-    const altUrl = "https://alt.example/r/";
+    const altUrl = "https://alt.example/";
     const config = await loadConfig();
     config.registries.alt = {
       url: altUrl,
@@ -269,13 +269,14 @@ describe("addPreset", () => {
 });
 
 function mockPresetRequests(baseUrl: string, fixture: FixturePayload) {
+  // Core adds "r/" prefix to content paths
   const steps: MockStep[] = [
     {
-      expectUrl: new URL("registry.index.json", baseUrl).toString(),
+      expectUrl: new URL("r/registry.index.json", baseUrl).toString(),
       body: fixture.index,
     },
     {
-      expectUrl: new URL(fixture.entry.bundlePath, baseUrl).toString(),
+      expectUrl: new URL(`r/${fixture.entry.bundlePath}`, baseUrl).toString(),
       body: fixture.bundle,
     },
   ];

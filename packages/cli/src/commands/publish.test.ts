@@ -14,7 +14,7 @@ let testDir: string;
 let homeDir: string;
 let originalHome: string | undefined;
 
-const DEFAULT_API_URL = "https://agentrules.directory";
+const DEFAULT_REGISTRY_URL = "https://agentrules.directory/";
 
 const VALID_CONFIG = {
   $schema: "https://agentrules.directory/schema/agentrules.json",
@@ -57,15 +57,15 @@ async function createValidPreset(
  * Sets up a logged-in context for testing
  */
 async function setupLoggedInContext(token = "test-token") {
-  await saveCredentials(DEFAULT_API_URL, { token });
-  await initAppContext({ apiUrl: DEFAULT_API_URL });
+  await saveCredentials(DEFAULT_REGISTRY_URL, { token });
+  await initAppContext({ url: DEFAULT_REGISTRY_URL });
 }
 
 /**
  * Sets up a logged-out context for testing
  */
 async function setupLoggedOutContext() {
-  await initAppContext({ apiUrl: DEFAULT_API_URL });
+  await initAppContext({ url: DEFAULT_REGISTRY_URL });
 }
 
 describe("publish", () => {
@@ -111,7 +111,7 @@ describe("publish", () => {
     const presetDir = await createValidPreset(testDir, "my-preset");
 
     mockFetch({
-      url: `${DEFAULT_API_URL}/api/presets`,
+      url: `${DEFAULT_REGISTRY_URL}api/presets`,
       method: "POST",
       response: {
         presetId: "preset-123",
@@ -144,7 +144,7 @@ describe("publish", () => {
     const presetDir = await createValidPreset(testDir, "error-preset");
 
     mockFetch({
-      url: `${DEFAULT_API_URL}/api/presets`,
+      url: `${DEFAULT_REGISTRY_URL}api/presets`,
       method: "POST",
       status: 409,
       response: {
@@ -172,15 +172,15 @@ describe("publish", () => {
   });
 
   it("uses custom API URL from config", async () => {
-    const customUrl = "https://custom.example.com";
+    const customUrl = "https://custom.example.com/";
     await saveCredentials(customUrl, { token: "custom-token" });
-    await initAppContext({ apiUrl: customUrl });
+    await initAppContext({ url: customUrl });
 
     const presetDir = await createValidPreset(testDir, "custom-url-preset");
 
     let calledUrl = "";
     mockFetch({
-      url: `${customUrl}/api/presets`,
+      url: `${customUrl}api/presets`,
       method: "POST",
       response: {
         presetId: "preset-123",
@@ -210,7 +210,7 @@ describe("publish", () => {
 
     let capturedHeaders: Headers | undefined;
     mockFetch({
-      url: `${DEFAULT_API_URL}/api/presets`,
+      url: `${DEFAULT_REGISTRY_URL}api/presets`,
       method: "POST",
       response: {
         presetId: "preset-123",
@@ -244,7 +244,7 @@ describe("publish", () => {
 
     let sentBody: unknown;
     mockFetch({
-      url: `${DEFAULT_API_URL}/api/presets`,
+      url: `${DEFAULT_REGISTRY_URL}api/presets`,
       method: "POST",
       response: {
         presetId: "preset-123",
@@ -294,7 +294,7 @@ describe("publish", () => {
     );
 
     mockFetch({
-      url: `${DEFAULT_API_URL}/api/presets`,
+      url: `${DEFAULT_REGISTRY_URL}api/presets`,
       method: "POST",
       status: 400,
       response: {
@@ -322,7 +322,7 @@ describe("publish", () => {
 
       let apiCalled = false;
       mockFetch({
-        url: `${DEFAULT_API_URL}/api/presets`,
+        url: `${DEFAULT_REGISTRY_URL}api/presets`,
         method: "POST",
         response: {},
         onCall: () => {
@@ -417,7 +417,7 @@ describe("publish", () => {
       const presetDir = await createValidPreset(testDir, "normal-size-preset");
 
       mockFetch({
-        url: `${DEFAULT_API_URL}/api/presets`,
+        url: `${DEFAULT_REGISTRY_URL}api/presets`,
         method: "POST",
         response: {
           presetId: "preset-123",

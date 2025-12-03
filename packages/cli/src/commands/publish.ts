@@ -105,7 +105,7 @@ export async function publish(
   }
 
   if (!dryRun) {
-    log.debug(`Authenticated as user, publishing to ${ctx.registry.apiUrl}`);
+    log.debug(`Authenticated as user, publishing to ${ctx.registry.url}`);
   }
 
   const spinner = await log.spinner("Loading preset...");
@@ -218,7 +218,7 @@ export async function publish(
   }
 
   const result = await publishPreset(
-    ctx.registry.apiUrl,
+    ctx.registry.url,
     ctx.credentials.token,
     publishInput
   );

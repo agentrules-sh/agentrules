@@ -13,10 +13,10 @@ import { log } from "@/lib/log";
 
 export const PRESET_ENDPOINTS = {
   /** Publish a preset. POST with PublishInput body (no version - registry assigns). */
-  PUBLISH: "/api/presets",
+  PUBLISH: "api/presets",
   /** Unpublish a preset version. DELETE with slug/platform/version in path. */
   UNPUBLISH: (slug: string, platform: string, version: string) =>
-    `/api/presets/${encodeURIComponent(slug)}/${encodeURIComponent(platform)}/${encodeURIComponent(version)}`,
+    `api/presets/${encodeURIComponent(slug)}/${encodeURIComponent(platform)}/${encodeURIComponent(version)}`,
 } as const;
 
 // =============================================================================

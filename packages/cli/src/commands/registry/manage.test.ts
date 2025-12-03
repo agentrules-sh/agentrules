@@ -31,8 +31,8 @@ describe("registry module", () => {
   });
 
   it("adds registries and lists them alphabetically", async () => {
-    await addRegistry("dev", "https://example.dev/r");
-    await addRegistry("beta", "https://beta.dev/r", { makeDefault: true });
+    await addRegistry("dev", "https://example.dev/");
+    await addRegistry("beta", "https://beta.dev/", { makeDefault: true });
 
     const registries = await listRegistries();
     const aliases = registries.map((entry) => entry.alias);
@@ -42,7 +42,7 @@ describe("registry module", () => {
   });
 
   it("prevents removing the default without allowDefaultRemoval", async () => {
-    await addRegistry("staging", "https://staging.dev/r", {
+    await addRegistry("staging", "https://staging.dev/", {
       makeDefault: true,
     });
 
@@ -60,8 +60,8 @@ describe("registry module", () => {
   });
 
   it("switches active registry", async () => {
-    await addRegistry("prod", "https://prod.dev/r", { makeDefault: true });
-    await addRegistry("dev", "https://example.dev/r");
+    await addRegistry("prod", "https://prod.dev/", { makeDefault: true });
+    await addRegistry("dev", "https://example.dev/");
 
     await useRegistry("dev");
     const registries = await listRegistries();

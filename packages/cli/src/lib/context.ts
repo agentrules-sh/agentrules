@@ -8,7 +8,7 @@
 
 import { normalizeAlias } from "@/commands/registry/manage";
 import { fetchSession } from "./api";
-import { type Config, loadConfig } from "./config";
+import { type Config, loadConfig, normalizeRegistryUrl } from "./config";
 import {
   getCredentials,
   type RegistryCredentials,
@@ -27,12 +27,15 @@ export type AppUser = {
 
 /**
  * Active registry information
+ *
+ * Registry URL conventions:
+ * - API endpoints: {url}api/*
+ * - Static content: {url}r/*
  */
 export type AppRegistry = {
   alias: string;
+  /** Registry base URL with trailing slash (e.g., "https://agentrules.directory/") */
   url: string;
-  /** Base API URL (origin) for auth endpoints */
-  apiUrl: string;
 };
 
 /**
@@ -52,8 +55,8 @@ export type AppContext = {
 };
 
 export type CreateAppContextOptions = {
-  /** Explicit API URL (overrides registry resolution) */
-  apiUrl?: string;
+  /** Explicit registry URL (overrides registry resolution) */
+  url?: string;
   /** Registry alias to use instead of default */
   registryAlias?: string;
 };
@@ -65,20 +68,20 @@ export type CreateAppContextOptions = {
 export async function createAppContext(
   options: CreateAppContextOptions = {}
 ): Promise<AppContext> {
-  const { apiUrl: explicitApiUrl, registryAlias } = options;
+  const { url: explicitUrl, registryAlias } = options;
 
   // Load config once
   log.debug("Loading app context");
   const config = await loadConfig();
 
   // Resolve active registry: explicit URL > alias > default
-  const registry = explicitApiUrl
-    ? resolveExplicitUrl(explicitApiUrl)
+  const registry = explicitUrl
+    ? resolveExplicitUrl(explicitUrl)
     : resolveRegistry(config, registryAlias);
   log.debug(`Active registry: ${registry.alias} → ${registry.url}`);
 
   // Get credentials for active registry
-  const credentials = await getCredentials(registry.apiUrl);
+  const credentials = await getCredentials(registry.url);
   const isLoggedIn = credentials !== null;
 
   // Get user info
@@ -97,7 +100,7 @@ export async function createAppContext(
       // Fetch from server if not cached (e.g., credentials file was corrupted)
       log.debug("Fetching user info from server");
       try {
-        const session = await fetchSession(registry.apiUrl, credentials.token);
+        const session = await fetchSession(registry.url, credentials.token);
         if (session?.user) {
           user = {
             id: session.user.id,
@@ -105,7 +108,7 @@ export async function createAppContext(
             email: session.user.email,
           };
           // Cache it so we don't fetch again
-          await saveCredentials(registry.apiUrl, {
+          await saveCredentials(registry.url, {
             ...credentials,
             userId: session.user.id,
             userName: session.user.name,
@@ -138,13 +141,11 @@ export async function createAppContext(
  * Resolves registry from an explicit URL (bypasses config).
  */
 function resolveExplicitUrl(url: string): AppRegistry {
-  const parsed = new URL(url);
-  const apiUrl = parsed.origin;
+  const normalizedUrl = normalizeRegistryUrl(url);
 
   return {
-    alias: apiUrl, // Use URL as alias for explicit URLs
-    url,
-    apiUrl,
+    alias: normalizedUrl, // Use normalized URL as alias for explicit URLs
+    url: normalizedUrl,
   };
 }
 
@@ -160,13 +161,9 @@ export function resolveRegistry(config: Config, alias?: string): AppRegistry {
     throw new Error(`Registry "${targetAlias}" is not defined.`);
   }
 
-  // Extract base URL (origin) for auth - registry URL may have path like /r/
-  const apiUrl = new URL(entry.url).origin;
-
   return {
     alias: targetAlias,
     url: entry.url,
-    apiUrl,
   };
 }
 

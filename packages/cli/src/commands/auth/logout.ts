@@ -39,14 +39,14 @@ export async function logout(
     throw new Error("App context not initialized");
   }
 
-  const { apiUrl } = ctx.registry;
+  const { url: registryUrl } = ctx.registry;
   const hadCredentials = ctx.credentials !== null;
 
   if (hadCredentials) {
-    log.debug(`Clearing credentials for ${apiUrl}`);
-    await clearCredentials(apiUrl);
+    log.debug(`Clearing credentials for ${registryUrl}`);
+    await clearCredentials(registryUrl);
   } else {
-    log.debug(`No credentials found for ${apiUrl}`);
+    log.debug(`No credentials found for ${registryUrl}`);
   }
 
   return { success: true, hadCredentials };

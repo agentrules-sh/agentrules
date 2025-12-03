@@ -47,14 +47,14 @@ program
     // Get command-specific options for context initialization
     const actionOpts = actionCommand.opts() as {
       registry?: string;
-      apiUrl?: string;
+      url?: string;
     };
 
     // Initialize app context with command options
     try {
       await initAppContext({
         registryAlias: actionOpts.registry,
-        apiUrl: actionOpts.apiUrl,
+        url: actionOpts.url,
       });
     } catch (error) {
       // Context init can fail if config doesn't exist yet - that's fine
@@ -469,7 +469,7 @@ registry
 program
   .command("login")
   .description("Authenticate with the registry")
-  .option("--api-url <url>", "API URL")
+  .option("--url <url>", "Registry URL")
   .option("--no-browser", "Skip opening browser")
   .action(
     handle(async (options) => {
@@ -574,8 +574,8 @@ program
         log.print(ui.keyValue("Name", result.user.name));
         log.print(ui.keyValue("Email", result.user.email));
       }
-      if (result.apiUrl) {
-        log.print(ui.keyValue("Registry", result.apiUrl));
+      if (result.registryUrl) {
+        log.print(ui.keyValue("Registry", result.registryUrl));
       }
       if (result.expiresAt) {
         const expiresDate = new Date(result.expiresAt);

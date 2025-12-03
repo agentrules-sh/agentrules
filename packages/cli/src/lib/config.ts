@@ -8,7 +8,7 @@ const CONFIG_DIRNAME = ".agentrules";
 const CONFIG_FILENAME = "config.json";
 const CONFIG_HOME_ENV = "AGENT_RULES_HOME";
 export const DEFAULT_REGISTRY_ALIAS = "main";
-const DEFAULT_REGISTRY_URL = "https://agentrules.directory/r/";
+const DEFAULT_REGISTRY_URL = "https://agentrules.directory/";
 
 export type RegistrySettings = {
   url: string;
@@ -81,13 +81,26 @@ export function getConfigDir() {
   return join(homedir(), CONFIG_DIRNAME);
 }
 
+/**
+ * Normalizes a registry URL to a base URL with trailing slash.
+ *
+ * The base URL is used for all registry operations:
+ * - API endpoints: {baseUrl}api/*
+ * - Static content: {baseUrl}r/*
+ *
+ * Examples:
+ * - "https://example.com" → "https://example.com/"
+ * - "https://example.com/custom/" → "https://example.com/custom/"
+ * - "https://example.com/custom" → "https://example.com/custom/"
+ */
 export function normalizeRegistryUrl(input: string) {
   try {
-    const normalized = new URL(input);
-    if (!normalized.pathname.endsWith("/")) {
-      normalized.pathname = `${normalized.pathname}/`;
+    const parsed = new URL(input);
+    // Ensure trailing slash for proper URL joining
+    if (!parsed.pathname.endsWith("/")) {
+      parsed.pathname = `${parsed.pathname}/`;
     }
-    return normalized.toString();
+    return parsed.toString();
   } catch (error) {
     throw new Error(
       `Invalid registry URL "${input}": ${(error as Error).message}`

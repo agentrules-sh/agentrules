@@ -6,10 +6,21 @@ import {
   type RegistryIndex,
 } from "../types";
 
+/**
+ * Convention: Registry static content is served at {baseUrl}r/
+ */
+const REGISTRY_CONTENT_PATH = "r/";
+
+/**
+ * Fetches the registry index from {baseUrl}r/registry.index.json
+ */
 export async function fetchRegistryIndex(
   baseUrl: string
 ): Promise<RegistryIndex> {
-  const indexUrl = new URL("registry.index.json", baseUrl);
+  const indexUrl = new URL(
+    `${REGISTRY_CONTENT_PATH}registry.index.json`,
+    baseUrl
+  );
   const response = await fetch(indexUrl);
   if (!response.ok) {
     throw new Error(
@@ -26,11 +37,14 @@ export async function fetchRegistryIndex(
   }
 }
 
+/**
+ * Fetches a preset bundle from {baseUrl}r/{bundlePath}
+ */
 export async function fetchRegistryBundle(
   baseUrl: string,
   bundlePath: string
 ): Promise<RegistryBundle> {
-  const bundleUrl = new URL(bundlePath, baseUrl);
+  const bundleUrl = new URL(`${REGISTRY_CONTENT_PATH}${bundlePath}`, baseUrl);
   const response = await fetch(bundleUrl);
   if (!response.ok) {
     throw new Error(

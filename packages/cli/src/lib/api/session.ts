@@ -14,7 +14,7 @@ import { buildUrl } from "@/lib/url";
 
 export const AUTH_ENDPOINTS = {
   /** Get current session and user info. */
-  GET_SESSION: "/api/auth/get-session",
+  GET_SESSION: "api/auth/get-session",
 } as const;
 
 // =============================================================================

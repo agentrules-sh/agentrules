@@ -10,7 +10,7 @@ const originalFetch = globalThis.fetch;
 let homeDir: string;
 let originalHome: string | undefined;
 
-const DEFAULT_API_URL = "https://agentrules.directory";
+const DEFAULT_REGISTRY_URL = "https://agentrules.directory/";
 
 describe("whoami", () => {
   beforeEach(async () => {
@@ -30,14 +30,14 @@ describe("whoami", () => {
   });
 
   it("returns not logged in when no credentials exist", async () => {
-    await initAppContext({ apiUrl: DEFAULT_API_URL });
+    await initAppContext({ url: DEFAULT_REGISTRY_URL });
 
     const result = await whoami();
 
     expect(result.success).toBeTrue();
     expect(result.loggedIn).toBeFalse();
     expect(result.user).toBeUndefined();
-    expect(result.apiUrl).toBe(DEFAULT_API_URL);
+    expect(result.registryUrl).toBe(DEFAULT_REGISTRY_URL);
   });
 
   it("returns cached user info when available in credentials", async () => {
@@ -48,8 +48,8 @@ describe("whoami", () => {
       userName: "Test User",
       userEmail: "test@example.com",
     };
-    await saveCredentials(DEFAULT_API_URL, credentials);
-    await initAppContext({ apiUrl: DEFAULT_API_URL });
+    await saveCredentials(DEFAULT_REGISTRY_URL, credentials);
+    await initAppContext({ url: DEFAULT_REGISTRY_URL });
 
     const result = await whoami();
 
@@ -58,7 +58,7 @@ describe("whoami", () => {
     expect(result.user?.id).toBe("user-123");
     expect(result.user?.name).toBe("Test User");
     expect(result.user?.email).toBe("test@example.com");
-    expect(result.apiUrl).toBe(DEFAULT_API_URL);
+    expect(result.registryUrl).toBe(DEFAULT_REGISTRY_URL);
     expect(result.expiresAt).toBe(credentials.expiresAt);
   });
 
@@ -67,9 +67,9 @@ describe("whoami", () => {
       token: "test-token",
       expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
     };
-    await saveCredentials(DEFAULT_API_URL, credentials);
+    await saveCredentials(DEFAULT_REGISTRY_URL, credentials);
     mockFetch({
-      url: `${DEFAULT_API_URL}/api/auth/get-session`,
+      url: `${DEFAULT_REGISTRY_URL}api/auth/get-session`,
       response: {
         user: {
           id: "fetched-user-123",
@@ -83,7 +83,7 @@ describe("whoami", () => {
         },
       },
     });
-    await initAppContext({ apiUrl: DEFAULT_API_URL });
+    await initAppContext({ url: DEFAULT_REGISTRY_URL });
 
     const result = await whoami();
 
@@ -99,29 +99,29 @@ describe("whoami", () => {
       token: "test-token",
       expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
     };
-    await saveCredentials(DEFAULT_API_URL, credentials);
+    await saveCredentials(DEFAULT_REGISTRY_URL, credentials);
     mockFetch({
-      url: `${DEFAULT_API_URL}/api/auth/get-session`,
+      url: `${DEFAULT_REGISTRY_URL}api/auth/get-session`,
       status: 401,
       response: { error: "unauthorized" },
     });
-    await initAppContext({ apiUrl: DEFAULT_API_URL });
+    await initAppContext({ url: DEFAULT_REGISTRY_URL });
 
     const result = await whoami();
 
     expect(result.success).toBeTrue();
     expect(result.loggedIn).toBeTrue();
     expect(result.user).toBeUndefined();
-    expect(result.apiUrl).toBe(DEFAULT_API_URL);
+    expect(result.registryUrl).toBe(DEFAULT_REGISTRY_URL);
   });
 
   it("fetches user info from server when token exists but user not cached", async () => {
     const credentials: RegistryCredentials = {
       token: "test-token",
     };
-    await saveCredentials(DEFAULT_API_URL, credentials);
+    await saveCredentials(DEFAULT_REGISTRY_URL, credentials);
     mockFetch({
-      url: `${DEFAULT_API_URL}/api/auth/get-session`,
+      url: `${DEFAULT_REGISTRY_URL}api/auth/get-session`,
       response: {
         user: {
           id: "user-123",
@@ -135,7 +135,7 @@ describe("whoami", () => {
         },
       },
     });
-    await initAppContext({ apiUrl: DEFAULT_API_URL });
+    await initAppContext({ url: DEFAULT_REGISTRY_URL });
 
     const result = await whoami();
 
@@ -148,33 +148,33 @@ describe("whoami", () => {
     const credentials: RegistryCredentials = {
       token: "test-token",
     };
-    await saveCredentials(DEFAULT_API_URL, credentials);
+    await saveCredentials(DEFAULT_REGISTRY_URL, credentials);
     mockFetchError("Network error");
-    await initAppContext({ apiUrl: DEFAULT_API_URL });
+    await initAppContext({ url: DEFAULT_REGISTRY_URL });
 
     const result = await whoami();
 
     expect(result.success).toBeTrue();
     expect(result.loggedIn).toBeTrue();
     expect(result.user).toBeUndefined();
-    expect(result.apiUrl).toBe(DEFAULT_API_URL);
+    expect(result.registryUrl).toBe(DEFAULT_REGISTRY_URL);
   });
 
-  it("checks credentials for specific registry when custom apiUrl used", async () => {
-    const customUrl = "https://custom.example.com";
+  it("checks credentials for specific registry when custom url used", async () => {
+    const customUrl = "https://custom.example.com/";
     await saveCredentials(customUrl, {
       token: "custom-token",
       userName: "Custom User",
       userEmail: "custom@example.com",
     });
-    await initAppContext({ apiUrl: customUrl });
+    await initAppContext({ url: customUrl });
 
     const result = await whoami();
 
     expect(result.success).toBeTrue();
     expect(result.loggedIn).toBeTrue();
     expect(result.user?.name).toBe("Custom User");
-    expect(result.apiUrl).toBe(customUrl);
+    expect(result.registryUrl).toBe(customUrl);
   });
 });
 
