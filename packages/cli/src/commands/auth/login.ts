@@ -33,6 +33,8 @@ export type LoginOptions = {
   onDeviceCode?: (data: DeviceCodeData) => void;
   /** Called after browser open attempt - true if opened, false if manual entry needed (essential for UX) */
   onBrowserOpen?: (opened: boolean) => void;
+  /** Called when polling starts - use to show a waiting indicator */
+  onPollingStart?: () => void;
 };
 
 export type LoginResult = {
@@ -52,7 +54,12 @@ export type LoginResult = {
  * Performs device code flow login to an agentrules registry.
  */
 export async function login(options: LoginOptions = {}): Promise<LoginResult> {
-  const { noBrowser = false, onDeviceCode, onBrowserOpen } = options;
+  const {
+    noBrowser = false,
+    onDeviceCode,
+    onBrowserOpen,
+    onPollingStart,
+  } = options;
 
   const ctx = useAppContext();
   if (!ctx) {
@@ -105,6 +112,8 @@ export async function login(options: LoginOptions = {}): Promise<LoginResult> {
 
     // Step 4: Poll for authorization
     log.debug("Waiting for user authorization");
+    onPollingStart?.();
+
     const pollResult = await pollForToken({
       config,
       deviceAuthorizationResponse: deviceAuthResponse,

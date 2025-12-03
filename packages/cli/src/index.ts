@@ -474,7 +474,7 @@ program
   .option("--no-browser", "Skip opening browser")
   .action(
     handle(async (options) => {
-      const spinner = await log.spinner("Authenticating...");
+      let spinner = await log.spinner("Authenticating...");
 
       const result = await login({
         noBrowser: options.browser === false,
@@ -505,6 +505,9 @@ program
           }
           log.print("");
         },
+        onPollingStart: async () => {
+          spinner = await log.spinner("Waiting for authorization...");
+        },
       });
 
       if (!result.success) {
@@ -513,7 +516,7 @@ program
         return;
       }
 
-      log.success("Logged in");
+      spinner.success("Logged in");
       if (result.user) {
         log.print(
           `${ui.indent()}${result.user.name} ${ui.muted(
