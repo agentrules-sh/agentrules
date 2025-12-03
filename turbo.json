@@ -6,7 +6,7 @@
       "outputs": []
     },
     "test": {
-      "dependsOn": ["^test"],
+      "dependsOn": ["^build"],
       "outputs": []
     },
     "build": {
@@ -14,7 +14,7 @@
       "outputs": []
     },
     "clean": {
-      "dependsOn": ["^clean"],
+      "dependsOn": [],
       "outputs": []
     }
   }
