@@ -25,7 +25,7 @@ export async function resolvePreset(
   version: string = LATEST_VERSION
 ): Promise<ResolvedPreset> {
   const apiUrl = new URL(
-    API_ENDPOINTS.presets.entry(slug, platform, version),
+    API_ENDPOINTS.presets.get(slug, platform, version),
     baseUrl
   );
 

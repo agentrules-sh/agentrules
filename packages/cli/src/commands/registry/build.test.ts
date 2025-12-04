@@ -81,7 +81,7 @@ describe("buildRegistry", () => {
 
     // Check API entry exists (now versioned)
     const apiEntryContent = await readFile(
-      join(outputDir, API_ENDPOINTS.presets.entry("test-preset", "opencode")),
+      join(outputDir, API_ENDPOINTS.presets.get("test-preset", "opencode")),
       "utf8"
     );
     const apiEntry = JSON.parse(apiEntryContent);
@@ -177,7 +177,7 @@ describe("buildRegistry", () => {
     });
 
     const content = await readFile(
-      join(outputDir, API_ENDPOINTS.presets.entry("test-preset", "opencode")),
+      join(outputDir, API_ENDPOINTS.presets.get("test-preset", "opencode")),
       "utf8"
     );
     expect(content).not.toContain("\n  ");
@@ -195,7 +195,7 @@ describe("buildRegistry", () => {
     });
 
     const content = await readFile(
-      join(outputDir, API_ENDPOINTS.presets.entry("test-preset", "opencode")),
+      join(outputDir, API_ENDPOINTS.presets.get("test-preset", "opencode")),
       "utf8"
     );
     const entry = JSON.parse(content);
@@ -217,7 +217,7 @@ describe("buildRegistry", () => {
     });
 
     const content = await readFile(
-      join(outputDir, API_ENDPOINTS.presets.entry("test-preset", "opencode")),
+      join(outputDir, API_ENDPOINTS.presets.get("test-preset", "opencode")),
       "utf8"
     );
     const entry = JSON.parse(content);

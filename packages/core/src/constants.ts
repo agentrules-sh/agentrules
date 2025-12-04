@@ -23,8 +23,8 @@ export const API_ENDPOINTS = {
   presets: {
     /** Base path for preset operations */
     base: `${API_PATH}/presets`,
-    /** Get preset entry by version (defaults to "latest") */
-    entry: (slug: string, platform: string, version: string = LATEST_VERSION) =>
+    /** Get preset by slug, platform, and version (defaults to "latest") */
+    get: (slug: string, platform: string, version: string = LATEST_VERSION) =>
       `${API_PATH}/presets/${encodeURIComponent(slug)}/${encodeURIComponent(platform)}/${encodeURIComponent(version)}`,
     /** Unpublish preset version */
     unpublish: (slug: string, platform: string, version: string) =>
