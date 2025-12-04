@@ -138,20 +138,6 @@ describe("validatePreset", () => {
     expect(result.errors.length).toBeGreaterThan(0);
   });
 
-  it("warns when name doesn't match directory", async () => {
-    const presetDir = join(testDir, "different-name");
-    await mkdir(presetDir, { recursive: true });
-    await mkdir(join(presetDir, "files"), { recursive: true });
-
-    const config = { ...VALID_CONFIG, name: "mismatched-name" };
-    await writeFile(join(presetDir, "agentrules.json"), JSON.stringify(config));
-
-    const result = await validatePreset({ path: presetDir });
-
-    expect(result.valid).toBeTrue();
-    expect(result.warnings.some((w) => w.includes("doesn't match"))).toBeTrue();
-  });
-
   it("accepts direct path to agentrules.json", async () => {
     const presetDir = join(testDir, "direct-path");
     await mkdir(presetDir, { recursive: true });

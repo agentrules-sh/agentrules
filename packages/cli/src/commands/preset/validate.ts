@@ -6,7 +6,7 @@ import {
   validatePresetConfig,
 } from "@agentrules/core";
 import { readFile } from "fs/promises";
-import { basename, dirname, join } from "path";
+import { dirname, join } from "path";
 import { directoryExists } from "@/lib/fs";
 import { log } from "@/lib/log";
 import { resolveConfigPath } from "@/lib/preset-utils";
@@ -51,12 +51,9 @@ export async function validatePreset(
     return { valid: false, configPath, preset: null, errors, warnings };
   }
 
-  const slug = basename(dirname(configPath));
-  log.debug(`Preset slug: ${slug}`);
-
   let preset: PresetConfig;
   try {
-    preset = validatePresetConfig(configJson, slug);
+    preset = validatePresetConfig(configJson, configPath);
     log.debug("Preset config validation passed");
   } catch (e) {
     errors.push(e instanceof Error ? e.message : String(e));
@@ -66,13 +63,7 @@ export async function validatePreset(
     return { valid: false, configPath, preset: null, errors, warnings };
   }
 
-  // Check slug matches name
-  if (preset.name !== slug) {
-    warnings.push(
-      `Preset name "${preset.name}" doesn't match directory name "${slug}". ` +
-        "The directory name will be used as the slug."
-    );
-  }
+  log.debug(`Preset slug: ${preset.name}`);
 
   // Check platform
   const presetDir = dirname(configPath);
