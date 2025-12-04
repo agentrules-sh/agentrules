@@ -16,7 +16,7 @@
     },
     "packages/cli": {
       "name": "@agentrules/cli",
-      "version": "0.0.6",
+      "version": "0.0.7",
       "bin": {
         "agentrules": "./dist/index.js",
       },
@@ -35,7 +35,7 @@
     },
     "packages/core": {
       "name": "@agentrules/core",
-      "version": "0.0.6",
+      "version": "0.0.7",
       "dependencies": {
         "diff": "^8.0.2",
         "zod": "catalog:",
