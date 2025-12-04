@@ -8,7 +8,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!**/.vscode"]
+    "includes": ["**", "!node_modules", "!.source", "!.vscode"]
   },
   "formatter": {
     "enabled": true,
