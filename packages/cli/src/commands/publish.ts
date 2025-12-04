@@ -16,6 +16,7 @@ import {
 import { readdir, readFile } from "fs/promises";
 import { dirname, join, relative } from "path";
 import { publishPreset } from "@/lib/api/presets";
+import { validatePreset } from "@/commands/preset/validate";
 import { useAppContext } from "@/lib/context";
 import { directoryExists, fileExists } from "@/lib/fs";
 import { log } from "@/lib/log";
@@ -108,12 +109,26 @@ export async function publish(
     log.debug(`Authenticated as user, publishing to ${ctx.registry.url}`);
   }
 
-  const spinner = await log.spinner("Loading preset...");
+  const spinner = await log.spinner("Validating preset...");
 
-  // Resolve and load preset
+  // Resolve and validate preset first
   const configPath = await resolveConfigPath(path);
   const presetDir = dirname(configPath);
   log.debug(`Resolved config path: ${configPath}`);
+
+  const validation = await validatePreset({ path: configPath });
+  if (!validation.valid) {
+    spinner.fail("Validation failed");
+    for (const error of validation.errors) {
+      log.error(error);
+    }
+    return {
+      success: false,
+      error: validation.errors.join("; "),
+    };
+  }
+
+  spinner.update("Loading preset...");
 
   let presetInput: RegistryPresetInput;
   try {

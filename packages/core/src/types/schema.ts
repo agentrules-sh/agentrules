@@ -38,7 +38,7 @@ const majorVersionSchema = z
   .int()
   .positive("Major version must be a positive integer");
 const tagSchema = z.string().trim().min(1).max(48);
-const tagsSchema = z.array(tagSchema).max(10);
+const tagsSchema = z.array(tagSchema).min(1).max(10);
 const featureSchema = z.string().trim().min(1).max(160);
 const featuresSchema = z.array(featureSchema).max(10);
 const installMessageSchema = z.string().trim().max(4000);

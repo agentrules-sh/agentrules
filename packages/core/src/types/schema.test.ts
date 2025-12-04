@@ -337,7 +337,7 @@ describe("registryBundleSchema", () => {
     version: "1.0",
     description: "A test preset",
     license: "MIT",
-    tags: [],
+    tags: ["test"],
     files: [
       {
         path: "AGENT_RULES.md",
@@ -380,7 +380,7 @@ describe("registryEntrySchema", () => {
     version: "1.0",
     description: "A test preset",
     license: "MIT",
-    tags: [],
+    tags: ["test"],
     bundleUrl: `${STATIC_BUNDLE_DIR}/test-preset/opencode`,
     fileCount: 1,
     totalSize: 100,

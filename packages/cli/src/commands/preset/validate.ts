@@ -97,17 +97,19 @@ export async function validatePreset(
     f.startsWith("//")
   );
 
-  if (hasPlaceholderTags || hasPlaceholderFeatures) {
-    errors.push(
-      "Replace placeholder comments in tags/features before publishing."
-    );
-    log.debug("Found placeholder comments in tags or features");
+  // Tags are required
+  if (hasPlaceholderTags) {
+    errors.push("Replace placeholder comments in tags before publishing.");
+    log.debug("Found placeholder comments in tags");
+  } else if (!preset.tags || preset.tags.length === 0) {
+    errors.push("At least one tag is required.");
+    log.debug("No tags specified");
   }
 
-  // Check optional fields
-  if (!hasPlaceholderTags && (!preset.tags || preset.tags.length === 0)) {
-    warnings.push("No tags specified. Tags help with discoverability.");
-    log.debug("No tags specified");
+  // Features are optional but check for placeholders
+  if (hasPlaceholderFeatures) {
+    errors.push("Replace placeholder comments in features before publishing.");
+    log.debug("Found placeholder comments in features");
   }
 
   const isValid = errors.length === 0;

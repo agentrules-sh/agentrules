@@ -91,28 +91,28 @@ describe("validatePreset", () => {
     expect(result.errors.some((e) => e.includes("not found"))).toBeTrue();
   });
 
-  it("warns about missing optional fields", async () => {
-    const presetDir = join(testDir, "minimal");
+  it("requires at least one tag", async () => {
+    const presetDir = join(testDir, "no-tags");
     await mkdir(presetDir, { recursive: true });
     await mkdir(join(presetDir, "files"), { recursive: true });
 
-    const minimalConfig = {
-      name: "minimal",
-      title: "Minimal",
-      description: "Minimal preset",
+    const configWithoutTags = {
+      name: "no-tags",
+      title: "No Tags",
+      description: "Missing tags",
       license: "MIT",
       platform: "opencode",
       path: "files",
     };
     await writeFile(
       join(presetDir, "agentrules.json"),
-      JSON.stringify(minimalConfig)
+      JSON.stringify(configWithoutTags)
     );
 
     const result = await validatePreset({ path: presetDir });
 
-    expect(result.valid).toBeTrue();
-    expect(result.warnings.some((w) => w.includes("tags"))).toBeTrue();
+    expect(result.valid).toBeFalse();
+    expect(result.errors.some((e) => e.includes("tag"))).toBeTrue();
   });
 
   it("reports error for missing license", async () => {
