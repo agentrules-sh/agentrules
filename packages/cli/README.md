@@ -21,12 +21,27 @@ agentrules add <preset> [options]
 
 Options:
   -p, --platform <platform>  Target platform (opencode, claude, cursor, codex)
+  -V, --version <version>    Install a specific version (default: latest)
   -r, --registry <alias>     Use a specific registry instead of default
   -g, --global               Install to global directory
   --dir <path>               Install to custom directory
   -f, --force                Overwrite conflicting files
   --dry-run                  Preview changes without writing
   --skip-conflicts           Skip conflicting files
+```
+
+**Version syntax:** You can specify a version using `@version` suffix or the `--version` flag:
+
+```bash
+# Install latest version (default)
+agentrules add my-preset --platform opencode
+
+# Install specific version using @ syntax (platform.version)
+agentrules add my-preset.opencode@1.0
+
+# Install specific version using --version flag
+agentrules add my-preset --platform opencode --version 1.0
+agentrules add my-preset.opencode --version 1.0
 ```
 
 Example:

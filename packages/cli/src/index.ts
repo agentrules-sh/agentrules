@@ -76,6 +76,7 @@ program
     "-p, --platform <platform>",
     "Target platform (opencode, codex, claude, cursor)"
   )
+  .option("-V, --version <version>", "Install a specific version")
   .option("-r, --registry <alias>", "Use a specific registry alias")
   .option("-g, --global", "Install to global directory")
   .option("--dir <path>", "Install to a custom directory")
@@ -97,6 +98,7 @@ program
         result = await addPreset({
           preset,
           platform,
+          version: options.version,
           global: Boolean(options.global),
           directory: options.dir,
           force: Boolean(options.force || options.yes),

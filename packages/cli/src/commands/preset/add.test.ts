@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import type {
-  PlatformId,
-  RegistryBundle,
-  ResolvedPreset,
+import {
+  LATEST_VERSION,
+  type PlatformId,
+  type RegistryBundle,
+  type ResolvedPreset,
 } from "@agentrules/core";
 import { access, appendFile, mkdtemp, readFile, rm } from "fs/promises";
 import { tmpdir } from "os";
@@ -254,14 +255,77 @@ describe("addPreset", () => {
     expect(result.registryAlias).toBe("alt");
     expect(result.dryRun).toBeTrue();
   });
+
+  it("installs a specific version using @version syntax", async () => {
+    const fixture = await createFixtures("# Versioned content\n");
+    mockPresetRequests(DEFAULT_BASE_URL, fixture, { version: "1.0" });
+
+    // Format: slug.platform@version
+    const result = await addPreset({
+      preset: `${PRESET_SLUG}.${PLATFORM}@1.0`,
+      dryRun: true,
+    });
+
+    expect(result.dryRun).toBeTrue();
+    expect(result.entry.slug).toBe(PRESET_SLUG);
+  });
+
+  it("installs a specific version using --version flag", async () => {
+    const fixture = await createFixtures("# Versioned content\n");
+    mockPresetRequests(DEFAULT_BASE_URL, fixture, { version: "2.0" });
+
+    const result = await addPreset({
+      preset: `${PRESET_SLUG}.${PLATFORM}`,
+      version: "2.0",
+      dryRun: true,
+    });
+
+    expect(result.dryRun).toBeTrue();
+    expect(result.entry.slug).toBe(PRESET_SLUG);
+  });
+
+  it("--version flag takes precedence over @version syntax", async () => {
+    const fixture = await createFixtures("# Flag wins\n");
+    // The flag version (3.0) should be used, not the @version (1.0)
+    mockPresetRequests(DEFAULT_BASE_URL, fixture, { version: "3.0" });
+
+    // Format: slug.platform@version, but --version flag overrides
+    const result = await addPreset({
+      preset: `${PRESET_SLUG}.${PLATFORM}@1.0`,
+      version: "3.0",
+      dryRun: true,
+    });
+
+    expect(result.dryRun).toBeTrue();
+    expect(result.entry.slug).toBe(PRESET_SLUG);
+  });
+
+  it("installs latest when no version specified", async () => {
+    const fixture = await createFixtures("# Latest content\n");
+    // Should use LATEST_VERSION (which is already the default in mockPresetRequests)
+    mockPresetRequests(DEFAULT_BASE_URL, fixture);
+
+    const result = await addPreset({
+      preset: `${PRESET_SLUG}.${PLATFORM}`,
+      dryRun: true,
+    });
+
+    expect(result.dryRun).toBeTrue();
+    expect(result.entry.slug).toBe(PRESET_SLUG);
+  });
 });
 
-function mockPresetRequests(baseUrl: string, fixture: FixturePayload) {
-  // New API endpoints
+function mockPresetRequests(
+  baseUrl: string,
+  fixture: FixturePayload,
+  options: { version?: string } = {}
+) {
+  // New API endpoints - always include version (defaults to "latest")
+  const version = options.version ?? LATEST_VERSION;
   const steps: MockStep[] = [
     {
       expectUrl: new URL(
-        `api/presets/${fixture.entry.slug}/${fixture.entry.platform}`,
+        `api/presets/${fixture.entry.slug}/${fixture.entry.platform}/${version}`,
         baseUrl
       ).toString(),
       body: fixture.entry,

@@ -30,6 +30,7 @@ export type FileWriteStatus =
 export type AddPresetOptions = {
   preset: string;
   platform?: PlatformId;
+  version?: string;
   global?: boolean;
   directory?: string;
   force?: boolean;
@@ -84,11 +85,22 @@ export async function addPreset(
   const { alias: registryAlias, url: registryUrl } = ctx.registry;
   const dryRun = Boolean(options.dryRun);
 
-  // Parse slug and platform from input
-  const { slug, platform } = parsePresetInput(options.preset, options.platform);
+  // Parse slug, platform, and version from input
+  const { slug, platform, version } = parsePresetInput(
+    options.preset,
+    options.platform,
+    options.version
+  );
 
-  log.debug(`Resolving preset ${slug} for platform ${platform}`);
-  const { entry, bundleUrl } = await resolvePreset(registryUrl, slug, platform);
+  log.debug(
+    `Resolving preset ${slug} for platform ${platform}${version ? ` (version ${version})` : ""}`
+  );
+  const { entry, bundleUrl } = await resolvePreset(
+    registryUrl,
+    slug,
+    platform,
+    version
+  );
 
   log.debug(`Downloading bundle from ${bundleUrl}`);
   const bundle = await fetchBundle(bundleUrl);
@@ -121,16 +133,32 @@ export async function addPreset(
 }
 
 /**
- * Parses preset input to extract slug and platform.
+ * Parses preset input to extract slug, platform, and version.
  * Supports formats:
  * - "my-preset" (requires explicit platform)
  * - "my-preset.claude" (platform inferred from suffix)
+ * - "my-preset@1.0" (with version)
+ * - "my-preset.claude@1.0" (platform and version)
+ *
+ * Version can also be provided via --version flag (takes precedence).
  */
 function parsePresetInput(
   input: string,
-  explicitPlatform?: PlatformId
-): { slug: string; platform: PlatformId } {
-  const normalized = input.toLowerCase().trim();
+  explicitPlatform?: PlatformId,
+  explicitVersion?: string
+): { slug: string; platform: PlatformId; version?: string } {
+  let normalized = input.toLowerCase().trim();
+
+  // Extract version from @version suffix (e.g., "my-preset@1.0" or "my-preset.claude@1.0")
+  let parsedVersion: string | undefined;
+  const atIndex = normalized.lastIndexOf("@");
+  if (atIndex > 0) {
+    parsedVersion = normalized.slice(atIndex + 1);
+    normalized = normalized.slice(0, atIndex);
+  }
+
+  // Explicit version flag takes precedence over @version in input
+  const version = explicitVersion ?? parsedVersion;
 
   // If explicit platform provided, use it
   if (explicitPlatform) {
@@ -141,9 +169,10 @@ function parsePresetInput(
       return {
         slug: parts.slice(0, -1).join("."),
         platform: explicitPlatform,
+        version,
       };
     }
-    return { slug: normalized, platform: explicitPlatform };
+    return { slug: normalized, platform: explicitPlatform, version };
   }
 
   // Try to infer platform from suffix (e.g., "my-preset.claude")
@@ -153,6 +182,7 @@ function parsePresetInput(
     return {
       slug: parts.slice(0, -1).join("."),
       platform: maybePlatform,
+      version,
     };
   }
 

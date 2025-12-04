@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { API_ENDPOINTS, STATIC_BUNDLE_DIR } from "@agentrules/core";
+import {
+  API_ENDPOINTS,
+  LATEST_VERSION,
+  STATIC_BUNDLE_DIR,
+} from "@agentrules/core";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
@@ -64,23 +68,27 @@ describe("buildRegistry", () => {
     expect(result.bundles).toBe(1);
     expect(result.outputDir).toBe(outputDir);
 
-    // Check bundle file exists
+    // Check bundle file exists (now versioned)
     const bundleContent = await readFile(
-      join(outputDir, `${STATIC_BUNDLE_DIR}/test-preset/opencode`),
+      join(
+        outputDir,
+        `${STATIC_BUNDLE_DIR}/test-preset/opencode/${LATEST_VERSION}`
+      ),
       "utf8"
     );
     const bundle = JSON.parse(bundleContent);
     expect(bundle.files).toHaveLength(2);
 
-    // Check API entry exists
+    // Check API entry exists (now versioned)
     const apiEntryContent = await readFile(
       join(outputDir, API_ENDPOINTS.presets.entry("test-preset", "opencode")),
       "utf8"
     );
     const apiEntry = JSON.parse(apiEntryContent);
     expect(apiEntry.slug).toBe("test-preset");
+    // bundleUrl now includes version
     expect(apiEntry.bundleUrl).toBe(
-      `${STATIC_BUNDLE_DIR}/test-preset/opencode`
+      `${STATIC_BUNDLE_DIR}/test-preset/opencode/1.0`
     );
   });
 
@@ -170,9 +178,9 @@ describe("buildRegistry", () => {
       "utf8"
     );
     const entry = JSON.parse(content);
-    // bundleBase + STATIC_BUNDLE_DIR + slug/platform
+    // bundleBase + STATIC_BUNDLE_DIR + slug/platform/version
     expect(entry.bundleUrl).toBe(
-      `my-registry/${STATIC_BUNDLE_DIR}/test-preset/opencode`
+      `my-registry/${STATIC_BUNDLE_DIR}/test-preset/opencode/1.0`
     );
   });
 
@@ -192,9 +200,9 @@ describe("buildRegistry", () => {
       "utf8"
     );
     const entry = JSON.parse(content);
-    // bundleBase + STATIC_BUNDLE_DIR + slug/platform
+    // bundleBase + STATIC_BUNDLE_DIR + slug/platform/version
     expect(entry.bundleUrl).toBe(
-      `https://cdn.example.com/bundles/${STATIC_BUNDLE_DIR}/test-preset/opencode`
+      `https://cdn.example.com/bundles/${STATIC_BUNDLE_DIR}/test-preset/opencode/1.0`
     );
   });
 
@@ -242,7 +250,10 @@ describe("buildRegistry", () => {
       });
 
       const bundleContent = await readFile(
-        join(outputDir, `${STATIC_BUNDLE_DIR}/test-preset/opencode`),
+        join(
+          outputDir,
+          `${STATIC_BUNDLE_DIR}/test-preset/opencode/${LATEST_VERSION}`
+        ),
         "utf8"
       );
       const bundle = JSON.parse(bundleContent);
@@ -262,7 +273,10 @@ describe("buildRegistry", () => {
       });
 
       const bundleContent = await readFile(
-        join(outputDir, `${STATIC_BUNDLE_DIR}/test-preset/opencode`),
+        join(
+          outputDir,
+          `${STATIC_BUNDLE_DIR}/test-preset/opencode/${LATEST_VERSION}`
+        ),
         "utf8"
       );
       const bundle = JSON.parse(bundleContent);
@@ -289,7 +303,10 @@ describe("buildRegistry", () => {
       });
 
       const bundleContent = await readFile(
-        join(outputDir, `${STATIC_BUNDLE_DIR}/test-preset/opencode`),
+        join(
+          outputDir,
+          `${STATIC_BUNDLE_DIR}/test-preset/opencode/${LATEST_VERSION}`
+        ),
         "utf8"
       );
       const bundle = JSON.parse(bundleContent);
@@ -307,7 +324,10 @@ describe("buildRegistry", () => {
       });
 
       const bundleContent = await readFile(
-        join(outputDir, `${STATIC_BUNDLE_DIR}/test-preset/opencode`),
+        join(
+          outputDir,
+          `${STATIC_BUNDLE_DIR}/test-preset/opencode/${LATEST_VERSION}`
+        ),
         "utf8"
       );
       const bundle = JSON.parse(bundleContent);

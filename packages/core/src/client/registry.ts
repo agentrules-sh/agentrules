@@ -1,4 +1,4 @@
-import { API_ENDPOINTS } from "../constants";
+import { API_ENDPOINTS, LATEST_VERSION } from "../constants";
 import type { PlatformId, RegistryBundle, RegistryEntry } from "../types";
 
 /**
@@ -12,20 +12,31 @@ export type ResolvedPreset = {
 /**
  * Resolves a preset from the registry via API endpoint.
  * Returns the entry metadata and the absolute bundle URL.
+ *
+ * @param baseUrl - Registry base URL
+ * @param slug - Preset slug
+ * @param platform - Target platform
+ * @param version - Version to resolve (defaults to "latest")
  */
 export async function resolvePreset(
   baseUrl: string,
   slug: string,
-  platform: PlatformId
+  platform: PlatformId,
+  version: string = LATEST_VERSION
 ): Promise<ResolvedPreset> {
-  const apiUrl = new URL(API_ENDPOINTS.presets.entry(slug, platform), baseUrl);
+  const apiUrl = new URL(
+    API_ENDPOINTS.presets.entry(slug, platform, version),
+    baseUrl
+  );
 
   const response = await fetch(apiUrl);
 
   if (!response.ok) {
     if (response.status === 404) {
+      const versionInfo =
+        version === LATEST_VERSION ? "" : ` version "${version}"`;
       throw new Error(
-        `Preset "${slug}" for platform "${platform}" was not found in the registry.`
+        `Preset "${slug}"${versionInfo} for platform "${platform}" was not found in the registry.`
       );
     }
     throw new Error(

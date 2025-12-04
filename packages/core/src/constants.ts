@@ -12,6 +12,9 @@ export const PRESET_SCHEMA_URL =
 /** API root path segment */
 const API_PATH = "api";
 
+/** Default version identifier for latest preset version */
+export const LATEST_VERSION = "latest";
+
 /**
  * API endpoint paths (relative to registry base URL).
  */
@@ -20,9 +23,9 @@ export const API_ENDPOINTS = {
   presets: {
     /** Base path for preset operations */
     base: `${API_PATH}/presets`,
-    /** Get/publish preset entry */
-    entry: (slug: string, platform: string) =>
-      `${API_PATH}/presets/${slug}/${platform}`,
+    /** Get preset entry by version (defaults to "latest") */
+    entry: (slug: string, platform: string, version: string = LATEST_VERSION) =>
+      `${API_PATH}/presets/${encodeURIComponent(slug)}/${encodeURIComponent(platform)}/${encodeURIComponent(version)}`,
     /** Unpublish preset version */
     unpublish: (slug: string, platform: string, version: string) =>
       `${API_PATH}/presets/${encodeURIComponent(slug)}/${encodeURIComponent(platform)}/${encodeURIComponent(version)}`,

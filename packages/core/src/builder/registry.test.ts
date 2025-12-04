@@ -30,7 +30,7 @@ describe("buildRegistryData", () => {
     expect(result.entries).toHaveLength(1);
     // bundleUrl includes version (default: 1.0)
     expect(result.entries[0]?.bundleUrl).toBe(
-      `${STATIC_BUNDLE_DIR}/starter/opencode`
+      `${STATIC_BUNDLE_DIR}/starter/opencode/1.0`
     );
     expect(result.entries[0]?.version).toBe("1.0");
     expect(result.entries[0]?.fileCount).toBe(2);
@@ -67,7 +67,7 @@ describe("buildRegistryData", () => {
     expect(result.entries[0]?.version).toBe("2.0");
     expect(result.bundles[0]?.version).toBe("2.0");
     expect(result.entries[0]?.bundleUrl).toBe(
-      `${STATIC_BUNDLE_DIR}/versioned/claude`
+      `${STATIC_BUNDLE_DIR}/versioned/claude/2.0`
     );
   });
 

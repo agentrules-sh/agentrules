@@ -1,6 +1,7 @@
 import {
   API_ENDPOINTS,
   buildRegistryData,
+  LATEST_VERSION,
   PLATFORMS,
   PRESET_CONFIG_FILENAME,
   type RegistryPresetInput,
@@ -80,26 +81,42 @@ export async function buildRegistry(
 
   const indent = compact ? undefined : 2;
 
+  // Write bundles to r/{slug}/{platform}/{version} and r/{slug}/{platform}/latest
   for (const bundle of result.bundles) {
-    const bundleDir = join(outputDir, STATIC_BUNDLE_DIR, bundle.slug);
-    await mkdir(bundleDir, { recursive: true });
-    await writeFile(
-      join(bundleDir, bundle.platform),
-      JSON.stringify(bundle, null, indent)
+    const bundleDir = join(
+      outputDir,
+      STATIC_BUNDLE_DIR,
+      bundle.slug,
+      bundle.platform
     );
+    await mkdir(bundleDir, { recursive: true });
+
+    const bundleJson = JSON.stringify(bundle, null, indent);
+
+    // Write versioned bundle
+    await writeFile(join(bundleDir, bundle.version), bundleJson);
+
+    // Write latest bundle (copy of current version)
+    await writeFile(join(bundleDir, LATEST_VERSION), bundleJson);
   }
 
+  // Write entries to api/presets/{slug}/{platform}/{version} and api/presets/{slug}/{platform}/latest
   for (const entry of result.entries) {
     const apiPresetDir = join(
       outputDir,
       API_ENDPOINTS.presets.base,
-      entry.slug
+      entry.slug,
+      entry.platform
     );
     await mkdir(apiPresetDir, { recursive: true });
-    await writeFile(
-      join(apiPresetDir, entry.platform),
-      JSON.stringify(entry, null, indent)
-    );
+
+    const entryJson = JSON.stringify(entry, null, indent);
+
+    // Write versioned entry
+    await writeFile(join(apiPresetDir, entry.version), entryJson);
+
+    // Write latest entry (copy of current version)
+    await writeFile(join(apiPresetDir, LATEST_VERSION), entryJson);
   }
 
   return {

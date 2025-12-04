@@ -1,3 +1,4 @@
+import { LATEST_VERSION } from "../constants";
 import {
   type BundledFile,
   isSupportedPlatform,
@@ -168,7 +169,7 @@ export async function buildRegistryData(
       tags: presetConfig.tags ?? [],
       license: presetConfig.license,
       features,
-      bundleUrl: getBundlePath(bundleBase, presetInput.slug, platform),
+      bundleUrl: getBundlePath(bundleBase, presetInput.slug, platform, version),
       fileCount: files.length,
       totalSize,
     };
@@ -262,11 +263,16 @@ function normalizeBundleBase(base: string | undefined): string {
 
 /**
  * Returns the bundle URL/path for a preset.
- * Format: {base}/{STATIC_BUNDLE_DIR}/{slug}/{platform}
+ * Format: {base}/{STATIC_BUNDLE_DIR}/{slug}/{platform}/{version}
  */
-function getBundlePath(base: string, slug: string, platform: PlatformId) {
+function getBundlePath(
+  base: string,
+  slug: string,
+  platform: PlatformId,
+  version: string = LATEST_VERSION
+) {
   const prefix = base ? `${base}/` : "";
-  return `${prefix}${STATIC_BUNDLE_DIR}/${slug}/${platform}`;
+  return `${prefix}${STATIC_BUNDLE_DIR}/${slug}/${platform}/${version}`;
 }
 
 function ensureKnownPlatform(platform: string, slug: string) {
