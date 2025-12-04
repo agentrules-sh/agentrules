@@ -251,6 +251,7 @@ program
         log.print(
           ui.numberedList([
             "Add your config files to the files directory",
+            "Replace the placeholder comments in tags and features",
             `Run ${ui.command("agentrules validate")} to check your preset`,
           ])
         );
@@ -286,6 +287,7 @@ program
       log.print(
         ui.numberedList([
           "Add your config files to the files directory",
+          "Replace the placeholder comments in tags and features",
           `Run ${ui.command("agentrules validate")} to check your preset`,
         ])
       );

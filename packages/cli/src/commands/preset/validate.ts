@@ -91,8 +91,21 @@ export async function validatePreset(
     log.debug(`Platform "${platform}" is not supported`);
   }
 
+  // Check for placeholder comments (from init template)
+  const hasPlaceholderTags = preset.tags?.some((t) => t.startsWith("//"));
+  const hasPlaceholderFeatures = preset.features?.some((f) =>
+    f.startsWith("//")
+  );
+
+  if (hasPlaceholderTags || hasPlaceholderFeatures) {
+    errors.push(
+      "Replace placeholder comments in tags/features before publishing."
+    );
+    log.debug("Found placeholder comments in tags or features");
+  }
+
   // Check optional fields
-  if (!preset.tags || preset.tags.length === 0) {
+  if (!hasPlaceholderTags && (!preset.tags || preset.tags.length === 0)) {
     warnings.push("No tags specified. Tags help with discoverability.");
     log.debug("No tags specified");
   }
