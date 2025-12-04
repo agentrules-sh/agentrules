@@ -90,6 +90,27 @@ describe("buildRegistry", () => {
     expect(apiEntry.bundleUrl).toBe(
       `${STATIC_BUNDLE_DIR}/test-preset/opencode/1.0`
     );
+
+    // Check registry.json exists with schema and items array
+    const registryContent = await readFile(
+      join(outputDir, "registry.json"),
+      "utf8"
+    );
+    const registry = JSON.parse(registryContent);
+    expect(registry.$schema).toBe(
+      "https://agentrules.directory/schema/registry.json"
+    );
+    expect(registry.items).toHaveLength(1);
+    expect(registry.items[0].slug).toBe("test-preset");
+
+    // Check registry.index.json exists with name → entry mapping
+    const indexContent = await readFile(
+      join(outputDir, "registry.index.json"),
+      "utf8"
+    );
+    const index = JSON.parse(indexContent);
+    expect(index["test-preset.opencode"]).toBeDefined();
+    expect(index["test-preset.opencode"].slug).toBe("test-preset");
   });
 
   it("validates without writing when --validate-only", async () => {
@@ -229,6 +250,23 @@ describe("buildRegistry", () => {
 
     expect(result.presets).toBe(2);
     expect(result.entries).toBe(2);
+
+    // Verify registry.json contains all presets
+    const registryContent = await readFile(
+      join(outputDir, "registry.json"),
+      "utf8"
+    );
+    const registry = JSON.parse(registryContent);
+    expect(registry.items).toHaveLength(2);
+
+    // Verify registry.index.json contains all presets
+    const indexContent = await readFile(
+      join(outputDir, "registry.index.json"),
+      "utf8"
+    );
+    const index = JSON.parse(indexContent);
+    expect(index["preset-a.opencode"]).toBeDefined();
+    expect(index["preset-b.opencode"]).toBeDefined();
   });
 
   describe("README.md support", () => {

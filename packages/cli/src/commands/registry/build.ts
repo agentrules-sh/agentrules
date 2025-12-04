@@ -119,6 +119,21 @@ export async function buildRegistry(
     await writeFile(join(apiPresetDir, LATEST_VERSION), entryJson);
   }
 
+  // Write registry.json (array of all entries wrapped in schema-compliant format)
+  const registryJson = JSON.stringify(
+    {
+      $schema: "https://agentrules.directory/schema/registry.json",
+      items: result.entries,
+    },
+    null,
+    indent
+  );
+  await writeFile(join(outputDir, "registry.json"), registryJson);
+
+  // Write registry.index.json (name → entry lookup)
+  const indexJson = JSON.stringify(result.index, null, indent);
+  await writeFile(join(outputDir, "registry.index.json"), indexJson);
+
   return {
     presets: presets.length,
     entries: result.entries.length,
