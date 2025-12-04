@@ -8,22 +8,29 @@ const VERSION_REGEX = /^[1-9]\d*\.\d+$/;
 
 export const platformIdSchema = z.enum(PLATFORM_IDS);
 
-export const titleSchema = z.string().trim().min(1).max(80);
-export const descriptionSchema = z.string().trim().min(1).max(500);
+export const titleSchema = z
+  .string()
+  .trim()
+  .min(1, "Title is required")
+  .max(80, "Title must be 80 characters or less");
+
+export const descriptionSchema = z
+  .string()
+  .trim()
+  .min(1, "Description is required")
+  .max(500, "Description must be 500 characters or less");
 
 /** Validate a title string and return error message if invalid, undefined if valid */
 export function validateTitle(value: string): string | undefined {
-  const trimmed = value.trim();
-  if (!trimmed) return "Title is required";
-  if (trimmed.length > 120) return "Title must be 120 characters or less";
+  const result = titleSchema.safeParse(value);
+  if (!result.success) return result.error.issues[0]?.message;
   return;
 }
 
 /** Validate a description string and return error message if invalid, undefined if valid */
 export function validateDescription(value: string): string | undefined {
-  const trimmed = value.trim();
-  if (!trimmed) return "Description is required";
-  if (trimmed.length > 500) return "Description must be 500 characters or less";
+  const result = descriptionSchema.safeParse(value);
+  if (!result.success) return result.error.issues[0]?.message;
   return;
 }
 // Schema for stored versions (MAJOR.MINOR format)
@@ -37,11 +44,29 @@ const majorVersionSchema = z
   .number()
   .int()
   .positive("Major version must be a positive integer");
-const tagSchema = z.string().trim().min(1).max(35);
-const tagsSchema = z.array(tagSchema).min(1).max(10);
-const featureSchema = z.string().trim().min(1).max(100);
-const featuresSchema = z.array(featureSchema).max(5);
-const installMessageSchema = z.string().trim().max(2000);
+const tagSchema = z
+  .string()
+  .trim()
+  .min(1, "Tag cannot be empty")
+  .max(35, "Tag must be 35 characters or less");
+
+const tagsSchema = z
+  .array(tagSchema)
+  .min(1, "At least one tag is required")
+  .max(10, "Maximum 10 tags allowed");
+
+const featureSchema = z
+  .string()
+  .trim()
+  .min(1, "Feature cannot be empty")
+  .max(100, "Feature must be 100 characters or less");
+
+const featuresSchema = z.array(featureSchema).max(5, "Maximum 5 features allowed");
+
+const installMessageSchema = z
+  .string()
+  .trim()
+  .max(2000, "Install message must be 2000 characters or less");
 const contentSchema = z.string(); // For readmeContent and licenseContent (no length limit)
 
 // Slug: lowercase alphanumeric with hyphens, no leading/trailing/consecutive hyphens
@@ -52,16 +77,14 @@ const SLUG_ERROR =
 export const slugSchema = z
   .string()
   .trim()
-  .min(1)
-  .max(64)
+  .min(1, "Name is required")
+  .max(64, "Name must be 64 characters or less")
   .regex(SLUG_REGEX, SLUG_ERROR);
 
 /** Validate a slug string and return error message if invalid, undefined if valid */
 export function validateSlug(value: string): string | undefined {
-  const trimmed = value.trim();
-  if (!trimmed) return "Name is required";
-  if (trimmed.length > 64) return "Name must be 64 characters or less";
-  if (!SLUG_REGEX.test(trimmed)) return SLUG_ERROR;
+  const result = slugSchema.safeParse(value);
+  if (!result.success) return result.error.issues[0]?.message;
   return;
 }
 
@@ -79,13 +102,16 @@ export const COMMON_LICENSES = [
 export type CommonLicense = (typeof COMMON_LICENSES)[number];
 
 // License schema - just requires non-empty string, user is responsible for valid SPDX
-export const licenseSchema = z.string().trim().min(1).max(128);
+export const licenseSchema = z
+  .string()
+  .trim()
+  .min(1, "License is required")
+  .max(128, "License must be 128 characters or less");
 
 /** Validate a license string and return error message if invalid, undefined if valid */
 export function validateLicense(value: string): string | undefined {
-  const trimmed = value.trim();
-  if (!trimmed) return "License is required";
-  if (trimmed.length > 128) return "License must be 128 characters or less";
+  const result = licenseSchema.safeParse(value);
+  if (!result.success) return result.error.issues[0]?.message;
   return;
 }
 

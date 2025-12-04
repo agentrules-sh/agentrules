@@ -123,7 +123,7 @@ describe("titleSchema", () => {
 describe("validateTitle", () => {
   it("returns undefined for valid titles", () => {
     expect(validateTitle("My Preset")).toBeUndefined();
-    expect(validateTitle("a".repeat(120))).toBeUndefined();
+    expect(validateTitle("a".repeat(80))).toBeUndefined();
   });
 
   it("returns error for empty input", () => {
@@ -132,8 +132,8 @@ describe("validateTitle", () => {
   });
 
   it("returns error for too long input", () => {
-    expect(validateTitle("a".repeat(121))).toBe(
-      "Title must be 120 characters or less"
+    expect(validateTitle("a".repeat(81))).toBe(
+      "Title must be 80 characters or less"
     );
   });
 });

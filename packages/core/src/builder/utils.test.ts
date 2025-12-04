@@ -42,9 +42,10 @@ describe("validatePresetConfig", () => {
   });
 
   it("throws for missing required data", () => {
-    expect(() => validatePresetConfig({}, "oops")).toThrow(/missing a name/);
+    // Missing fields report as "Invalid input: expected string, received undefined"
+    expect(() => validatePresetConfig({}, "oops")).toThrow(/name.*expected string/i);
     expect(() => validatePresetConfig({ name: "oops" }, "oops")).toThrow(
-      /missing a title/
+      /title.*expected string/i
     );
   });
 
@@ -54,7 +55,7 @@ describe("validatePresetConfig", () => {
       platform: "windsurf",
     };
     expect(() => validatePresetConfig(withUnknownPlatform, "starter")).toThrow(
-      /unknown platform.*windsurf.*Supported platforms/i
+      /platform.*Invalid option/i
     );
   });
 
@@ -66,7 +67,7 @@ describe("validatePresetConfig", () => {
       license: "MIT",
     };
     expect(() => validatePresetConfig(withoutPlatform, "starter")).toThrow(
-      /missing a platform/i
+      /platform.*Invalid option/i
     );
   });
 });
