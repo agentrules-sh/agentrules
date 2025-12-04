@@ -1,167 +1,219 @@
 # @agentrules/cli
 
-CLI for managing AGENT_RULES presets and registries.
+CLI for installing and publishing AGENT_RULES presets.
 
 ## Installation
 
 ```bash
+# Run directly with npx (recommended)
+npx @agentrules/cli <command>
+
+# Or install globally
 npm install -g @agentrules/cli
-# or
-npx @agentrules/cli --help
-bunx @agentrules/cli --help
+agentrules <command>
 ```
 
-## Commands
+---
 
-### Preset Installation
+## Installing Presets
+
+### `agentrules add <preset>`
+
+Install a preset from the registry.
 
 ```bash
-# Install a preset from the registry
-agentrules add <preset> [options]
-
-Options:
-  -p, --platform <platform>  Target platform (opencode, claude, cursor, codex)
-  -V, --version <version>    Install a specific version (default: latest)
-  -r, --registry <alias>     Use a specific registry instead of default
-  -g, --global               Install to global directory
-  --dir <path>               Install to custom directory
-  -f, --force                Overwrite conflicting files
-  --dry-run                  Preview changes without writing
-  --skip-conflicts           Skip conflicting files
+agentrules add <preset> --platform <platform> [options]
 ```
 
-**Version syntax:** You can specify a version using `@version` suffix or the `--version` flag:
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `-p, --platform <platform>` | Target platform: `opencode`, `claude`, `cursor`, `codex` |
+| `-V, --version <version>` | Install a specific version (default: latest) |
+| `-g, --global` | Install to global config directory |
+| `--dir <path>` | Install to a custom directory |
+| `-r, --registry <alias>` | Use a specific registry |
+| `-f, --force` | Overwrite existing files |
+| `--dry-run` | Preview changes without writing |
+| `--skip-conflicts` | Skip files that already exist |
+
+**Examples:**
 
 ```bash
-# Install latest version (default)
-agentrules add my-preset --platform opencode
-
-# Install specific version using @ syntax (platform.version)
-agentrules add my-preset.opencode@1.0
-
-# Install specific version using --version flag
-agentrules add my-preset --platform opencode --version 1.0
-agentrules add my-preset.opencode --version 1.0
-```
-
-Example:
-```bash
+# Install a preset for OpenCode
 agentrules add agentic-dev-starter --platform opencode
-agentrules add agentic-dev-starter --dry-run
+
+# Install globally
+agentrules add agentic-dev-starter --platform opencode --global
+
+# Install a specific version
+agentrules add agentic-dev-starter --platform opencode --version 1.0
+
+# Version can also be specified with @ syntax
+agentrules add agentic-dev-starter.opencode@1.0
+
+# Preview what would be installed
+agentrules add agentic-dev-starter --platform opencode --dry-run
 ```
 
-### Preset Authoring
+---
+
+## Creating Presets
+
+### `agentrules init [directory]`
+
+Initialize a new preset.
 
 ```bash
-# Initialize a new preset (interactive mode)
-agentrules init [directory]
-
-# Initialize with explicit options (non-interactive)
 agentrules init [directory] [options]
-
-Options:
-  -d, --directory <path>     Directory to initialize (default: cwd)
-  -n, --name <name>          Preset name (default: directory name)
-  -t, --title <title>        Display title
-  --description <text>       Preset description
-  -p, --platform <platform>  Target platform (opencode, claude, cursor, codex)
-  -l, --license <license>    License (e.g., MIT)
-  -f, --force                Overwrite existing config
-  -y, --yes                  Accept defaults without prompting (skip interactive mode)
 ```
 
-**Interactive mode** is used by default when no options are provided and stdin is a TTY. It will prompt you for name, title, description, platform, and license.
+**Options:**
 
-Example:
+| Option | Description |
+|--------|-------------|
+| `-n, --name <name>` | Preset name (default: directory name) |
+| `-t, --title <title>` | Display title |
+| `--description <text>` | Preset description |
+| `-p, --platform <platform>` | Target platform |
+| `-l, --license <license>` | License (e.g., `MIT`) |
+| `-f, --force` | Overwrite existing config |
+| `-y, --yes` | Accept defaults, skip prompts |
+
+**Examples:**
+
 ```bash
-# Interactive mode - prompts for all values
+# Interactive mode (prompts for values)
 mkdir my-preset && cd my-preset
 agentrules init
 
-# Non-interactive with explicit options
+# Non-interactive with options
 agentrules init --platform opencode --license MIT
 
-# Non-interactive with defaults (uses directory name, MIT license, etc.)
+# Accept all defaults
 agentrules init --yes
 ```
 
-```bash
-# Validate a preset configuration
-agentrules validate [path]
-```
+### `agentrules validate [path]`
 
-Example:
+Validate a preset configuration.
+
 ```bash
+# Validate current directory
+agentrules validate
+
+# Validate a specific path
 agentrules validate ./my-preset
-agentrules validate  # validates current directory
 ```
 
-### Registry Management
+---
 
-```bash
-# List configured registries
-agentrules registry list
+## Publishing Presets
 
-# Add a registry endpoint
-agentrules registry add <alias> <url> [--force] [--default]
+### `agentrules login`
 
-# Remove a registry
-agentrules registry remove <alias> [--force]
+Authenticate with the registry. Opens a browser for OAuth.
 
-# Switch default registry
-agentrules registry use <alias>
+### `agentrules logout`
 
-# Build registry from presets (for maintainers)
-agentrules registry build -i <input> -o <output> [options]
-
-Options:
-  -i, --input <path>         Directory containing preset folders (required)
-  -o, --out <path>           Output directory for registry artifacts
-  -b, --bundle-base <path>   Optional URL prefix for bundle locations
-  -c, --compact              Emit minified JSON
-  --validate-only            Validate without writing files
-```
-
-Example:
-```bash
-agentrules registry build -i ./presets -o ./public/r
-```
-
-### Authentication Commands
-
-#### `agentrules login`
-Authenticate with the registry using device flow authentication. Opens a browser for OAuth.
-
-#### `agentrules logout`
 Log out and clear stored credentials.
 
-#### `agentrules whoami`
+### `agentrules whoami`
+
 Show the currently authenticated user.
 
-### Publishing Commands
+### `agentrules publish [path]`
 
-#### `agentrules publish [path]`
 Publish a preset to the registry. Requires authentication.
 
-Options:
-- `-v, --version <major>` - Major version to publish (overrides config, default: 1)
-- `--dry-run` - Preview what would be published without actually publishing
-
-Example:
 ```bash
+agentrules publish [path] [options]
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `-v, --version <major>` | Major version to publish (default: 1) |
+| `--dry-run` | Preview without publishing |
+
+**Examples:**
+
+```bash
+# Publish current directory
+agentrules publish
+
+# Publish a specific preset
 agentrules publish ./my-preset
-agentrules publish ./my-preset --version 2  # Publish to major version 2
-agentrules publish --dry-run                # Preview without publishing
+
+# Publish to major version 2
+agentrules publish --version 2
+
+# Preview what would be published
+agentrules publish --dry-run
 ```
 
 **Versioning:** Presets use `MAJOR.MINOR` versioning. You set the major version, and the registry auto-increments the minor version on each publish.
 
-#### `agentrules unpublish <name>`
+### `agentrules unpublish <name>`
+
 Remove a preset from the registry. Requires authentication.
+
+```bash
+agentrules unpublish my-preset
+```
+
+---
+
+## Registry Management
+
+### `agentrules registry list`
+
+List configured registries.
+
+### `agentrules registry add <alias> <url>`
+
+Add a registry.
+
+```bash
+agentrules registry add my-registry https://example.com/registry
+agentrules registry add my-registry https://example.com/registry --default
+```
+
+### `agentrules registry remove <alias>`
+
+Remove a registry.
+
+### `agentrules registry use <alias>`
+
+Set the default registry.
+
+### `agentrules registry build`
+
+Build registry artifacts from preset directories. For self-hosted registries.
+
+```bash
+agentrules registry build -i <input> -o <output> [options]
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `-i, --input <path>` | Directory containing preset folders |
+| `-o, --out <path>` | Output directory for registry artifacts |
+| `-b, --bundle-base <url>` | URL prefix for bundle locations |
+| `-c, --compact` | Emit minified JSON |
+| `--validate-only` | Validate without writing files |
+
+---
 
 ## Configuration
 
-Config is stored at `~/.agentrules/config.json` (or `$AGENT_RULES_HOME/config.json`).
+Config is stored at `~/.agentrules/config.json`.
+
+You can override the config directory with the `AGENT_RULES_HOME` environment variable.
 
 ```json
 {
@@ -174,12 +226,13 @@ Config is stored at `~/.agentrules/config.json` (or `$AGENT_RULES_HOME/config.js
 }
 ```
 
-## Development
+---
 
-```bash
-bun install
-bun run dev        # watch mode
-bun run build      # production build
-bun run test       # run tests
-bun run typecheck  # type checking
-```
+## Supported Platforms
+
+| Platform | Project Directory | Global Directory |
+|----------|-------------------|------------------|
+| `opencode` | `.opencode/` | `~/.config/opencode` |
+| `claude` | `.claude/` | `~/.claude` |
+| `cursor` | `.cursor/` | `~/.cursor` |
+| `codex` | `.codex/` | `~/.codex` |

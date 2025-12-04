@@ -2,23 +2,44 @@
 
 Shared types and utilities for the AGENT_RULES ecosystem.
 
+**This package is for developers building custom registries or alternative clients.** If you just want to install or publish presets, use the [CLI](../cli) instead.
+
 ## Installation
 
 ```bash
 npm install @agentrules/core
 ```
 
-## Features
+## What's Included
 
-- **Types** - TypeScript definitions for presets, bundles, and registry entries
-- **Validation** - Zod schemas for validating `agentrules.json` configs
-- **Registry Builder** - Transform preset inputs into registry JSON artifacts
-- **Bundle Utilities** - Checksum verification, encoding/decoding helpers
-- **Diff Utilities** - Generate previews for file conflicts
+| Module | Description |
+|--------|-------------|
+| **Types & Schemas** | TypeScript types and Zod schemas for presets, bundles, configs |
+| **Registry Builder** | Build registry artifacts from preset inputs |
+| **Registry Client** | Fetch and resolve presets from registries |
+| **Bundle Utilities** | Encode/decode bundles, verify checksums |
+| **Platform Config** | Platform IDs and directory paths |
+
+This package contains **pure functions with no environment assumptions**. It doesn't touch the file system or make network requests directly — that's left to the consumer (like the CLI).
 
 ## Usage
 
-### Building Registry Data
+### Validating Preset Config
+
+```ts
+import { presetConfigSchema, validatePresetConfig } from "@agentrules/core";
+
+// Using Zod schema directly
+const result = presetConfigSchema.safeParse(jsonData);
+if (!result.success) {
+  console.error(result.error.issues);
+}
+
+// Or use the helper (throws on error)
+const config = validatePresetConfig(jsonData, "my-preset");
+```
+
+### Building Registry Artifacts
 
 ```ts
 import { buildPresetRegistry } from "@agentrules/core";
@@ -32,49 +53,36 @@ const result = await buildPresetRegistry({
         title: "My Preset",
         version: 1,
         description: "A helpful preset",
-        tags: ["starter", "typescript"],
+        tags: ["starter"],
         license: "MIT",
         platform: "opencode",
-        path: ".opencode",
+        path: "files",
       },
       files: [
         { path: "AGENT_RULES.md", contents: "# Rules\n" },
-        { path: "config.json", contents: '{"key": "value"}' },
       ],
     },
   ],
 });
 
-// result.entries  → array of Preset for registry.json
-// result.index    → PresetIndex object for registry.index.json
-// result.bundles  → PresetBundle payloads
+// result.entries  → Preset[] for registry listing
+// result.index    → PresetIndex for lookups
+// result.bundles  → PresetBundle[] with encoded files
 ```
 
-### Validating Preset Config
-
-```ts
-import { validatePresetConfig, presetConfigSchema } from "@agentrules/core";
-
-// Quick validation (throws on error)
-const config = validatePresetConfig(jsonData, "my-preset");
-
-// Zod schema for custom handling
-const result = presetConfigSchema.safeParse(jsonData);
-if (!result.success) {
-  console.error(result.error.issues);
-}
-```
-
-### Fetching from Registry
+### Fetching from a Registry
 
 ```ts
 import { resolvePreset, fetchBundle } from "@agentrules/core";
 
+// Resolve a preset (gets metadata and bundle URL)
 const { preset, bundleUrl } = await resolvePreset(
   "https://agentrules.directory/",
-  "agentic-dev-starter",
+  "my-preset",
   "opencode"
 );
+
+// Fetch the bundle
 const bundle = await fetchBundle(bundleUrl);
 ```
 
@@ -88,45 +96,71 @@ import {
 } from "@agentrules/core";
 
 for (const file of bundle.files) {
+  // Decode base64 contents
   const data = decodeBundledFile(file);
+  
+  // Verify integrity
   await verifyBundledFileChecksum(file, data);
   
+  // Check if it's text or binary
   if (isLikelyText(data)) {
-    console.log(`Text file: ${file.path}`);
+    const text = new TextDecoder().decode(data);
   }
 }
 ```
 
-## Preset Config Format
+### Platform Configuration
 
-Presets use `agentrules.json`:
+```ts
+import { PLATFORMS, PLATFORM_IDS } from "@agentrules/core";
 
-```json
-{
-  "$schema": "https://agentrules.directory/schema/agentrules.json",
-  "name": "my-preset",
-  "title": "My Preset",
-  "version": 1,
-  "description": "Description here",
-  "license": "MIT",
-  "tags": ["starter", "typescript"],
-  "features": ["Feature 1", "Feature 2"],
-  "platform": "opencode",
-  "path": "files"
-}
+// All supported platform IDs
+console.log(PLATFORM_IDS); // ["opencode", "claude", "cursor", "codex"]
+
+// Get paths for a platform
+const opencode = PLATFORMS.opencode;
+console.log(opencode.projectDir); // ".opencode"
+console.log(opencode.globalDir);  // "~/.config/opencode"
 ```
 
-### Versioning
+## Types
 
-Presets use two-segment versioning (`MAJOR.MINOR`):
-- **Major version**: Set by the publisher in config (defaults to 1)
-- **Minor version**: Auto-incremented by the registry on each publish
+Key types exported:
 
-## Development
+```ts
+import type {
+  // Preset configuration (agentrules.json)
+  PresetConfig,
+  
+  // What clients send to publish
+  PresetPublishInput,
+  
+  // What registries store and return
+  PresetBundle,
+  Preset,
+  PresetIndex,
+  
+  // Bundle file structure
+  BundledFile,
+  
+  // Platform types
+  PlatformId,
+  PlatformConfig,
+} from "@agentrules/core";
+```
 
-```bash
-bun install
-bun run build      # build with tsdown
-bun run test       # run tests
-bun run typecheck  # type checking
+## Schemas
+
+Zod schemas for validation:
+
+```ts
+import {
+  presetConfigSchema,
+  presetBundleSchema,
+  presetPublishInputSchema,
+  platformIdSchema,
+  slugSchema,
+  titleSchema,
+  descriptionSchema,
+} from "@agentrules/core";
 ```
