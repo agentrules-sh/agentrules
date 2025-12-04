@@ -17,7 +17,6 @@ import chalk from "chalk";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { homedir } from "os";
 import { dirname, relative, resolve, sep } from "path";
-import { type Config as AgentrulesConfig, saveConfig } from "@/lib/config";
 import { useAppContext } from "@/lib/context";
 import { log } from "@/lib/log";
 
@@ -83,7 +82,6 @@ export async function addPreset(
   }
 
   const { alias: registryAlias, url: registryUrl } = ctx.registry;
-  const { config } = ctx;
   const dryRun = Boolean(options.dryRun);
 
   // Parse slug and platform from input
@@ -109,10 +107,6 @@ export async function addPreset(
     skipConflicts: Boolean(options.skipConflicts),
     dryRun,
   });
-
-  if (!dryRun) {
-    await updateRegistryMetadata(config, registryAlias);
-  }
 
   return {
     entry,
@@ -398,14 +392,4 @@ function expandHome(value: string) {
     return `${homedir()}/${remainder}`;
   }
   return value;
-}
-
-async function updateRegistryMetadata(config: AgentrulesConfig, alias: string) {
-  const registrySettings = config.registries[alias];
-  if (!registrySettings) {
-    return;
-  }
-
-  registrySettings.lastSyncedAt = new Date().toISOString();
-  await saveConfig(config);
 }

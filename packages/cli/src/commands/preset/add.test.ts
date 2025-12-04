@@ -8,12 +8,7 @@ import { access, appendFile, mkdtemp, readFile, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { addPreset } from "@/commands/preset/add";
-import {
-  type Config,
-  getConfigPath,
-  loadConfig,
-  saveConfig,
-} from "@/lib/config";
+import { loadConfig, saveConfig } from "@/lib/config";
 import { initAppContext } from "@/lib/context";
 
 type FixturePayload = {
@@ -106,10 +101,6 @@ describe("addPreset", () => {
     expect(filesWritten.length).toBeGreaterThan(0);
     const rulesPath = join(projectDir, ".opencode/AGENT_RULES.md");
     expect(await fileExists(rulesPath)).toBeTrue();
-
-    const stored = await readFile(getConfigPath(), "utf8");
-    const parsed = JSON.parse(stored) as Config;
-    expect(parsed.registries.main?.lastSyncedAt).toBeTruthy();
   });
 
   it("skips conflicting files when --skip-conflicts is provided", async () => {
@@ -246,7 +237,6 @@ describe("addPreset", () => {
     const config = await loadConfig();
     config.registries.alt = {
       url: altUrl,
-      lastSyncedAt: null,
     };
     await saveConfig(config);
 

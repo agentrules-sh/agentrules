@@ -12,7 +12,6 @@ const DEFAULT_REGISTRY_URL = "https://agentrules.directory/";
 
 export type RegistrySettings = {
   url: string;
-  lastSyncedAt?: string | null;
 };
 
 export type Config = {
@@ -25,7 +24,6 @@ const DEFAULT_CONFIG: Config = {
   registries: {
     [DEFAULT_REGISTRY_ALIAS]: {
       url: DEFAULT_REGISTRY_URL,
-      lastSyncedAt: null,
     },
   },
 };

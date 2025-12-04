@@ -53,10 +53,8 @@ export async function addRegistry(
   }
 
   const isUpdate = !!config.registries[normalizedAlias];
-  const previousSettings = config.registries[normalizedAlias];
   config.registries[normalizedAlias] = {
     url: normalizedUrl,
-    lastSyncedAt: previousSettings?.lastSyncedAt ?? null,
   } satisfies RegistrySettings;
 
   if (!config.defaultRegistry || options.makeDefault) {

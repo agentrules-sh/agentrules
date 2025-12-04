@@ -45,7 +45,6 @@ describe("config module", () => {
     const config = await loadConfig();
     config.registries.dev = {
       url: "https://example.dev/",
-      lastSyncedAt: "2024-01-01T00:00:00.000Z",
     };
     config.defaultRegistry = "dev";
 
