@@ -1,12 +1,12 @@
-// Constants
-
 // Registry builder (publishing)
 export * from "./builder";
 // Registry client (fetching/downloading)
 export * from "./client";
+// Constants
 export * from "./constants";
-// Types, schemas, and platform definitions
-export * from "./types";
-
+// Platform definitions
+export * from "./platform";
+// Preset types and schemas
+export * from "./preset";
 // Utilities
 export * from "./utils";

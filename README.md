@@ -80,7 +80,8 @@ packages/
     src/
       builder/          # Registry building logic
       client/           # Registry fetching/bundle decoding
-      types/            # TypeScript definitions and Zod schemas
+      platform/         # Platform IDs, configs, and utilities
+      preset/           # Preset types and Zod schemas
       utils/            # Encoding, paths, diff utilities
   cli/                  # Command-line interface
     src/

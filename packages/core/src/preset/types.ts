@@ -1,4 +1,4 @@
-import type { PlatformId } from "./platform";
+import type { PlatformId } from "../platform";
 
 export type PresetConfig = {
   $schema?: string;

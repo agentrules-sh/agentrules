@@ -1,16 +1,18 @@
 import { LATEST_VERSION } from "../constants";
 import {
-  type BundledFile,
   isSupportedPlatform,
   PLATFORM_IDS,
   type PlatformId,
-  type Preset,
-  type PresetBundle,
-  type PresetFileInput,
-  type PresetIndex,
-  type PresetInput,
-  type PresetPublishInput,
-} from "../types";
+} from "../platform";
+import type {
+  BundledFile,
+  Preset,
+  PresetBundle,
+  PresetFileInput,
+  PresetIndex,
+  PresetInput,
+  PresetPublishInput,
+} from "../preset";
 import { toPosixPath } from "../utils/encoding";
 import {
   cleanInstallMessage,

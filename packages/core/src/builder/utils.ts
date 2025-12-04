@@ -1,6 +1,6 @@
 import { ZodError } from "zod";
-import type { PlatformId, PresetConfig } from "../types";
-import { presetConfigSchema } from "../types/schema";
+import type { PlatformId } from "../platform";
+import { type PresetConfig, presetConfigSchema } from "../preset";
 
 export function cleanInstallMessage(value: unknown) {
   if (typeof value !== "string") {
@@ -26,7 +26,9 @@ export function validatePresetConfig(
         const path = issue.path.length > 0 ? `${issue.path.join(".")}: ` : "";
         return `${path}${issue.message}`;
       });
-      throw new Error(`Invalid preset config for ${slug}:\n  - ${messages.join("\n  - ")}`);
+      throw new Error(
+        `Invalid preset config for ${slug}:\n  - ${messages.join("\n  - ")}`
+      );
     }
     throw e;
   }

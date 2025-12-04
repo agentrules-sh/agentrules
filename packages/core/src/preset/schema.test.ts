@@ -10,10 +10,6 @@ import {
   presetSchema,
   slugSchema,
   titleSchema,
-  validateDescription,
-  validateLicense,
-  validateSlug,
-  validateTitle,
 } from "./schema";
 
 describe("platformIdSchema", () => {
@@ -73,37 +69,6 @@ describe("slugSchema", () => {
   });
 });
 
-describe("validateSlug", () => {
-  it("returns undefined for valid slugs", () => {
-    expect(validateSlug("my-preset")).toBeUndefined();
-    expect(validateSlug("preset")).toBeUndefined();
-    expect(validateSlug("a".repeat(64))).toBeUndefined();
-  });
-
-  it("returns error for empty input", () => {
-    expect(validateSlug("")).toBe("Name is required");
-    expect(validateSlug("   ")).toBe("Name is required");
-  });
-
-  it("returns error for too long input", () => {
-    expect(validateSlug("a".repeat(65))).toBe(
-      "Name must be 64 characters or less"
-    );
-  });
-
-  it("returns error for invalid format", () => {
-    expect(validateSlug("-preset")).toBe(
-      "Must be lowercase alphanumeric with hyphens (e.g., my-preset)"
-    );
-    expect(validateSlug("preset-")).toBe(
-      "Must be lowercase alphanumeric with hyphens (e.g., my-preset)"
-    );
-    expect(validateSlug("my--preset")).toBe(
-      "Must be lowercase alphanumeric with hyphens (e.g., my-preset)"
-    );
-  });
-});
-
 describe("titleSchema", () => {
   it("accepts valid titles", () => {
     expect(titleSchema.parse("My Preset")).toBe("My Preset");
@@ -117,24 +82,6 @@ describe("titleSchema", () => {
 
   it("rejects titles over 80 characters", () => {
     expect(() => titleSchema.parse("a".repeat(81))).toThrow();
-  });
-});
-
-describe("validateTitle", () => {
-  it("returns undefined for valid titles", () => {
-    expect(validateTitle("My Preset")).toBeUndefined();
-    expect(validateTitle("a".repeat(80))).toBeUndefined();
-  });
-
-  it("returns error for empty input", () => {
-    expect(validateTitle("")).toBe("Title is required");
-    expect(validateTitle("   ")).toBe("Title is required");
-  });
-
-  it("returns error for too long input", () => {
-    expect(validateTitle("a".repeat(81))).toBe(
-      "Title must be 80 characters or less"
-    );
   });
 });
 
@@ -153,24 +100,6 @@ describe("descriptionSchema", () => {
   });
 });
 
-describe("validateDescription", () => {
-  it("returns undefined for valid descriptions", () => {
-    expect(validateDescription("A description")).toBeUndefined();
-    expect(validateDescription("a".repeat(500))).toBeUndefined();
-  });
-
-  it("returns error for empty input", () => {
-    expect(validateDescription("")).toBe("Description is required");
-    expect(validateDescription("   ")).toBe("Description is required");
-  });
-
-  it("returns error for too long input", () => {
-    expect(validateDescription("a".repeat(501))).toBe(
-      "Description must be 500 characters or less"
-    );
-  });
-});
-
 describe("licenseSchema", () => {
   it("accepts any non-empty license string", () => {
     expect(licenseSchema.parse("MIT")).toBe("MIT");
@@ -185,25 +114,6 @@ describe("licenseSchema", () => {
 
   it("rejects licenses over 128 characters", () => {
     expect(() => licenseSchema.parse("a".repeat(129))).toThrow();
-  });
-});
-
-describe("validateLicense", () => {
-  it("returns undefined for valid licenses", () => {
-    expect(validateLicense("MIT")).toBeUndefined();
-    expect(validateLicense("Custom-License")).toBeUndefined();
-    expect(validateLicense("a".repeat(128))).toBeUndefined();
-  });
-
-  it("returns error for empty input", () => {
-    expect(validateLicense("")).toBe("License is required");
-    expect(validateLicense("   ")).toBe("License is required");
-  });
-
-  it("returns error for too long input", () => {
-    expect(validateLicense("a".repeat(129))).toBe(
-      "License must be 128 characters or less"
-    );
   });
 });
 

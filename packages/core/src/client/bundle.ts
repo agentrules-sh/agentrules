@@ -1,4 +1,4 @@
-import type { BundledFile } from "../types";
+import type { BundledFile } from "../preset";
 import { decodeUtf8, encodeUtf8, toUint8Array } from "../utils/encoding";
 
 export function decodeBundledFile(file: BundledFile): Uint8Array {

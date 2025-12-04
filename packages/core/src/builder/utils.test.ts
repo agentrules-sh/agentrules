@@ -43,7 +43,9 @@ describe("validatePresetConfig", () => {
 
   it("throws for missing required data", () => {
     // Missing fields report as "Invalid input: expected string, received undefined"
-    expect(() => validatePresetConfig({}, "oops")).toThrow(/name.*expected string/i);
+    expect(() => validatePresetConfig({}, "oops")).toThrow(
+      /name.*expected string/i
+    );
     expect(() => validatePresetConfig({ name: "oops" }, "oops")).toThrow(
       /title.*expected string/i
     );

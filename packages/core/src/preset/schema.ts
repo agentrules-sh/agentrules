@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PLATFORM_IDS } from "./platform";
+import { PLATFORM_IDS } from "../platform";
 
 // Version format: MAJOR.MINOR (e.g., "1.0", "2.15")
 // MAJOR: set by publisher
@@ -20,19 +20,6 @@ export const descriptionSchema = z
   .min(1, "Description is required")
   .max(500, "Description must be 500 characters or less");
 
-/** Validate a title string and return error message if invalid, undefined if valid */
-export function validateTitle(value: string): string | undefined {
-  const result = titleSchema.safeParse(value);
-  if (!result.success) return result.error.issues[0]?.message;
-  return;
-}
-
-/** Validate a description string and return error message if invalid, undefined if valid */
-export function validateDescription(value: string): string | undefined {
-  const result = descriptionSchema.safeParse(value);
-  if (!result.success) return result.error.issues[0]?.message;
-  return;
-}
 // Schema for stored versions (MAJOR.MINOR format)
 const versionSchema = z
   .string()
@@ -61,7 +48,9 @@ const featureSchema = z
   .min(1, "Feature cannot be empty")
   .max(100, "Feature must be 100 characters or less");
 
-const featuresSchema = z.array(featureSchema).max(5, "Maximum 5 features allowed");
+const featuresSchema = z
+  .array(featureSchema)
+  .max(5, "Maximum 5 features allowed");
 
 const installMessageSchema = z
   .string()
@@ -80,13 +69,6 @@ export const slugSchema = z
   .min(1, "Name is required")
   .max(64, "Name must be 64 characters or less")
   .regex(SLUG_REGEX, SLUG_ERROR);
-
-/** Validate a slug string and return error message if invalid, undefined if valid */
-export function validateSlug(value: string): string | undefined {
-  const result = slugSchema.safeParse(value);
-  if (!result.success) return result.error.issues[0]?.message;
-  return;
-}
 
 // Common SPDX license identifiers (for quick selection)
 // See: https://spdx.org/licenses/
@@ -107,13 +89,6 @@ export const licenseSchema = z
   .trim()
   .min(1, "License is required")
   .max(128, "License must be 128 characters or less");
-
-/** Validate a license string and return error message if invalid, undefined if valid */
-export function validateLicense(value: string): string | undefined {
-  const result = licenseSchema.safeParse(value);
-  if (!result.success) return result.error.issues[0]?.message;
-  return;
-}
 
 const pathSchema = z.string().trim().min(1);
 

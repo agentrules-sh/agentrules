@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { normalizePlatformInput } from "./platform";
+import { normalizePlatformInput } from "./utils";
 
 describe("normalizePlatformInput", () => {
   it("normalizes mixed-case values", () => {

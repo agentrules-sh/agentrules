@@ -1,5 +1,6 @@
 import { API_ENDPOINTS, LATEST_VERSION } from "../constants";
-import type { PlatformId, Preset, PresetBundle } from "../types";
+import type { PlatformId } from "../platform";
+import type { Preset, PresetBundle } from "../preset";
 
 /**
  * Resolved preset with absolute bundle URL

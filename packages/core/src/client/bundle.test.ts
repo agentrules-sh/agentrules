@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import type { BundledFile } from "../types";
+import type { BundledFile } from "../preset";
 import {
   decodeBundledFile,
   isLikelyText,

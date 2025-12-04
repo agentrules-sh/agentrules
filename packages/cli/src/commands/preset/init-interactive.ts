@@ -1,17 +1,18 @@
 import {
   COMMON_LICENSES,
+  descriptionSchema,
+  licenseSchema,
   PLATFORM_IDS,
   type PlatformId,
   PRESET_CONFIG_FILENAME,
-  validateDescription,
-  validateLicense,
-  validateSlug,
-  validateTitle,
+  slugSchema,
+  titleSchema,
 } from "@agentrules/core";
 import * as p from "@clack/prompts";
 import { basename, join } from "path";
 import { fileExists } from "@/lib/fs";
 import { normalizeName, toTitleCase } from "@/lib/preset-utils";
+import { check } from "@/lib/zod-validator";
 import {
   detectPlatforms,
   type InitOptions,
@@ -71,7 +72,7 @@ export async function initInteractive(
           message: "Package name (slug)",
           placeholder: normalizeName(dirName),
           defaultValue: normalizeName(dirName),
-          validate: validateSlug,
+          validate: check(slugSchema),
         }),
 
       title: ({ results }) =>
@@ -79,7 +80,7 @@ export async function initInteractive(
           message: "Display name",
           placeholder: toTitleCase(results.name ?? dirName),
           defaultValue: toTitleCase(results.name ?? dirName),
-          validate: validateTitle,
+          validate: check(titleSchema),
         }),
 
       description: ({ results }) =>
@@ -87,7 +88,7 @@ export async function initInteractive(
           message: "Description",
           placeholder: `${results.title} preset`,
           defaultValue: `${results.title} preset`,
-          validate: validateDescription,
+          validate: check(descriptionSchema),
         }),
 
       platform: () =>
@@ -121,7 +122,7 @@ export async function initInteractive(
           const custom = await p.text({
             message: "License (SPDX identifier)",
             placeholder: "e.g., MPL-2.0, AGPL-3.0-only",
-            validate: validateLicense,
+            validate: check(licenseSchema),
           });
 
           if (p.isCancel(custom)) {
