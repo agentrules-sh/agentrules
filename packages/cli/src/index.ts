@@ -174,8 +174,8 @@ program
       log.print("");
       const verb = dryRun ? "Would install" : "Installed";
       log.success(
-        `${verb} ${ui.bold(result.entry.title)} ${ui.muted(
-          `for ${result.entry.platform}`
+        `${verb} ${ui.bold(result.preset.title)} ${ui.muted(
+          `for ${result.preset.platform}`
         )}`
       );
 

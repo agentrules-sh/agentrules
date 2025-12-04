@@ -4,7 +4,7 @@
  * Publish and unpublish endpoints for managing presets in the registry.
  */
 
-import { API_ENDPOINTS, type PublishInput } from "@agentrules/core";
+import { API_ENDPOINTS, type PresetPublishInput } from "@agentrules/core";
 import { log } from "@/lib/log";
 
 // =============================================================================
@@ -46,12 +46,12 @@ export type PublishResult =
 
 /**
  * Publishes a preset to the registry.
- * Sends PublishInput (no version) - registry assigns version.
+ * Sends PresetPublishInput (no version) - registry assigns version.
  */
 export async function publishPreset(
   baseUrl: string,
   token: string,
-  input: PublishInput
+  input: PresetPublishInput
 ): Promise<PublishResult> {
   const url = `${baseUrl}${API_ENDPOINTS.presets.base}`;
 

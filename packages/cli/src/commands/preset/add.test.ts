@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import {
   LATEST_VERSION,
   type PlatformId,
-  type RegistryBundle,
+  type PresetBundle,
   type ResolvedPreset,
 } from "@agentrules/core";
 import { access, appendFile, mkdtemp, readFile, rm } from "fs/promises";
@@ -13,8 +13,8 @@ import { loadConfig, saveConfig } from "@/lib/config";
 import { initAppContext } from "@/lib/context";
 
 type FixturePayload = {
-  entry: ResolvedPreset["entry"];
-  bundle: RegistryBundle;
+  preset: ResolvedPreset["preset"];
+  bundle: PresetBundle;
   bundleUrl: string;
 };
 
@@ -267,7 +267,7 @@ describe("addPreset", () => {
     });
 
     expect(result.dryRun).toBeTrue();
-    expect(result.entry.slug).toBe(PRESET_SLUG);
+    expect(result.preset.slug).toBe(PRESET_SLUG);
   });
 
   it("installs a specific version using --version flag", async () => {
@@ -281,7 +281,7 @@ describe("addPreset", () => {
     });
 
     expect(result.dryRun).toBeTrue();
-    expect(result.entry.slug).toBe(PRESET_SLUG);
+    expect(result.preset.slug).toBe(PRESET_SLUG);
   });
 
   it("--version flag takes precedence over @version syntax", async () => {
@@ -297,7 +297,7 @@ describe("addPreset", () => {
     });
 
     expect(result.dryRun).toBeTrue();
-    expect(result.entry.slug).toBe(PRESET_SLUG);
+    expect(result.preset.slug).toBe(PRESET_SLUG);
   });
 
   it("installs latest when no version specified", async () => {
@@ -311,7 +311,7 @@ describe("addPreset", () => {
     });
 
     expect(result.dryRun).toBeTrue();
-    expect(result.entry.slug).toBe(PRESET_SLUG);
+    expect(result.preset.slug).toBe(PRESET_SLUG);
   });
 });
 
@@ -325,10 +325,10 @@ function mockPresetRequests(
   const steps: MockStep[] = [
     {
       expectUrl: new URL(
-        `api/presets/${fixture.entry.slug}/${fixture.entry.platform}/${version}`,
+        `api/presets/${fixture.preset.slug}/${fixture.preset.platform}/${version}`,
         baseUrl
       ).toString(),
-      body: fixture.entry,
+      body: fixture.preset,
     },
     {
       expectUrl: fixture.bundleUrl,
@@ -403,13 +403,13 @@ async function createFixtures(
     contents: fileContents,
   };
 
-  const bundle: RegistryBundle = {
+  const bundle: PresetBundle = {
     slug,
     platform,
     title: TITLE,
     version: "0.0.1",
     description: "Fixture",
-    tags: [],
+    tags: ["test"],
     license: "MIT",
     features: [],
     installMessage: "",
@@ -418,14 +418,14 @@ async function createFixtures(
 
   const bundleUrl = `https://cdn.example.com/presets/${slug}/${platform}.json`;
 
-  const entry: ResolvedPreset["entry"] = {
+  const preset: ResolvedPreset["preset"] = {
     name: `${slug}.${platform}`,
     slug,
     platform,
     title: TITLE,
     version: "0.0.1",
     description: "Fixture",
-    tags: [],
+    tags: ["test"],
     license: "MIT",
     features: [],
     fileCount: 1,
@@ -435,7 +435,7 @@ async function createFixtures(
 
   return {
     bundle,
-    entry,
+    preset,
     bundleUrl,
   };
 }
@@ -467,13 +467,13 @@ async function createFixturesWithRootFiles(
     contents: rootContents,
   };
 
-  const bundle: RegistryBundle = {
+  const bundle: PresetBundle = {
     slug,
     platform,
     title: TITLE,
     version: "0.0.1",
     description: "Fixture with root files",
-    tags: [],
+    tags: ["test"],
     license: "MIT",
     features: [],
     installMessage: "",
@@ -482,14 +482,14 @@ async function createFixturesWithRootFiles(
 
   const bundleUrl = `https://cdn.example.com/presets/${slug}/${platform}.json`;
 
-  const entry: ResolvedPreset["entry"] = {
+  const preset: ResolvedPreset["preset"] = {
     name: `${slug}.${platform}`,
     slug,
     platform,
     title: TITLE,
     version: "0.0.1",
     description: "Fixture with root files",
-    tags: [],
+    tags: ["test"],
     license: "MIT",
     features: [],
     fileCount: 2,
@@ -499,7 +499,7 @@ async function createFixturesWithRootFiles(
 
   return {
     bundle,
-    entry,
+    preset,
     bundleUrl,
   };
 }

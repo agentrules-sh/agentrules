@@ -1,11 +1,11 @@
 import { API_ENDPOINTS, LATEST_VERSION } from "../constants";
-import type { PlatformId, RegistryBundle, RegistryEntry } from "../types";
+import type { PlatformId, Preset, PresetBundle } from "../types";
 
 /**
  * Resolved preset with absolute bundle URL
  */
 export type ResolvedPreset = {
-  entry: RegistryEntry;
+  preset: Preset;
   bundleUrl: string;
 };
 
@@ -45,11 +45,11 @@ export async function resolvePreset(
   }
 
   try {
-    const entry = (await response.json()) as ResolvedPreset["entry"];
+    const preset = (await response.json()) as ResolvedPreset["preset"];
     // Resolve bundleUrl against registry base (handles both relative and absolute URLs)
-    const resolvedBundleUrl = new URL(entry.bundleUrl, baseUrl).toString();
+    const resolvedBundleUrl = new URL(preset.bundleUrl, baseUrl).toString();
     return {
-      entry,
+      preset,
       bundleUrl: resolvedBundleUrl,
     };
   } catch (error) {
@@ -62,7 +62,7 @@ export async function resolvePreset(
 /**
  * Fetches a bundle from an absolute URL or resolves it relative to the registry.
  */
-export async function fetchBundle(bundleUrl: string): Promise<RegistryBundle> {
+export async function fetchBundle(bundleUrl: string): Promise<PresetBundle> {
   const response = await fetch(bundleUrl);
 
   if (!response.ok) {
@@ -72,7 +72,7 @@ export async function fetchBundle(bundleUrl: string): Promise<RegistryBundle> {
   }
 
   try {
-    return (await response.json()) as RegistryBundle;
+    return (await response.json()) as PresetBundle;
   } catch (error) {
     throw new Error(`Unable to parse bundle JSON: ${(error as Error).message}`);
   }

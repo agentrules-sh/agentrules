@@ -1,4 +1,4 @@
-import type { PlatformId, RegistryBundle } from "@agentrules/core";
+import type { PlatformId, PresetBundle } from "@agentrules/core";
 import {
   CONFIG_DIR_NAME,
   createDiffPreview,
@@ -44,8 +44,8 @@ export type FileResult = {
 };
 
 export type AddPresetResult = {
-  entry: ResolvedPreset["entry"];
-  bundle: RegistryBundle;
+  preset: ResolvedPreset["preset"];
+  bundle: PresetBundle;
   files: FileResult[];
   conflicts: ConflictDetail[];
   targetRoot: string;
@@ -95,7 +95,7 @@ export async function addPreset(
   log.debug(
     `Resolving preset ${slug} for platform ${platform}${version ? ` (version ${version})` : ""}`
   );
-  const { entry, bundleUrl } = await resolvePreset(
+  const { preset, bundleUrl } = await resolvePreset(
     registryUrl,
     slug,
     platform,
@@ -105,9 +105,9 @@ export async function addPreset(
   log.debug(`Downloading bundle from ${bundleUrl}`);
   const bundle = await fetchBundle(bundleUrl);
 
-  if (bundle.slug !== entry.slug || bundle.platform !== entry.platform) {
+  if (bundle.slug !== preset.slug || bundle.platform !== preset.platform) {
     throw new Error(
-      `Registry bundle metadata mismatch for "${entry.name}". Expected slug "${entry.slug}" (${entry.platform}).`
+      `Preset bundle metadata mismatch for "${preset.name}". Expected slug "${preset.slug}" (${preset.platform}).`
     );
   }
 
@@ -121,7 +121,7 @@ export async function addPreset(
   });
 
   return {
-    entry,
+    preset,
     bundle,
     files: writeStats.files,
     conflicts: writeStats.conflicts,
@@ -230,7 +230,7 @@ function resolveInstallTarget(
 }
 
 async function writeBundleFiles(
-  bundle: RegistryBundle,
+  bundle: PresetBundle,
   target: InstallTarget,
   behavior: { force: boolean; skipConflicts: boolean; dryRun: boolean }
 ): Promise<WriteBundleStats> {

@@ -1,10 +1,10 @@
 import {
   API_ENDPOINTS,
-  buildRegistryData,
+  buildPresetRegistry,
   LATEST_VERSION,
   PLATFORMS,
   PRESET_CONFIG_FILENAME,
-  type RegistryPresetInput,
+  type PresetInput,
   STATIC_BUNDLE_DIR,
   validatePresetConfig,
 } from "@agentrules/core";
@@ -52,7 +52,7 @@ export async function buildRegistry(
 
   log.debug(`Found ${presetDirs.length} preset(s)`);
 
-  const presets: RegistryPresetInput[] = [];
+  const presets: PresetInput[] = [];
 
   for (const presetDir of presetDirs) {
     const slug = basename(presetDir);
@@ -61,7 +61,7 @@ export async function buildRegistry(
     presets.push(preset);
   }
 
-  const result = await buildRegistryData({
+  const result = await buildPresetRegistry({
     presets,
     bundleBase: options.bundleBase,
   });
@@ -154,7 +154,7 @@ async function discoverPresetDirs(inputDir: string): Promise<string[]> {
   return presetDirs.sort();
 }
 
-async function loadPreset(presetDir: string): Promise<RegistryPresetInput> {
+async function loadPreset(presetDir: string): Promise<PresetInput> {
   const configPath = join(presetDir, PRESET_CONFIG_FILENAME);
   const configRaw = await readFile(configPath, "utf8");
 

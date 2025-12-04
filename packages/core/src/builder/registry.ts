@@ -4,12 +4,12 @@ import {
   isSupportedPlatform,
   PLATFORM_IDS,
   type PlatformId,
-  type PublishInput,
-  type RegistryBundle,
-  type RegistryEntry,
-  type RegistryFileInput,
-  type RegistryIndex,
-  type RegistryPresetInput,
+  type Preset,
+  type PresetBundle,
+  type PresetFileInput,
+  type PresetIndex,
+  type PresetInput,
+  type PresetPublishInput,
 } from "../types";
 import { toPosixPath } from "../utils/encoding";
 import {
@@ -36,21 +36,21 @@ async function sha256(data: Uint8Array): Promise<string> {
 }
 
 /**
- * Options for building a PublishInput (for CLI publish command).
+ * Options for building a PresetPublishInput (for CLI publish command).
  */
-export type BuildPublishInputOptions = {
-  preset: RegistryPresetInput;
+export type BuildPresetPublishInputOptions = {
+  preset: PresetInput;
   /** Major version. Defaults to 1 if not specified. */
   version?: number;
 };
 
 /**
- * Builds a PublishInput from preset input.
+ * Builds a PresetPublishInput from preset input.
  * Used by CLI to prepare data for publishing to a registry.
  */
-export async function buildPublishInput(
-  options: BuildPublishInputOptions
-): Promise<PublishInput> {
+export async function buildPresetPublishInput(
+  options: BuildPresetPublishInputOptions
+): Promise<PresetPublishInput> {
   const { preset: presetInput, version } = options;
 
   if (!NAME_PATTERN.test(presetInput.slug)) {
@@ -100,8 +100,8 @@ export async function buildPublishInput(
 /**
  * Options for building a static registry.
  */
-export type BuildRegistryDataOptions = {
-  presets: RegistryPresetInput[];
+export type BuildPresetRegistryOptions = {
+  presets: PresetInput[];
   /**
    * Optional base path or URL prefix for bundle locations.
    * Format: {bundleBase}/{STATIC_BUNDLE_DIR}/{slug}/{platform}
@@ -110,10 +110,10 @@ export type BuildRegistryDataOptions = {
   bundleBase?: string;
 };
 
-export type BuildRegistryDataResult = {
-  entries: RegistryEntry[];
-  index: RegistryIndex;
-  bundles: RegistryBundle[];
+export type BuildPresetRegistryResult = {
+  entries: Preset[];
+  index: PresetIndex;
+  bundles: PresetBundle[];
 };
 
 /**
@@ -121,12 +121,12 @@ export type BuildRegistryDataResult = {
  * Used for building static registry files (e.g., community-presets).
  * Each preset uses its version from config (default: major 1, minor 0).
  */
-export async function buildRegistryData(
-  options: BuildRegistryDataOptions
-): Promise<BuildRegistryDataResult> {
+export async function buildPresetRegistry(
+  options: BuildPresetRegistryOptions
+): Promise<BuildPresetRegistryResult> {
   const bundleBase = normalizeBundleBase(options.bundleBase);
-  const entries: RegistryEntry[] = [];
-  const bundles: RegistryBundle[] = [];
+  const entries: Preset[] = [];
+  const bundles: PresetBundle[] = [];
 
   for (const presetInput of options.presets) {
     if (!NAME_PATTERN.test(presetInput.slug)) {
@@ -159,7 +159,7 @@ export async function buildRegistryData(
     const majorVersion = presetConfig.version ?? 1;
     const version = `${majorVersion}.0`;
 
-    const entry: RegistryEntry = {
+    const entry: Preset = {
       name: encodeItemName(presetInput.slug, platform),
       slug: presetInput.slug,
       platform,
@@ -175,7 +175,7 @@ export async function buildRegistryData(
     };
     entries.push(entry);
 
-    const bundle: RegistryBundle = {
+    const bundle: PresetBundle = {
       slug: presetInput.slug,
       platform,
       title: presetConfig.title,
@@ -195,7 +195,7 @@ export async function buildRegistryData(
   sortBySlugAndPlatform(entries);
   sortBySlugAndPlatform(bundles);
 
-  const index = entries.reduce<RegistryIndex>((acc, entry) => {
+  const index = entries.reduce<PresetIndex>((acc, entry) => {
     acc[entry.name] = entry;
     return acc;
   }, {});
@@ -204,7 +204,7 @@ export async function buildRegistryData(
 }
 
 async function createBundledFilesFromInputs(
-  files: RegistryFileInput[]
+  files: PresetFileInput[]
 ): Promise<BundledFile[]> {
   const results = await Promise.all(
     files.map(async (file) => {
@@ -223,7 +223,7 @@ async function createBundledFilesFromInputs(
 }
 
 function normalizeFilePayload(
-  contents: RegistryFileInput["contents"]
+  contents: PresetFileInput["contents"]
 ): Uint8Array {
   if (typeof contents === "string") {
     return new TextEncoder().encode(contents);

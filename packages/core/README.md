@@ -21,9 +21,9 @@ npm install @agentrules/core
 ### Building Registry Data
 
 ```ts
-import { buildRegistryData } from "@agentrules/core";
+import { buildPresetRegistry } from "@agentrules/core";
 
-const result = await buildRegistryData({
+const result = await buildPresetRegistry({
   presets: [
     {
       slug: "my-preset",
@@ -32,6 +32,7 @@ const result = await buildRegistryData({
         title: "My Preset",
         version: 1,
         description: "A helpful preset",
+        tags: ["starter", "typescript"],
         license: "MIT",
         platform: "opencode",
         path: ".opencode",
@@ -44,9 +45,9 @@ const result = await buildRegistryData({
   ],
 });
 
-// result.entries  → array for registry.json
-// result.index    → object for registry.index.json
-// result.bundles  → bundle payloads
+// result.entries  → array of Preset for registry.json
+// result.index    → PresetIndex object for registry.index.json
+// result.bundles  → PresetBundle payloads
 ```
 
 ### Validating Preset Config
@@ -69,7 +70,7 @@ if (!result.success) {
 ```ts
 import { resolvePreset, fetchBundle } from "@agentrules/core";
 
-const { entry, bundleUrl } = await resolvePreset(
+const { preset, bundleUrl } = await resolvePreset(
   "https://agentrules.directory/",
   "agentic-dev-starter",
   "opencode"

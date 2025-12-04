@@ -237,7 +237,7 @@ describe("publish", () => {
     expect(authHeader).toBe("Bearer my-secret-token");
   });
 
-  it("sends RegistryBundle to API", async () => {
+  it("sends PresetPublishInput to API", async () => {
     await setupLoggedInContext();
 
     const presetDir = await createValidPreset(testDir, "bundle-test-preset");

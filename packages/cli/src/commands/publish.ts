@@ -6,17 +6,17 @@
  */
 
 import {
-  buildPublishInput,
+  buildPresetPublishInput,
   PLATFORMS,
   PRESET_CONFIG_FILENAME,
-  type PublishInput,
-  type RegistryPresetInput,
+  type PresetInput,
+  type PresetPublishInput,
   validatePresetConfig,
 } from "@agentrules/core";
 import { readdir, readFile } from "fs/promises";
 import { dirname, join, relative } from "path";
-import { publishPreset } from "@/lib/api/presets";
 import { validatePreset } from "@/commands/preset/validate";
+import { publishPreset } from "@/lib/api/presets";
 import { useAppContext } from "@/lib/context";
 import { directoryExists, fileExists } from "@/lib/fs";
 import { log } from "@/lib/log";
@@ -130,7 +130,7 @@ export async function publish(
 
   spinner.update("Loading preset...");
 
-  let presetInput: RegistryPresetInput;
+  let presetInput: PresetInput;
   try {
     presetInput = await loadPreset(presetDir);
     log.debug(
@@ -149,10 +149,10 @@ export async function publish(
   // Build publish input (version is assigned by registry)
   spinner.update("Building bundle...");
 
-  let publishInput: PublishInput;
+  let publishInput: PresetPublishInput;
 
   try {
-    publishInput = await buildPublishInput({
+    publishInput = await buildPresetPublishInput({
       preset: presetInput,
       version,
     });
@@ -293,7 +293,7 @@ export async function publish(
 /**
  * Load a preset from a directory
  */
-async function loadPreset(presetDir: string): Promise<RegistryPresetInput> {
+async function loadPreset(presetDir: string): Promise<PresetInput> {
   const configPath = join(presetDir, PRESET_CONFIG_FILENAME);
 
   if (!(await fileExists(configPath))) {

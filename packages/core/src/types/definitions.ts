@@ -26,7 +26,7 @@ export type BundledFile = {
  * What clients send to publish a preset.
  * Version is optional major version. Registry assigns full MAJOR.MINOR.
  */
-export type PublishInput = {
+export type PresetPublishInput = {
   slug: string;
   platform: PlatformId;
   title: string;
@@ -46,12 +46,12 @@ export type PublishInput = {
  * What registries store and return.
  * Includes version (required) - full MAJOR.MINOR format assigned by registry.
  */
-export type RegistryBundle = Omit<PublishInput, "version"> & {
+export type PresetBundle = Omit<PresetPublishInput, "version"> & {
   /** Full version in MAJOR.MINOR format (e.g., "1.3", "2.1") */
   version: string;
 };
 
-export type RegistryEntry = {
+export type Preset = {
   name: string;
   slug: string;
   platform: PlatformId;
@@ -66,17 +66,17 @@ export type RegistryEntry = {
   totalSize: number;
 };
 
-export type RegistryIndex = Record<string, RegistryEntry>;
+export type PresetIndex = Record<string, Preset>;
 
-export type RegistryFileInput = {
+export type PresetFileInput = {
   path: string;
   contents: ArrayBuffer | ArrayBufferView | string;
 };
 
-export type RegistryPresetInput = {
+export type PresetInput = {
   slug: string;
   config: PresetConfig;
-  files: RegistryFileInput[];
+  files: PresetFileInput[];
   /** Install message from INSTALL.txt file */
   installMessage?: string;
   readmeContent?: string; // Content from README.md

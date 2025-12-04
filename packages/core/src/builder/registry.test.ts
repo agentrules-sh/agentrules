@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import { buildRegistryData, STATIC_BUNDLE_DIR } from "./registry";
+import { buildPresetRegistry, STATIC_BUNDLE_DIR } from "./registry";
 
-describe("buildRegistryData", () => {
+describe("buildPresetRegistry", () => {
   it("produces registry entries and bundles from preset inputs", async () => {
-    const result = await buildRegistryData({
+    const result = await buildPresetRegistry({
       presets: [
         {
           slug: "starter",
@@ -46,7 +46,7 @@ describe("buildRegistryData", () => {
   });
 
   it("uses version from config when specified", async () => {
-    const result = await buildRegistryData({
+    const result = await buildPresetRegistry({
       presets: [
         {
           slug: "versioned",
@@ -55,6 +55,7 @@ describe("buildRegistryData", () => {
             title: "Versioned Preset",
             version: 2, // Major version 2
             description: "Has explicit version",
+            tags: ["test"],
             license: "MIT",
             platform: "claude",
             path: ".claude",
@@ -73,7 +74,7 @@ describe("buildRegistryData", () => {
 
   it("rejects binary files", async () => {
     await expect(
-      buildRegistryData({
+      buildPresetRegistry({
         presets: [
           {
             slug: "bad-preset",
@@ -81,6 +82,7 @@ describe("buildRegistryData", () => {
               name: "bad-preset",
               title: "Bad",
               description: "Contains binary",
+              tags: ["test"],
               license: "MIT",
               platform: "opencode",
               path: ".opencode",

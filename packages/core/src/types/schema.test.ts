@@ -5,9 +5,9 @@ import {
   descriptionSchema,
   licenseSchema,
   platformIdSchema,
+  presetBundleSchema,
   presetConfigSchema,
-  registryBundleSchema,
-  registryEntrySchema,
+  presetSchema,
   slugSchema,
   titleSchema,
   validateDescription,
@@ -329,7 +329,7 @@ describe("presetConfigSchema", () => {
   });
 });
 
-describe("registryBundleSchema", () => {
+describe("presetBundleSchema", () => {
   const validBundle = {
     slug: "test-preset",
     platform: "opencode",
@@ -349,7 +349,7 @@ describe("registryBundleSchema", () => {
   };
 
   it("accepts valid bundle", () => {
-    const result = registryBundleSchema.parse(validBundle);
+    const result = presetBundleSchema.parse(validBundle);
     expect(result.slug).toBe("test-preset");
     expect(result.version).toBe("1.0");
     expect(result.files).toHaveLength(1);
@@ -357,13 +357,13 @@ describe("registryBundleSchema", () => {
 
   it("rejects empty files array", () => {
     expect(() =>
-      registryBundleSchema.parse({ ...validBundle, files: [] })
+      presetBundleSchema.parse({ ...validBundle, files: [] })
     ).toThrow();
   });
 
   it("rejects invalid checksum length", () => {
     expect(() =>
-      registryBundleSchema.parse({
+      presetBundleSchema.parse({
         ...validBundle,
         files: [{ ...validBundle.files[0], checksum: "short" }],
       })
@@ -371,8 +371,8 @@ describe("registryBundleSchema", () => {
   });
 });
 
-describe("registryEntrySchema", () => {
-  const validEntry = {
+describe("presetSchema", () => {
+  const validPreset = {
     name: "test-preset.opencode",
     slug: "test-preset",
     platform: "opencode",
@@ -386,8 +386,8 @@ describe("registryEntrySchema", () => {
     totalSize: 100,
   };
 
-  it("accepts valid entry", () => {
-    const result = registryEntrySchema.parse(validEntry);
+  it("accepts valid preset", () => {
+    const result = presetSchema.parse(validPreset);
     expect(result.name).toBe("test-preset.opencode");
     expect(result.version).toBe("1.0");
     expect(result.bundleUrl).toBe(`${STATIC_BUNDLE_DIR}/test-preset/opencode`);
@@ -395,7 +395,7 @@ describe("registryEntrySchema", () => {
 
   it("rejects negative fileCount", () => {
     expect(() =>
-      registryEntrySchema.parse({ ...validEntry, fileCount: -1 })
+      presetSchema.parse({ ...validPreset, fileCount: -1 })
     ).toThrow();
   });
 });

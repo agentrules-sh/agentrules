@@ -117,7 +117,7 @@ export const bundledFileSchema = z.object({
  * Schema for what clients send to publish a preset.
  * Version is optional major version. Registry assigns full MAJOR.MINOR.
  */
-export const publishInputSchema = z.object({
+export const presetPublishInputSchema = z.object({
   slug: z.string().trim().min(1),
   platform: platformIdSchema,
   title: titleSchema,
@@ -137,14 +137,14 @@ export const publishInputSchema = z.object({
  * Schema for what registries store and return.
  * Includes version (required) - full MAJOR.MINOR format assigned by registry.
  */
-export const registryBundleSchema = publishInputSchema
+export const presetBundleSchema = presetPublishInputSchema
   .omit({ version: true })
   .extend({
     /** Full version in MAJOR.MINOR format (e.g., "1.3", "2.1") */
     version: versionSchema,
   });
 
-export const registryEntrySchema = registryBundleSchema
+export const presetSchema = presetBundleSchema
   .omit({
     files: true,
     readmeContent: true,
@@ -158,4 +158,4 @@ export const registryEntrySchema = registryBundleSchema
     totalSize: z.number().int().nonnegative(),
   });
 
-export const registryIndexSchema = z.record(z.string(), registryEntrySchema);
+export const presetIndexSchema = z.record(z.string(), presetSchema);
