@@ -8,7 +8,7 @@ const VERSION_REGEX = /^[1-9]\d*\.\d+$/;
 
 export const platformIdSchema = z.enum(PLATFORM_IDS);
 
-export const titleSchema = z.string().trim().min(1).max(120);
+export const titleSchema = z.string().trim().min(1).max(80);
 export const descriptionSchema = z.string().trim().min(1).max(500);
 
 /** Validate a title string and return error message if invalid, undefined if valid */
@@ -37,11 +37,11 @@ const majorVersionSchema = z
   .number()
   .int()
   .positive("Major version must be a positive integer");
-const tagSchema = z.string().trim().min(1).max(48);
+const tagSchema = z.string().trim().min(1).max(35);
 const tagsSchema = z.array(tagSchema).min(1).max(10);
-const featureSchema = z.string().trim().min(1).max(160);
-const featuresSchema = z.array(featureSchema).max(10);
-const installMessageSchema = z.string().trim().max(4000);
+const featureSchema = z.string().trim().min(1).max(100);
+const featuresSchema = z.array(featureSchema).max(5);
+const installMessageSchema = z.string().trim().max(2000);
 const contentSchema = z.string(); // For readmeContent and licenseContent (no length limit)
 
 // Slug: lowercase alphanumeric with hyphens, no leading/trailing/consecutive hyphens

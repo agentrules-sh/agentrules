@@ -108,15 +108,15 @@ describe("titleSchema", () => {
   it("accepts valid titles", () => {
     expect(titleSchema.parse("My Preset")).toBe("My Preset");
     expect(titleSchema.parse("A")).toBe("A");
-    expect(titleSchema.parse("a".repeat(120))).toBe("a".repeat(120));
+    expect(titleSchema.parse("a".repeat(80))).toBe("a".repeat(80));
   });
 
   it("rejects empty titles", () => {
     expect(() => titleSchema.parse("")).toThrow();
   });
 
-  it("rejects titles over 120 characters", () => {
-    expect(() => titleSchema.parse("a".repeat(121))).toThrow();
+  it("rejects titles over 80 characters", () => {
+    expect(() => titleSchema.parse("a".repeat(81))).toThrow();
   });
 });
 
