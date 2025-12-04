@@ -8,6 +8,7 @@
  * @see https://github.com/panva/openid-client
  */
 
+import { API_ENDPOINTS } from "@agentrules/core";
 import * as client from "openid-client";
 import { log } from "@/lib/log";
 import { buildUrl } from "@/lib/url";
@@ -17,13 +18,6 @@ export type {
   DeviceAuthorizationResponse,
   TokenEndpointResponse,
 } from "openid-client";
-
-// =============================================================================
-// Configuration
-// =============================================================================
-
-const DEFAULT_DEVICE_AUTHORIZATION_ENDPOINT = "api/auth/device/code";
-const DEFAULT_TOKEN_ENDPOINT = "api/auth/device/token";
 
 export type DeviceCodeRequestOptions = {
   /** The authorization server's issuer URL */
@@ -59,11 +53,11 @@ export async function requestDeviceCode(
 ): Promise<DeviceCodeRequestResult> {
   const deviceAuthEndpoint = buildUrl(
     options.issuer,
-    options.deviceAuthorizationEndpoint ?? DEFAULT_DEVICE_AUTHORIZATION_ENDPOINT
+    options.deviceAuthorizationEndpoint ?? API_ENDPOINTS.auth.deviceCode
   );
   const tokenEndpoint = buildUrl(
     options.issuer,
-    options.tokenEndpoint ?? DEFAULT_TOKEN_ENDPOINT
+    options.tokenEndpoint ?? API_ENDPOINTS.auth.deviceToken
   );
 
   const serverMetadata: client.ServerMetadata = {

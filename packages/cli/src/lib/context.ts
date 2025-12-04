@@ -27,10 +27,6 @@ export type AppUser = {
 
 /**
  * Active registry information
- *
- * Registry URL conventions:
- * - API endpoints: {url}api/*
- * - Static content: {url}r/*
  */
 export type AppRegistry = {
   alias: string;

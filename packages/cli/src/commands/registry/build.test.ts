@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { API_ENDPOINTS, STATIC_BUNDLE_DIR } from "@agentrules/core";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
@@ -63,27 +64,24 @@ describe("buildRegistry", () => {
     expect(result.bundles).toBe(1);
     expect(result.outputDir).toBe(outputDir);
 
-    // Check output files exist
-    const indexContent = await readFile(
-      join(outputDir, "registry.index.json"),
-      "utf8"
-    );
-    const index = JSON.parse(indexContent);
-    expect(index["test-preset.opencode"]).toBeDefined();
-
-    const registryContent = await readFile(
-      join(outputDir, "registry.json"),
-      "utf8"
-    );
-    const entries = JSON.parse(registryContent);
-    expect(entries).toHaveLength(1);
-
+    // Check bundle file exists
     const bundleContent = await readFile(
-      join(outputDir, "test-preset/opencode.json"),
+      join(outputDir, `${STATIC_BUNDLE_DIR}/test-preset/opencode`),
       "utf8"
     );
     const bundle = JSON.parse(bundleContent);
     expect(bundle.files).toHaveLength(2);
+
+    // Check API entry exists
+    const apiEntryContent = await readFile(
+      join(outputDir, API_ENDPOINTS.presets.entry("test-preset", "opencode")),
+      "utf8"
+    );
+    const apiEntry = JSON.parse(apiEntryContent);
+    expect(apiEntry.slug).toBe("test-preset");
+    expect(apiEntry.bundleUrl).toBe(
+      `${STATIC_BUNDLE_DIR}/test-preset/opencode`
+    );
   });
 
   it("validates without writing when --validate-only", async () => {
@@ -138,28 +136,6 @@ describe("buildRegistry", () => {
     ).rejects.toThrow(/Files directory not found/);
   });
 
-  it("uses custom bundle base", async () => {
-    await createPreset("test-preset", VALID_CONFIG, {
-      "AGENT_RULES.md": "# Rules\n",
-    });
-
-    await buildRegistry({
-      input: inputDir,
-      out: outputDir,
-      bundleBase: "/custom/path",
-    });
-
-    const indexContent = await readFile(
-      join(outputDir, "registry.index.json"),
-      "utf8"
-    );
-    const index = JSON.parse(indexContent);
-    // bundlePath includes version from config (default: 1.0)
-    expect(index["test-preset.opencode"].bundlePath).toBe(
-      "/custom/path/test-preset/opencode.1.0.json"
-    );
-  });
-
   it("writes compact JSON when --compact", async () => {
     await createPreset("test-preset", VALID_CONFIG, {
       "AGENT_RULES.md": "# Rules\n",
@@ -171,8 +147,55 @@ describe("buildRegistry", () => {
       compact: true,
     });
 
-    const content = await readFile(join(outputDir, "registry.json"), "utf8");
+    const content = await readFile(
+      join(outputDir, API_ENDPOINTS.presets.entry("test-preset", "opencode")),
+      "utf8"
+    );
     expect(content).not.toContain("\n  ");
+  });
+
+  it("uses custom bundle base for relative path", async () => {
+    await createPreset("test-preset", VALID_CONFIG, {
+      "AGENT_RULES.md": "# Rules\n",
+    });
+
+    await buildRegistry({
+      input: inputDir,
+      out: outputDir,
+      bundleBase: "my-registry",
+    });
+
+    const content = await readFile(
+      join(outputDir, API_ENDPOINTS.presets.entry("test-preset", "opencode")),
+      "utf8"
+    );
+    const entry = JSON.parse(content);
+    // bundleBase + STATIC_BUNDLE_DIR + slug/platform
+    expect(entry.bundleUrl).toBe(
+      `my-registry/${STATIC_BUNDLE_DIR}/test-preset/opencode`
+    );
+  });
+
+  it("uses custom bundle base for absolute URL", async () => {
+    await createPreset("test-preset", VALID_CONFIG, {
+      "AGENT_RULES.md": "# Rules\n",
+    });
+
+    await buildRegistry({
+      input: inputDir,
+      out: outputDir,
+      bundleBase: "https://cdn.example.com/bundles",
+    });
+
+    const content = await readFile(
+      join(outputDir, API_ENDPOINTS.presets.entry("test-preset", "opencode")),
+      "utf8"
+    );
+    const entry = JSON.parse(content);
+    // bundleBase + STATIC_BUNDLE_DIR + slug/platform
+    expect(entry.bundleUrl).toBe(
+      `https://cdn.example.com/bundles/${STATIC_BUNDLE_DIR}/test-preset/opencode`
+    );
   });
 
   it("handles multiple presets", async () => {
@@ -219,7 +242,7 @@ describe("buildRegistry", () => {
       });
 
       const bundleContent = await readFile(
-        join(outputDir, "test-preset/opencode.json"),
+        join(outputDir, `${STATIC_BUNDLE_DIR}/test-preset/opencode`),
         "utf8"
       );
       const bundle = JSON.parse(bundleContent);
@@ -228,28 +251,7 @@ describe("buildRegistry", () => {
       );
     });
 
-    it("sets hasReadmeContent flag in entry", async () => {
-      await createPreset("test-preset", VALID_CONFIG, {
-        "AGENT_RULES.md": "# Rules\n",
-      });
-
-      const presetDir = join(inputDir, "test-preset");
-      await writeFile(join(presetDir, "README.md"), "# Docs");
-
-      await buildRegistry({
-        input: inputDir,
-        out: outputDir,
-      });
-
-      const indexContent = await readFile(
-        join(outputDir, "registry.index.json"),
-        "utf8"
-      );
-      const index = JSON.parse(indexContent);
-      expect(index["test-preset.opencode"].hasReadmeContent).toBe(true);
-    });
-
-    it("omits readmeContent fields when no README.md", async () => {
+    it("omits readmeContent in bundle when no README.md", async () => {
       await createPreset("test-preset", VALID_CONFIG, {
         "AGENT_RULES.md": "# Rules\n",
       });
@@ -260,18 +262,11 @@ describe("buildRegistry", () => {
       });
 
       const bundleContent = await readFile(
-        join(outputDir, "test-preset/opencode.json"),
+        join(outputDir, `${STATIC_BUNDLE_DIR}/test-preset/opencode`),
         "utf8"
       );
       const bundle = JSON.parse(bundleContent);
       expect(bundle.readmeContent).toBeUndefined();
-
-      const indexContent = await readFile(
-        join(outputDir, "registry.index.json"),
-        "utf8"
-      );
-      const index = JSON.parse(indexContent);
-      expect(index["test-preset.opencode"].hasReadmeContent).toBe(false);
     });
   });
 
@@ -294,7 +289,7 @@ describe("buildRegistry", () => {
       });
 
       const bundleContent = await readFile(
-        join(outputDir, "test-preset/opencode.json"),
+        join(outputDir, `${STATIC_BUNDLE_DIR}/test-preset/opencode`),
         "utf8"
       );
       const bundle = JSON.parse(bundleContent);
@@ -312,7 +307,7 @@ describe("buildRegistry", () => {
       });
 
       const bundleContent = await readFile(
-        join(outputDir, "test-preset/opencode.json"),
+        join(outputDir, `${STATIC_BUNDLE_DIR}/test-preset/opencode`),
         "utf8"
       );
       const bundle = JSON.parse(bundleContent);

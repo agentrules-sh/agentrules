@@ -1,10 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import { buildRegistryData } from "./registry";
+import { buildRegistryData, STATIC_BUNDLE_DIR } from "./registry";
 
 describe("buildRegistryData", () => {
   it("produces registry entries and bundles from preset inputs", async () => {
     const result = await buildRegistryData({
-      bundleBase: "/r",
       presets: [
         {
           slug: "starter",
@@ -29,8 +28,10 @@ describe("buildRegistryData", () => {
     });
 
     expect(result.entries).toHaveLength(1);
-    // bundlePath includes version (default: 1.0)
-    expect(result.entries[0]?.bundlePath).toBe("/r/starter/opencode.1.0.json");
+    // bundleUrl includes version (default: 1.0)
+    expect(result.entries[0]?.bundleUrl).toBe(
+      `${STATIC_BUNDLE_DIR}/starter/opencode`
+    );
     expect(result.entries[0]?.version).toBe("1.0");
     expect(result.entries[0]?.fileCount).toBe(2);
     expect(result.index["starter.opencode"]).toEqual(result.entries[0]);
@@ -46,7 +47,6 @@ describe("buildRegistryData", () => {
 
   it("uses version from config when specified", async () => {
     const result = await buildRegistryData({
-      bundleBase: "/r",
       presets: [
         {
           slug: "versioned",
@@ -66,13 +66,14 @@ describe("buildRegistryData", () => {
 
     expect(result.entries[0]?.version).toBe("2.0");
     expect(result.bundles[0]?.version).toBe("2.0");
-    expect(result.entries[0]?.bundlePath).toBe("/r/versioned/claude.2.0.json");
+    expect(result.entries[0]?.bundleUrl).toBe(
+      `${STATIC_BUNDLE_DIR}/versioned/claude`
+    );
   });
 
   it("rejects binary files", async () => {
     await expect(
       buildRegistryData({
-        bundleBase: "/r",
         presets: [
           {
             slug: "bad-preset",

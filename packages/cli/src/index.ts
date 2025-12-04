@@ -375,7 +375,10 @@ registry
   .description("Build registry from preset directories")
   .requiredOption("-i, --input <path>", "Directory containing preset folders")
   .option("-o, --out <path>", "Output directory")
-  .option("-b, --bundle-base <path>", "Public base path for bundles", "/r")
+  .option(
+    "-b, --bundle-base <base>",
+    "Base path or URL for bundles in metadata (default: r)"
+  )
   .option("-c, --compact", "Emit compact JSON")
   .option("--validate-only", "Validate without writing files")
   .action(

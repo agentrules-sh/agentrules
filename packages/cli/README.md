@@ -102,7 +102,7 @@ agentrules registry build -i <input> -o <output> [options]
 Options:
   -i, --input <path>         Directory containing preset folders (required)
   -o, --out <path>           Output directory for registry artifacts
-  -b, --bundle-base <path>   Public base path for bundles (default: /r)
+  -b, --bundle-base <path>   Optional URL prefix for bundle locations
   -c, --compact              Emit minified JSON
   --validate-only            Validate without writing files
 ```

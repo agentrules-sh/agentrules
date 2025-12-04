@@ -84,10 +84,6 @@ export function getConfigDir() {
 /**
  * Normalizes a registry URL to a base URL with trailing slash.
  *
- * The base URL is used for all registry operations:
- * - API endpoints: {baseUrl}api/*
- * - Static content: {baseUrl}r/*
- *
  * Examples:
  * - "https://example.com" → "https://example.com/"
  * - "https://example.com/custom/" → "https://example.com/custom/"

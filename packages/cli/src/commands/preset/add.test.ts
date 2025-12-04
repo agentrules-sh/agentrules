@@ -2,8 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import type {
   PlatformId,
   RegistryBundle,
-  RegistryEntry,
-  RegistryIndex,
+  ResolvedPreset,
 } from "@agentrules/core";
 import { access, appendFile, mkdtemp, readFile, rm } from "fs/promises";
 import { tmpdir } from "os";
@@ -18,9 +17,9 @@ import {
 import { initAppContext } from "@/lib/context";
 
 type FixturePayload = {
-  index: RegistryIndex;
+  entry: ResolvedPreset["entry"];
   bundle: RegistryBundle;
-  entry: RegistryEntry;
+  bundleUrl: string;
 };
 
 type MockStep = {
@@ -78,7 +77,10 @@ describe("addPreset", () => {
     const fixture = await createFixtures("# Initial contents\n");
     mockPresetRequests(DEFAULT_BASE_URL, fixture);
 
-    const result = await addPreset({ preset: PRESET_SLUG, dryRun: true });
+    const result = await addPreset({
+      preset: `${PRESET_SLUG}.${PLATFORM}`,
+      dryRun: true,
+    });
 
     expect(result.dryRun).toBeTrue();
     const filesWritten = result.files.filter(
@@ -95,7 +97,7 @@ describe("addPreset", () => {
     const fixture = await createFixtures("# Initial contents\n");
     mockPresetRequests(DEFAULT_BASE_URL, fixture);
 
-    const result = await addPreset({ preset: PRESET_SLUG });
+    const result = await addPreset({ preset: `${PRESET_SLUG}.${PLATFORM}` });
 
     expect(result.dryRun).toBeFalse();
     const filesWritten = result.files.filter(
@@ -113,7 +115,7 @@ describe("addPreset", () => {
   it("skips conflicting files when --skip-conflicts is provided", async () => {
     let fixture = await createFixtures("# Initial contents\n");
     mockPresetRequests(DEFAULT_BASE_URL, fixture);
-    await addPreset({ preset: PRESET_SLUG, force: true });
+    await addPreset({ preset: `${PRESET_SLUG}.${PLATFORM}`, force: true });
 
     const rulesPath = join(projectDir, ".opencode/AGENT_RULES.md");
     await appendFile(rulesPath, "\n# Local customization\n");
@@ -121,7 +123,7 @@ describe("addPreset", () => {
     fixture = await createFixtures("# Initial contents\n");
     mockPresetRequests(DEFAULT_BASE_URL, fixture);
     const result = await addPreset({
-      preset: PRESET_SLUG,
+      preset: `${PRESET_SLUG}.${PLATFORM}`,
       skipConflicts: true,
     });
 
@@ -136,7 +138,7 @@ describe("addPreset", () => {
   it("returns conflicts when files differ and force is not provided", async () => {
     let fixture = await createFixtures("# First install\n");
     mockPresetRequests(DEFAULT_BASE_URL, fixture);
-    await addPreset({ preset: PRESET_SLUG, force: true });
+    await addPreset({ preset: `${PRESET_SLUG}.${PLATFORM}`, force: true });
     await appendFile(
       join(projectDir, ".opencode/AGENT_RULES.md"),
       "\n# Local\n"
@@ -145,7 +147,7 @@ describe("addPreset", () => {
     fixture = await createFixtures("# Updated contents\n");
     mockPresetRequests(DEFAULT_BASE_URL, fixture);
 
-    const result = await addPreset({ preset: PRESET_SLUG });
+    const result = await addPreset({ preset: `${PRESET_SLUG}.${PLATFORM}` });
 
     expect(result.conflicts).toHaveLength(1);
     expect(result.conflicts[0]?.path).toBe(".opencode/AGENT_RULES.md");
@@ -157,7 +159,10 @@ describe("addPreset", () => {
     mockPresetRequests(DEFAULT_BASE_URL, fixture);
 
     const customDir = join(projectDir, "custom-target");
-    await addPreset({ preset: PRESET_SLUG, directory: customDir });
+    await addPreset({
+      preset: `${PRESET_SLUG}.${PLATFORM}`,
+      directory: customDir,
+    });
 
     expect(
       await fileExists(join(customDir, ".opencode/AGENT_RULES.md"))
@@ -169,7 +174,7 @@ describe("addPreset", () => {
     mockPresetRequests(DEFAULT_BASE_URL, fixture);
     // Use force to handle any existing files (os.homedir() may not respect HOME env var)
     const result = await addPreset({
-      preset: PRESET_SLUG,
+      preset: `${PRESET_SLUG}.${PLATFORM}`,
       global: true,
       force: true,
     });
@@ -191,7 +196,7 @@ describe("addPreset", () => {
     mockPresetRequests(DEFAULT_BASE_URL, fixture);
     // Use force to handle any existing files
     const result = await addPreset({
-      preset: PRESET_SLUG,
+      preset: `${PRESET_SLUG}.${PLATFORM}`,
       global: true,
       force: true,
     });
@@ -209,7 +214,7 @@ describe("addPreset", () => {
       "# README\n"
     );
     mockPresetRequests(DEFAULT_BASE_URL, fixture);
-    const result = await addPreset({ preset: PRESET_SLUG });
+    const result = await addPreset({ preset: `${PRESET_SLUG}.${PLATFORM}` });
 
     // Config file should be in platform dir
     expect(
@@ -223,21 +228,14 @@ describe("addPreset", () => {
   });
 
   it("installs the requested platform variant when multiple entries exist", async () => {
-    const opFixture = await createFixtures("# OpenCode\n", {
-      platform: "opencode",
-    });
+    // With the new API, we request a specific platform directly
     const claudeFixture = await createFixtures("# Claude variant\n", {
       platform: "claude",
       filePath: "config/config.md",
     });
-    const combinedFixture: FixturePayload = {
-      index: { ...opFixture.index, ...claudeFixture.index },
-      bundle: claudeFixture.bundle,
-      entry: claudeFixture.entry,
-    };
 
-    mockPresetRequests(DEFAULT_BASE_URL, combinedFixture);
-    await addPreset({ preset: PRESET_SLUG, platform: "claude" });
+    mockPresetRequests(DEFAULT_BASE_URL, claudeFixture);
+    await addPreset({ preset: `${PRESET_SLUG}.claude` });
 
     // config/config.md maps to .claude/config.md for project install
     expect(await fileExists(join(projectDir, ".claude/config.md"))).toBeTrue();
@@ -259,7 +257,7 @@ describe("addPreset", () => {
     mockPresetRequests(altUrl, fixture);
 
     const result = await addPreset({
-      preset: PRESET_SLUG,
+      preset: `${PRESET_SLUG}.${PLATFORM}`,
       dryRun: true,
     });
 
@@ -269,14 +267,17 @@ describe("addPreset", () => {
 });
 
 function mockPresetRequests(baseUrl: string, fixture: FixturePayload) {
-  // Core adds "r/" prefix to content paths
+  // New API endpoints
   const steps: MockStep[] = [
     {
-      expectUrl: new URL("r/registry.index.json", baseUrl).toString(),
-      body: fixture.index,
+      expectUrl: new URL(
+        `api/presets/${fixture.entry.slug}/${fixture.entry.platform}`,
+        baseUrl
+      ).toString(),
+      body: fixture.entry,
     },
     {
-      expectUrl: new URL(`r/${fixture.entry.bundlePath}`, baseUrl).toString(),
+      expectUrl: fixture.bundleUrl,
       body: fixture.bundle,
     },
   ];
@@ -361,7 +362,9 @@ async function createFixtures(
     files: [file],
   };
 
-  const entry: RegistryEntry = {
+  const bundleUrl = `https://cdn.example.com/presets/${slug}/${platform}.json`;
+
+  const entry: ResolvedPreset["entry"] = {
     name: `${slug}.${platform}`,
     slug,
     platform,
@@ -371,18 +374,15 @@ async function createFixtures(
     tags: [],
     license: "MIT",
     features: [],
-    installMessage: "",
-    bundlePath: `${slug}/${platform}.json`,
     fileCount: 1,
     totalSize: size,
+    bundleUrl,
   };
 
   return {
-    index: {
-      [entry.name]: entry,
-    },
     bundle,
     entry,
+    bundleUrl,
   };
 }
 
@@ -426,7 +426,9 @@ async function createFixturesWithRootFiles(
     files: [configFile, rootFile],
   };
 
-  const entry: RegistryEntry = {
+  const bundleUrl = `https://cdn.example.com/presets/${slug}/${platform}.json`;
+
+  const entry: ResolvedPreset["entry"] = {
     name: `${slug}.${platform}`,
     slug,
     platform,
@@ -436,18 +438,15 @@ async function createFixturesWithRootFiles(
     tags: [],
     license: "MIT",
     features: [],
-    installMessage: "",
-    bundlePath: `${slug}/${platform}.json`,
     fileCount: 2,
     totalSize: configSize + rootSize,
+    bundleUrl,
   };
 
   return {
-    index: {
-      [entry.name]: entry,
-    },
     bundle,
     entry,
+    bundleUrl,
   };
 }
 

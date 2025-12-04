@@ -59,17 +59,11 @@ export type RegistryEntry = {
   version: string;
   description: string;
   tags: string[];
-  license: string; // Required SPDX license identifier
+  license: string;
   features?: string[];
-  installMessage?: string;
-  bundlePath: string;
+  bundleUrl: string;
   fileCount: number;
-  /** Total size of all files in bytes */
   totalSize: number;
-  /** Whether the preset has a README.md */
-  hasReadmeContent?: boolean;
-  /** Whether the preset has a LICENSE.md */
-  hasLicenseContent?: boolean;
 };
 
 export type RegistryIndex = Record<string, RegistryEntry>;

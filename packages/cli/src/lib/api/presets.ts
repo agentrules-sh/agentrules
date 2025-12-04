@@ -4,26 +4,14 @@
  * Publish and unpublish endpoints for managing presets in the registry.
  */
 
-import type { PublishInput } from "@agentrules/core";
+import { API_ENDPOINTS, type PublishInput } from "@agentrules/core";
 import { log } from "@/lib/log";
-
-// =============================================================================
-// Endpoints
-// =============================================================================
-
-export const PRESET_ENDPOINTS = {
-  /** Publish a preset. POST with PublishInput body (no version - registry assigns). */
-  PUBLISH: "api/presets",
-  /** Unpublish a preset version. DELETE with slug/platform/version in path. */
-  UNPUBLISH: (slug: string, platform: string, version: string) =>
-    `api/presets/${encodeURIComponent(slug)}/${encodeURIComponent(platform)}/${encodeURIComponent(version)}`,
-} as const;
 
 // =============================================================================
 // Types
 // =============================================================================
 
-/** Response from POST /api/presets (publish). */
+/** Response from POST {API_ENDPOINTS.presets.base} (publish). */
 export type PublishResponse = {
   presetId: string;
   versionId: string;
@@ -35,7 +23,7 @@ export type PublishResponse = {
   bundleUrl: string;
 };
 
-/** Response from DELETE /api/presets/:slug/:platform/:version (unpublish). */
+/** Response from DELETE {API_ENDPOINTS.presets.unpublish()} (unpublish). */
 export type UnpublishResponse = {
   slug: string;
   platform: string;
@@ -65,7 +53,7 @@ export async function publishPreset(
   token: string,
   input: PublishInput
 ): Promise<PublishResult> {
-  const url = `${baseUrl}${PRESET_ENDPOINTS.PUBLISH}`;
+  const url = `${baseUrl}${API_ENDPOINTS.presets.base}`;
 
   log.debug(`POST ${url}`);
 
@@ -115,7 +103,7 @@ export async function unpublishPreset(
   platform: string,
   version: string
 ): Promise<UnpublishResult> {
-  const url = `${baseUrl}${PRESET_ENDPOINTS.UNPUBLISH(slug, platform, version)}`;
+  const url = `${baseUrl}${API_ENDPOINTS.presets.unpublish(slug, platform, version)}`;
 
   log.debug(`DELETE ${url}`);
 

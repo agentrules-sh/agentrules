@@ -1,18 +1,15 @@
-import type {
-  PlatformId,
-  RegistryBundle,
-  RegistryEntry,
-} from "@agentrules/core";
+import type { PlatformId, RegistryBundle } from "@agentrules/core";
 import {
   CONFIG_DIR_NAME,
   createDiffPreview,
   decodeBundledFile,
-  fetchRegistryBundle,
-  fetchRegistryIndex,
+  fetchBundle,
   isLikelyText,
+  isSupportedPlatform,
   normalizeBundlePath,
   PLATFORMS,
-  resolveRegistryEntry,
+  type ResolvedPreset,
+  resolvePreset,
   toUtf8String,
   verifyBundledFileChecksum,
 } from "@agentrules/core";
@@ -47,7 +44,7 @@ export type FileResult = {
 };
 
 export type AddPresetResult = {
-  entry: RegistryEntry;
+  entry: ResolvedPreset["entry"];
   bundle: RegistryBundle;
   files: FileResult[];
   conflicts: ConflictDetail[];
@@ -89,17 +86,14 @@ export async function addPreset(
   const { config } = ctx;
   const dryRun = Boolean(options.dryRun);
 
-  log.debug(`Fetching registry index from ${registryUrl}`);
-  const registryIndex = await fetchRegistryIndex(registryUrl);
+  // Parse slug and platform from input
+  const { slug, platform } = parsePresetInput(options.preset, options.platform);
 
-  const entry = resolveRegistryEntry(
-    registryIndex,
-    options.preset,
-    options.platform
-  );
+  log.debug(`Resolving preset ${slug} for platform ${platform}`);
+  const { entry, bundleUrl } = await resolvePreset(registryUrl, slug, platform);
 
-  log.debug(`Downloading bundle: ${entry.bundlePath}`);
-  const bundle = await fetchRegistryBundle(registryUrl, entry.bundlePath);
+  log.debug(`Downloading bundle from ${bundleUrl}`);
+  const bundle = await fetchBundle(bundleUrl);
 
   if (bundle.slug !== entry.slug || bundle.platform !== entry.platform) {
     throw new Error(
@@ -130,6 +124,47 @@ export async function addPreset(
     registryAlias,
     dryRun,
   };
+}
+
+/**
+ * Parses preset input to extract slug and platform.
+ * Supports formats:
+ * - "my-preset" (requires explicit platform)
+ * - "my-preset.claude" (platform inferred from suffix)
+ */
+function parsePresetInput(
+  input: string,
+  explicitPlatform?: PlatformId
+): { slug: string; platform: PlatformId } {
+  const normalized = input.toLowerCase().trim();
+
+  // If explicit platform provided, use it
+  if (explicitPlatform) {
+    // Remove platform suffix if present to get clean slug
+    const parts = normalized.split(".");
+    const maybePlatform = parts.at(-1);
+    if (maybePlatform && isSupportedPlatform(maybePlatform)) {
+      return {
+        slug: parts.slice(0, -1).join("."),
+        platform: explicitPlatform,
+      };
+    }
+    return { slug: normalized, platform: explicitPlatform };
+  }
+
+  // Try to infer platform from suffix (e.g., "my-preset.claude")
+  const parts = normalized.split(".");
+  const maybePlatform = parts.at(-1);
+  if (maybePlatform && isSupportedPlatform(maybePlatform)) {
+    return {
+      slug: parts.slice(0, -1).join("."),
+      platform: maybePlatform,
+    };
+  }
+
+  throw new Error(
+    `Platform not specified. Use --platform <platform> or specify as <slug>.<platform> (e.g., "${input}.claude").`
+  );
 }
 
 function resolveInstallTarget(

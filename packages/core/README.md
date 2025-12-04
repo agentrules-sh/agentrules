@@ -23,8 +23,7 @@ npm install @agentrules/core
 ```ts
 import { buildRegistryData } from "@agentrules/core";
 
-const result = buildRegistryData({
-  bundleBase: "/r",
+const result = await buildRegistryData({
   presets: [
     {
       slug: "my-preset",
@@ -68,18 +67,14 @@ if (!result.success) {
 ### Fetching from Registry
 
 ```ts
-import {
-  fetchRegistryIndex,
-  fetchRegistryBundle,
-  resolveRegistryEntry,
-} from "@agentrules/core";
+import { resolvePreset, fetchBundle } from "@agentrules/core";
 
-const index = await fetchRegistryIndex("https://agentrules.directory/");
-const entry = resolveRegistryEntry(index, "agentic-dev-starter", "opencode");
-const bundle = await fetchRegistryBundle(
+const { entry, bundleUrl } = await resolvePreset(
   "https://agentrules.directory/",
-  entry.bundlePath
+  "agentic-dev-starter",
+  "opencode"
 );
+const bundle = await fetchBundle(bundleUrl);
 ```
 
 ### Working with Bundles

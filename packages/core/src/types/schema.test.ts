@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { STATIC_BUNDLE_DIR } from "../builder/registry";
 import {
   COMMON_LICENSES,
   descriptionSchema,
@@ -380,7 +381,7 @@ describe("registryEntrySchema", () => {
     description: "A test preset",
     license: "MIT",
     tags: [],
-    bundlePath: "/r/test-preset/opencode.1.0.json",
+    bundleUrl: `${STATIC_BUNDLE_DIR}/test-preset/opencode`,
     fileCount: 1,
     totalSize: 100,
   };
@@ -389,7 +390,7 @@ describe("registryEntrySchema", () => {
     const result = registryEntrySchema.parse(validEntry);
     expect(result.name).toBe("test-preset.opencode");
     expect(result.version).toBe("1.0");
-    expect(result.bundlePath).toBe("/r/test-preset/opencode.1.0.json");
+    expect(result.bundleUrl).toBe(`${STATIC_BUNDLE_DIR}/test-preset/opencode`);
   });
 
   it("rejects negative fileCount", () => {

@@ -1,9 +1,10 @@
 import {
+  API_ENDPOINTS,
   buildRegistryData,
-  normalizeBundlePublicBase,
   PLATFORMS,
   PRESET_CONFIG_FILENAME,
   type RegistryPresetInput,
+  STATIC_BUNDLE_DIR,
   validatePresetConfig,
 } from "@agentrules/core";
 import { mkdir, readdir, readFile, writeFile } from "fs/promises";
@@ -36,7 +37,6 @@ export async function buildRegistry(
 ): Promise<BuildResult> {
   const inputDir = options.input;
   const outputDir = options.out ?? null;
-  const bundleBase = normalizeBundlePublicBase(options.bundleBase ?? "/r");
   const compact = Boolean(options.compact);
   const validateOnly = Boolean(options.validateOnly);
 
@@ -60,7 +60,10 @@ export async function buildRegistry(
     presets.push(preset);
   }
 
-  const result = await buildRegistryData({ bundleBase, presets });
+  const result = await buildRegistryData({
+    presets,
+    bundleBase: options.bundleBase,
+  });
 
   if (validateOnly || !outputDir) {
     return {
@@ -77,35 +80,26 @@ export async function buildRegistry(
 
   const indent = compact ? undefined : 2;
 
-  // Write registry.index.json (lookup by name)
-  const indexPath = join(outputDir, "registry.index.json");
-  await writeFile(indexPath, JSON.stringify(result.index, null, indent));
-  log.debug(`Wrote ${indexPath}`);
-
-  // Write registry.json (array of entries for listing)
-  const registryPath = join(outputDir, "registry.json");
-  await writeFile(registryPath, JSON.stringify(result.entries, null, indent));
-  log.debug(`Wrote ${registryPath}`);
-
-  // Write individual bundle files (both versioned and latest)
   for (const bundle of result.bundles) {
-    const bundleDir = join(outputDir, bundle.slug);
+    const bundleDir = join(outputDir, STATIC_BUNDLE_DIR, bundle.slug);
     await mkdir(bundleDir, { recursive: true });
-
-    const bundleJson = JSON.stringify(bundle, null, indent);
-
-    // Write versioned bundle: {slug}/{platform}.{version}.json
-    const versionedPath = join(
-      bundleDir,
-      `${bundle.platform}.${bundle.version}.json`
+    await writeFile(
+      join(bundleDir, bundle.platform),
+      JSON.stringify(bundle, null, indent)
     );
-    await writeFile(versionedPath, bundleJson);
+  }
 
-    // Write latest bundle: {slug}/{platform}.json (for O(1) lookup without version)
-    const latestPath = join(bundleDir, `${bundle.platform}.json`);
-    await writeFile(latestPath, bundleJson);
-
-    log.debug(`Wrote bundle: ${bundle.slug}/${bundle.platform}`);
+  for (const entry of result.entries) {
+    const apiPresetDir = join(
+      outputDir,
+      API_ENDPOINTS.presets.base,
+      entry.slug
+    );
+    await mkdir(apiPresetDir, { recursive: true });
+    await writeFile(
+      join(apiPresetDir, entry.platform),
+      JSON.stringify(entry, null, indent)
+    );
   }
 
   return {

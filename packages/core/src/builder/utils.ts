@@ -1,26 +1,6 @@
 import type { PlatformId, PresetConfig } from "../types";
 import { PLATFORM_IDS } from "../types/platform";
 
-export function normalizeBundlePublicBase(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    throw new Error("--bundle-base must be a non-empty string");
-  }
-  if (isAbsoluteUrl(trimmed)) {
-    return trimmed.replace(/\/+$/, "");
-  }
-  let normalized = trimmed;
-  if (!normalized.startsWith("/")) {
-    normalized = `/${normalized}`;
-  }
-  normalized = normalized.replace(/\/+$/, "");
-  return normalized === "" ? "/" : normalized;
-}
-
-function isAbsoluteUrl(value: string) {
-  return /^[a-zA-Z][a-zA-Z\d+-.]*:/.test(value);
-}
-
 export function cleanInstallMessage(value: unknown) {
   if (typeof value !== "string") {
     return;

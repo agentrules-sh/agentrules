@@ -14,11 +14,16 @@ import { toPosixPath } from "../utils/encoding";
 import {
   cleanInstallMessage,
   encodeItemName,
-  normalizeBundlePublicBase,
   validatePresetConfig,
 } from "./utils";
 
 const NAME_PATTERN = /^[a-z0-9-]+$/;
+
+/**
+ * Directory name for bundle files in static registry output.
+ * Used by `agentrules registry build` to structure output.
+ */
+export const STATIC_BUNDLE_DIR = "r";
 
 /**
  * Compute SHA-256 hash using Web Crypto API (works in browser and Node.js 15+)
@@ -96,6 +101,11 @@ export async function buildPublishInput(
  */
 export type BuildRegistryDataOptions = {
   presets: RegistryPresetInput[];
+  /**
+   * Optional base path or URL prefix for bundle locations.
+   * Format: {bundleBase}/{STATIC_BUNDLE_DIR}/{slug}/{platform}
+   * Default: no prefix (bundleUrl starts with STATIC_BUNDLE_DIR)
+   */
   bundleBase?: string;
 };
 
@@ -113,7 +123,7 @@ export type BuildRegistryDataResult = {
 export async function buildRegistryData(
   options: BuildRegistryDataOptions
 ): Promise<BuildRegistryDataResult> {
-  const bundleBase = normalizeBundlePublicBase(options.bundleBase ?? "/r");
+  const bundleBase = normalizeBundleBase(options.bundleBase);
   const entries: RegistryEntry[] = [];
   const bundles: RegistryBundle[] = [];
 
@@ -158,16 +168,9 @@ export async function buildRegistryData(
       tags: presetConfig.tags ?? [],
       license: presetConfig.license,
       features,
-      bundlePath: getBundlePublicPath(
-        bundleBase,
-        presetInput.slug,
-        platform,
-        version
-      ),
+      bundleUrl: getBundlePath(bundleBase, presetInput.slug, platform),
       fileCount: files.length,
       totalSize,
-      hasReadmeContent: Boolean(readmeContent),
-      hasLicenseContent: Boolean(licenseContent),
     };
     entries.push(entry);
 
@@ -248,20 +251,30 @@ function encodeFilePayload(data: Uint8Array, filePath: string): string {
   }
 }
 
-function getBundlePublicPath(
-  base: string,
-  slug: string,
-  platform: PlatformId,
-  version: string
-) {
-  const prefix = base === "/" ? "" : base;
-  return `${prefix}/${slug}/${platform}.${version}.json`;
+/**
+ * Normalize bundle base by removing trailing slashes.
+ * Returns empty string if base is undefined/empty (use default relative path).
+ */
+function normalizeBundleBase(base: string | undefined): string {
+  if (!base) return "";
+  return base.replace(/\/+$/, "");
+}
+
+/**
+ * Returns the bundle URL/path for a preset.
+ * Format: {base}/{STATIC_BUNDLE_DIR}/{slug}/{platform}
+ */
+function getBundlePath(base: string, slug: string, platform: PlatformId) {
+  const prefix = base ? `${base}/` : "";
+  return `${prefix}${STATIC_BUNDLE_DIR}/${slug}/${platform}`;
 }
 
 function ensureKnownPlatform(platform: string, slug: string) {
   if (!isSupportedPlatform(platform)) {
     throw new Error(
-      `Unknown platform "${platform}" in ${slug}. Supported: ${PLATFORM_IDS.join(", ")}`
+      `Unknown platform "${platform}" in ${slug}. Supported: ${PLATFORM_IDS.join(
+        ", "
+      )}`
     );
   }
 }

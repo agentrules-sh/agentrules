@@ -5,17 +5,9 @@
  * to support CLI user display features.
  */
 
+import { API_ENDPOINTS } from "@agentrules/core";
 import { log } from "@/lib/log";
 import { buildUrl } from "@/lib/url";
-
-// =============================================================================
-// Endpoints
-// =============================================================================
-
-export const AUTH_ENDPOINTS = {
-  /** Get current session and user info. */
-  GET_SESSION: "api/auth/get-session",
-} as const;
 
 // =============================================================================
 // Types
@@ -36,7 +28,7 @@ export type RegistrySession = {
   expiresAt: string;
 };
 
-/** Response from GET /api/auth/get-session. */
+/** Response from GET {API_ENDPOINTS.auth.session}. */
 export type GetSessionResponse = {
   user: RegistryUser;
   session: RegistrySession;
@@ -56,7 +48,7 @@ export async function fetchSession(
   baseUrl: string,
   token: string
 ): Promise<GetSessionResponse> {
-  const url = buildUrl(baseUrl, AUTH_ENDPOINTS.GET_SESSION);
+  const url = buildUrl(baseUrl, API_ENDPOINTS.auth.session);
 
   try {
     log.debug(`GET ${url}`);

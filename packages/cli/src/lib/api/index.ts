@@ -2,20 +2,24 @@
  * Registry API Client
  *
  * This module contains the client code for calling remote registry APIs.
+ * All endpoint paths are defined in API_ENDPOINTS (from @agentrules/core).
  *
  * ## For Registry Implementers
  *
- * A compatible registry server must implement:
+ * A compatible registry server must implement endpoints matching API_ENDPOINTS:
  *
- * ### Authentication
- * - POST /api/auth/device/code - RFC 8628 device code request
- * - POST /api/auth/device/token - RFC 8628 token exchange
- * - GET  /api/auth/get-session - Get current user/session info
+ * ### Authentication (API_ENDPOINTS.auth)
+ * - POST {deviceCode} - RFC 8628 device code request
+ * - POST {deviceToken} - RFC 8628 token exchange
+ * - GET  {session} - Get current user/session info
  *
- * ### Presets
- * - POST   /api/presets - Publish a preset bundle
- * - DELETE /api/presets/:slug/:platform/:version - Unpublish a preset version
+ * ### Presets (API_ENDPOINTS.presets)
+ * - POST   {base} - Publish a preset bundle
+ * - DELETE {unpublish(slug, platform, version)} - Unpublish a preset version
  */
+
+// Re-export API_ENDPOINTS from core for convenience
+export { API_ENDPOINTS } from "@agentrules/core";
 
 // RFC 8628 Device Authorization Grant
 export {
@@ -31,7 +35,6 @@ export {
 // Preset endpoints
 export {
   type ErrorResponse,
-  PRESET_ENDPOINTS,
   type PublishResponse,
   type PublishResult,
   publishPreset,
@@ -41,7 +44,6 @@ export {
 } from "./presets";
 // Session endpoint
 export {
-  AUTH_ENDPOINTS,
   fetchSession,
   type GetSessionResponse,
   type RegistrySession,

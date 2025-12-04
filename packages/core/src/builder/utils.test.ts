@@ -2,7 +2,6 @@ import { describe, expect, it } from "bun:test";
 import {
   cleanInstallMessage,
   encodeItemName,
-  normalizeBundlePublicBase,
   validatePresetConfig,
 } from "./utils";
 
@@ -15,23 +14,6 @@ const MINIMAL_PRESET = {
   platform: "opencode" as const,
   path: ".opencode",
 };
-
-describe("normalizeBundlePublicBase", () => {
-  it("normalizes relative fragments", () => {
-    expect(normalizeBundlePublicBase("registry/")).toBe("/registry");
-    expect(normalizeBundlePublicBase("/r//"))?.toBe("/r");
-  });
-
-  it("leaves absolute URLs intact", () => {
-    expect(normalizeBundlePublicBase("https://cdn.example.com/registry/")).toBe(
-      "https://cdn.example.com/registry"
-    );
-  });
-
-  it("throws for empty strings", () => {
-    expect(() => normalizeBundlePublicBase("   ")).toThrow(/non-empty/);
-  });
-});
 
 describe("cleanInstallMessage", () => {
   it("trims and drops empty values", () => {

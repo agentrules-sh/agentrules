@@ -153,11 +153,9 @@ export const registryEntrySchema = registryBundleSchema
   })
   .extend({
     name: z.string().trim().min(1),
-    bundlePath: z.string().trim().min(1),
+    bundleUrl: z.string().trim().min(1),
     fileCount: z.number().int().nonnegative(),
     totalSize: z.number().int().nonnegative(),
-    hasReadmeContent: z.boolean().optional(),
-    hasLicenseContent: z.boolean().optional(),
   });
 
 export const registryIndexSchema = z.record(z.string(), registryEntrySchema);
