@@ -128,6 +128,96 @@ describe("COMMON_LICENSES", () => {
   });
 });
 
+describe("tags validation", () => {
+  const validConfig = {
+    name: "test-preset",
+    title: "Test Preset",
+    description: "A test preset",
+    license: "MIT",
+    platform: "opencode",
+  };
+
+  it("accepts valid kebab-case tags", () => {
+    const result = presetConfigSchema.parse({
+      ...validConfig,
+      tags: ["my-tag", "another-tag", "tag123", "123tag"],
+    });
+    expect(result.tags).toEqual(["my-tag", "another-tag", "tag123", "123tag"]);
+  });
+
+  it("accepts single-word lowercase tags", () => {
+    const result = presetConfigSchema.parse({
+      ...validConfig,
+      tags: ["test", "example", "typescript"],
+    });
+    expect(result.tags).toEqual(["test", "example", "typescript"]);
+  });
+
+  it("rejects tags with uppercase", () => {
+    expect(() =>
+      presetConfigSchema.parse({ ...validConfig, tags: ["MyTag"] })
+    ).toThrow();
+    expect(() =>
+      presetConfigSchema.parse({ ...validConfig, tags: ["UPPERCASE"] })
+    ).toThrow();
+  });
+
+  it("rejects tags with spaces", () => {
+    expect(() =>
+      presetConfigSchema.parse({ ...validConfig, tags: ["my tag"] })
+    ).toThrow();
+  });
+
+  it("rejects tags with special characters", () => {
+    expect(() =>
+      presetConfigSchema.parse({ ...validConfig, tags: ["my_tag"] })
+    ).toThrow();
+    expect(() =>
+      presetConfigSchema.parse({ ...validConfig, tags: ["my.tag"] })
+    ).toThrow();
+    expect(() =>
+      presetConfigSchema.parse({ ...validConfig, tags: ["my@tag"] })
+    ).toThrow();
+  });
+
+  it("rejects tags with leading hyphen", () => {
+    expect(() =>
+      presetConfigSchema.parse({ ...validConfig, tags: ["-tag"] })
+    ).toThrow();
+  });
+
+  it("rejects tags with trailing hyphen", () => {
+    expect(() =>
+      presetConfigSchema.parse({ ...validConfig, tags: ["tag-"] })
+    ).toThrow();
+  });
+
+  it("rejects tags with consecutive hyphens", () => {
+    expect(() =>
+      presetConfigSchema.parse({ ...validConfig, tags: ["my--tag"] })
+    ).toThrow();
+  });
+
+  it("rejects empty tags", () => {
+    expect(() =>
+      presetConfigSchema.parse({ ...validConfig, tags: [""] })
+    ).toThrow();
+  });
+
+  it("rejects tags over 35 characters", () => {
+    expect(() =>
+      presetConfigSchema.parse({ ...validConfig, tags: ["a".repeat(36)] })
+    ).toThrow();
+  });
+
+  it("rejects more than 10 tags", () => {
+    const tooManyTags = Array.from({ length: 11 }, (_, i) => `tag${i}`);
+    expect(() =>
+      presetConfigSchema.parse({ ...validConfig, tags: tooManyTags })
+    ).toThrow();
+  });
+});
+
 describe("presetConfigSchema", () => {
   // Version is now optional in source config (auto-generated at build time)
   const validConfig = {

@@ -31,11 +31,17 @@ const majorVersionSchema = z
   .number()
   .int()
   .positive("Major version must be a positive integer");
+// Tags: lowercase alphanumeric with hyphens, no leading/trailing/consecutive hyphens
+const TAG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const TAG_ERROR =
+  "Must be lowercase alphanumeric with hyphens (e.g., my-tag)";
+
 const tagSchema = z
   .string()
   .trim()
   .min(1, "Tag cannot be empty")
-  .max(35, "Tag must be 35 characters or less");
+  .max(35, "Tag must be 35 characters or less")
+  .regex(TAG_REGEX, TAG_ERROR);
 
 const tagsSchema = z
   .array(tagSchema)
