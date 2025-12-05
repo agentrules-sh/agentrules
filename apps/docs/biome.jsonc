@@ -1,6 +1,10 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "extends": "//",
+  "files": {
+    "ignoreUnknown": false,
+    "includes": ["**", "!**/src/routeTree.gen.ts"]
+  },
   "linter": {
     "domains": {
       "react": "recommended"
