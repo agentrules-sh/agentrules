@@ -18,7 +18,7 @@
     "changeset": "changeset",
     "version": "changeset version && bun scripts/sync-lockfile-versions.ts",
     "release": "bun run build && bun run release:publish",
-    "release:publish": "for dir in packages/*; do (cd \"$dir\" && bun pm pack && npm publish *.tgz --provenance --access public && rm *.tgz); done && changeset tag"
+    "release:publish": "bun scripts/release-publish.ts"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,json,jsonc,css,scss,md,mdx}": [
