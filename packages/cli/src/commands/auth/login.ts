@@ -35,6 +35,8 @@ export type LoginOptions = {
   onBrowserOpen?: (opened: boolean) => void;
   /** Called when polling starts - use to show a waiting indicator */
   onPollingStart?: () => void;
+  /** Called when authorization is received (before fetching user info) */
+  onAuthorized?: () => void;
 };
 
 export type LoginResult = {
@@ -59,6 +61,7 @@ export async function login(options: LoginOptions = {}): Promise<LoginResult> {
     onDeviceCode,
     onBrowserOpen,
     onPollingStart,
+    onAuthorized,
   } = options;
 
   const ctx = useAppContext();
@@ -122,6 +125,9 @@ export async function login(options: LoginOptions = {}): Promise<LoginResult> {
     if (pollResult.success === false) {
       return { success: false, error: pollResult.error };
     }
+
+    // Notify that authorization is complete
+    onAuthorized?.();
 
     // Step 5: Fetch user info
     const token = pollResult.token.access_token;

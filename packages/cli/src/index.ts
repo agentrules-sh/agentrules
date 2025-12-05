@@ -527,6 +527,9 @@ program
         onPollingStart: async () => {
           spinner = await log.spinner("Waiting for authorization...");
         },
+        onAuthorized: () => {
+          spinner.update("Finalizing...");
+        },
       });
 
       if (!result.success) {
