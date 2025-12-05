@@ -139,10 +139,10 @@ export async function pollForToken(
     log.debug("Starting token polling...");
 
     const tokenResponse = await client.pollDeviceAuthorizationGrant(
-      config,
-      deviceAuthorizationResponse,
-      undefined,
-      { signal }
+      config, // Server metadata + client configuration
+      deviceAuthorizationResponse, // Contains device_code, expires_in, interval, etc.
+      undefined, // Timeout in ms (undefined = use expires_in from response)
+      { signal } // AbortSignal for cancellation
     );
 
     log.debug(`Token response: ${JSON.stringify(tokenResponse)}`);

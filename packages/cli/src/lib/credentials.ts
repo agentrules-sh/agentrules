@@ -75,7 +75,6 @@ async function loadStore(): Promise<CredentialsStore> {
   try {
     const raw = await readFile(credentialsPath, "utf8");
     const store = JSON.parse(raw) as CredentialsStore;
-    log.debug(`Loaded credentials for ${Object.keys(store).length} registries`);
     return store;
   } catch (error) {
     log.debug(
@@ -97,9 +96,6 @@ async function saveStore(store: CredentialsStore): Promise<void> {
   const content = JSON.stringify(store, null, 2);
   await writeFile(credentialsPath, content, { encoding: "utf8", mode: 0o600 });
   await chmodAsync(credentialsPath, 0o600);
-  log.debug(
-    `Saved credentials for ${Object.keys(store).length} registries to ${credentialsPath}`
-  );
 }
 
 /**
@@ -147,10 +143,10 @@ export async function saveCredentials(
   const store = await loadStore();
   const key = normalizeUrl(registryUrl);
   store[key] = credentials;
-  log.debug(
-    `Saving credentials for registry ${registryUrl}${credentials.expiresAt ? ` (expires ${credentials.expiresAt})` : ""}`
-  );
   await saveStore(store);
+  log.debug(
+    `Saved credentials for ${registryUrl}${credentials.expiresAt ? ` (expires ${credentials.expiresAt})` : ""}`
+  );
 }
 
 /**
