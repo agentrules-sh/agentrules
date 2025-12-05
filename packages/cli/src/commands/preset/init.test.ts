@@ -90,10 +90,21 @@ describe("initPreset", () => {
     expect(result.preset.title).toBe("Updated");
   });
 
-  it("normalizes name from directory name", async () => {
-    const presetDir = join(testDir, "My Cool_Preset!");
+  it("uses default preset name when not specified", async () => {
+    const presetDir = join(testDir, "some-random-dir");
 
     const result = await initPreset({ directory: presetDir });
+
+    expect(result.preset.name).toBe("my-preset");
+  });
+
+  it("normalizes provided name", async () => {
+    const presetDir = join(testDir, "some-dir");
+
+    const result = await initPreset({
+      directory: presetDir,
+      name: "My Cool_Preset!",
+    });
 
     expect(result.preset.name).toBe("my-cool-preset");
   });

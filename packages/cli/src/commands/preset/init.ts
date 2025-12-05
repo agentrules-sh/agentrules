@@ -8,7 +8,7 @@ import {
   type PresetConfig,
 } from "@agentrules/core";
 import { mkdir, writeFile } from "fs/promises";
-import { basename, join } from "path";
+import { join } from "path";
 import { directoryExists, fileExists } from "@/lib/fs";
 import { log } from "@/lib/log";
 import { normalizeName, toTitleCase } from "@/lib/preset-utils";
@@ -47,6 +47,9 @@ const PLATFORM_DETECTION_PATHS: Record<PlatformId, string[]> = {
 /** Default path for new preset authoring */
 const DEFAULT_FILES_PATH = "files";
 
+/** Default preset name when none specified */
+const DEFAULT_PRESET_NAME = "my-preset";
+
 /**
  * Detect existing platform config directories in a directory
  */
@@ -72,12 +75,11 @@ export async function detectPlatforms(
 
 export async function initPreset(options: InitOptions): Promise<InitResult> {
   const directory = options.directory ?? process.cwd();
-  const dirName = basename(directory);
 
   log.debug(`Initializing preset in: ${directory}`);
 
   // Validate/normalize inputs
-  const name = normalizeName(options.name ?? dirName);
+  const name = normalizeName(options.name ?? DEFAULT_PRESET_NAME);
   const title = options.title ?? toTitleCase(name);
   const description = options.description ?? `${title} preset`;
   const platform = normalizePlatform(options.platform ?? "opencode");

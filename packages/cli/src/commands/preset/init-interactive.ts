@@ -9,7 +9,7 @@ import {
   titleSchema,
 } from "@agentrules/core";
 import * as p from "@clack/prompts";
-import { basename, join } from "path";
+import { join } from "path";
 import { fileExists } from "@/lib/fs";
 import { normalizeName, toTitleCase } from "@/lib/preset-utils";
 import { check } from "@/lib/zod-validator";
@@ -20,8 +20,15 @@ import {
   initPreset,
 } from "./init";
 
+const DEFAULT_PRESET_NAME = "my-preset";
+
 export type InteractiveInitOptions = {
   directory: string;
+  name?: string;
+  title?: string;
+  description?: string;
+  platform?: string;
+  license?: string;
   force?: boolean;
 };
 
@@ -31,9 +38,16 @@ export type InteractiveInitOptions = {
 export async function initInteractive(
   options: InteractiveInitOptions
 ): Promise<InitResult | null> {
-  const { directory } = options;
+  const {
+    directory,
+    name: nameOption,
+    title: titleOption,
+    description: descriptionOption,
+    platform: platformOption,
+    license: licenseOption,
+  } = options;
   let { force } = options;
-  const dirName = basename(directory);
+  const defaultName = nameOption ?? DEFAULT_PRESET_NAME;
 
   p.intro("Create a new preset");
 
@@ -69,48 +83,57 @@ export async function initInteractive(
     {
       name: () =>
         p.text({
-          message: "Package name (slug)",
-          placeholder: normalizeName(dirName),
-          defaultValue: normalizeName(dirName),
+          message: "Preset name (slug)",
+          placeholder: normalizeName(defaultName),
+          defaultValue: normalizeName(defaultName),
           validate: check(slugSchema),
         }),
 
-      title: ({ results }) =>
-        p.text({
+      title: ({ results }) => {
+        const defaultTitle =
+          titleOption ?? toTitleCase(results.name ?? defaultName);
+        return p.text({
           message: "Display name",
-          placeholder: toTitleCase(results.name ?? dirName),
-          defaultValue: toTitleCase(results.name ?? dirName),
+          placeholder: defaultTitle,
+          defaultValue: defaultTitle,
           validate: check(titleSchema),
-        }),
+        });
+      },
 
-      description: ({ results }) =>
-        p.text({
+      description: ({ results }) => {
+        const defaultDescription =
+          descriptionOption ?? `${results.title} preset`;
+        return p.text({
           message: "Description",
-          placeholder: `${results.title} preset`,
-          defaultValue: `${results.title} preset`,
+          placeholder: defaultDescription,
+          defaultValue: defaultDescription,
           validate: check(descriptionSchema),
-        }),
+        });
+      },
 
-      platform: () =>
-        p.select({
+      platform: () => {
+        const defaultPlatform =
+          platformOption ?? (detected.length > 0 ? detected[0].id : "opencode");
+        return p.select({
           message: "Platform",
           options: PLATFORM_IDS.map((id) => ({
             value: id,
             label: detectedMap.has(id) ? `${id} (detected)` : id,
             hint: detectedMap.get(id)?.path,
           })),
-          initialValue:
-            detected.length > 0 ? detected[0].id : ("opencode" as PlatformId),
-        }),
+          initialValue: defaultPlatform as PlatformId,
+        });
+      },
 
       license: async () => {
+        const defaultLicense = licenseOption ?? "MIT";
         const choice = await p.select({
           message: "License",
           options: [
             ...COMMON_LICENSES.map((id) => ({ value: id, label: id })),
             { value: "__other__", label: "Other (enter SPDX identifier)" },
           ],
-          initialValue: "MIT",
+          initialValue: defaultLicense,
         });
 
         if (p.isCancel(choice)) {

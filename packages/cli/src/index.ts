@@ -2,6 +2,7 @@
 
 import { Command } from "commander";
 import { createRequire } from "module";
+import { basename } from "path";
 import { login } from "@/commands/auth/login";
 import { logout } from "@/commands/auth/logout";
 import { whoami } from "@/commands/auth/whoami";
@@ -206,8 +207,11 @@ program
 
 program
   .command("init")
-  .description("Initialize a new preset in the current directory")
-  .argument("[directory]", "Directory to initialize")
+  .description("Initialize a new preset")
+  .argument(
+    "[directory]",
+    "Directory to initialize (created if it doesn't exist)"
+  )
   .option("-y, --yes", "Accept defaults without prompting")
   .option("-n, --name <name>", "Preset name")
   .option("-t, --title <title>", "Display title")
@@ -222,23 +226,24 @@ program
     handle(async (directory: string | undefined, options) => {
       const targetDir = directory ?? process.cwd();
 
+      // If directory arg provided, use its basename as default name
+      // Otherwise fall back to generic "my-preset"
+      const defaultName = directory ? basename(directory) : undefined;
+
       // Use interactive mode if:
       // - Not using --yes flag
       // - stdin is a TTY (not piped)
-      // - No explicit options provided (except directory and force)
-      const hasExplicitOptions =
-        options.name ||
-        options.title ||
-        options.description ||
-        options.platform ||
-        options.license;
-
-      const useInteractive =
-        !options.yes && process.stdin.isTTY && !hasExplicitOptions;
+      // Options like --name just set defaults for prompts
+      const useInteractive = !options.yes && process.stdin.isTTY;
 
       if (useInteractive) {
         const result = await initInteractive({
           directory: targetDir,
+          name: options.name ?? defaultName,
+          title: options.title,
+          description: options.description,
+          platform: options.platform,
+          license: options.license,
           force: options.force,
         });
 
@@ -247,14 +252,18 @@ program
           log.print(ui.list([ui.path(result.createdDir)]));
         }
 
-        log.print(`\n${ui.header("Next steps")}`);
-        log.print(
-          ui.numberedList([
-            "Add your config files to the files directory",
-            "Replace the placeholder comments in tags and features",
-            `Run ${ui.command("agentrules validate")} to check your preset`,
-          ])
+        const nextSteps: string[] = [];
+        if (directory) {
+          nextSteps.push(`Run ${ui.command(`cd ${directory}`)}`);
+        }
+        nextSteps.push(
+          "Add your config files to the files directory",
+          "Replace the placeholder comments in tags and features",
+          `Run ${ui.command("agentrules validate")} to check your preset`
         );
+
+        log.print(`\n${ui.header("Next steps")}`);
+        log.print(ui.numberedList(nextSteps));
         return;
       }
 
@@ -267,7 +276,7 @@ program
 
       const result = await initPreset({
         directory: targetDir,
-        name: options.name,
+        name: options.name ?? defaultName,
         title: options.title,
         description: options.description,
         platform,
@@ -283,14 +292,18 @@ program
         log.print(ui.list([ui.path(result.createdDir)]));
       }
 
-      log.print(`\n${ui.header("Next steps")}`);
-      log.print(
-        ui.numberedList([
-          "Add your config files to the files directory",
-          "Replace the placeholder comments in tags and features",
-          `Run ${ui.command("agentrules validate")} to check your preset`,
-        ])
+      const nextSteps: string[] = [];
+      if (directory) {
+        nextSteps.push(`Run ${ui.command(`cd ${directory}`)}`);
+      }
+      nextSteps.push(
+        "Add your config files to the files directory",
+        "Replace the placeholder comments in tags and features",
+        `Run ${ui.command("agentrules validate")} to check your preset`
       );
+
+      log.print(`\n${ui.header("Next steps")}`);
+      log.print(ui.numberedList(nextSteps));
     })
   );
 

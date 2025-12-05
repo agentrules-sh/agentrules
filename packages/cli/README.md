@@ -5,7 +5,7 @@ CLI for installing and publishing AGENT_RULES presets.
 ## Installation
 
 ```bash
-# Run directly with npx (recommended)
+# Run directly with npx
 npx @agentrules/cli <command>
 
 # Or install globally
@@ -73,7 +73,7 @@ agentrules init [directory] [options]
 
 | Option | Description |
 |--------|-------------|
-| `-n, --name <name>` | Preset name (default: directory name) |
+| `-n, --name <name>` | Preset name (default: directory name, or `my-preset`) |
 | `-t, --title <title>` | Display title |
 | `--description <text>` | Preset description |
 | `-p, --platform <platform>` | Target platform |
@@ -84,15 +84,18 @@ agentrules init [directory] [options]
 **Examples:**
 
 ```bash
-# Interactive mode (prompts for values)
-mkdir my-preset && cd my-preset
+# Create a new preset directory and initialize (interactive prompts)
+agentrules init my-preset
+cd my-preset
+
+# Initialize in current directory
 agentrules init
 
-# Non-interactive with options
-agentrules init --platform opencode --license MIT
+# Set defaults for prompts
+agentrules init my-preset --name awesome-rules --platform opencode
 
-# Accept all defaults
-agentrules init --yes
+# Accept all defaults, skip prompts
+agentrules init my-preset --yes
 ```
 
 ### `agentrules validate [path]`
@@ -110,6 +113,8 @@ agentrules validate ./my-preset
 ---
 
 ## Publishing Presets
+
+Publish your preset to [agentrules.directory](https://agentrules.directory) to reach developers and get a profile showcasing your presets.
 
 ### `agentrules login`
 

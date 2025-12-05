@@ -76,29 +76,30 @@ See the [CLI documentation](./packages/cli) for all options.
 
 ## Quick Start: Create & Publish a Preset
 
-Want to share your agentic workflow? Create a preset and publish it.
+Share your agentic workflow and get discovered. Publishing to [agentrules.directory](https://agentrules.directory) gives you a profile page, puts your work in front of developers, and popular presets get featured in trending.
 
 ### 1. Initialize a preset
 
 ```bash
-mkdir my-preset && cd my-preset
-npx @agentrules/cli init
+npx @agentrules/cli init my-preset
+cd my-preset
 ```
 
-This creates an `agentrules.json` config and a `files/` directory for your config files.
+This creates a `my-preset/` directory with an `agentrules.json` config and a `files/` directory for your config files.
 
 ### 2. Add your files
 
-Put your agent rules, commands, and configs in the `files/` directory:
+Put your agents, commands, and configs in the `files/` directory:
 
 ```
 my-preset/
 ├── agentrules.json
 └── files/
-    ├── AGENT_RULES.md
     ├── opencode.json
-    └── agent/
-        └── reviewer.md
+    ├── agent/
+    │   └── planner.md
+    └── command/
+        └── review.md
 ```
 
 ### 3. Validate
@@ -107,17 +108,21 @@ my-preset/
 npx @agentrules/cli validate
 ```
 
-### 4. Publish
+### 4. Login
 
 ```bash
-# Login first (opens browser for auth)
 npx @agentrules/cli login
+```
 
-# Publish to the registry
+This opens a browser for authentication. Once logged in, you're ready to publish.
+
+### 5. Publish
+
+```bash
 npx @agentrules/cli publish
 ```
 
-Your preset is now discoverable at [agentrules.directory](https://agentrules.directory).
+Your preset is now discoverable at [agentrules.directory](https://agentrules.directory). When you publish, you create an account with a profile page that showcases all your published presets. Popular presets are featured in trending.
 
 ## Preset Format
 
