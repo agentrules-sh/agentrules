@@ -1,5 +1,14 @@
 # @agentrules/cli
 
+## 0.0.8
+
+### Patch Changes
+
+- 35cf1ff: Improve init and publish command UX
+
+  - `agentrules init my-preset` now creates directory and initializes in one step
+  - Publish now shows the registry URL where your preset is live
+
 ## 0.0.7
 
 ### Patch Changes
