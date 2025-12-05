@@ -216,6 +216,33 @@ describe("tags validation", () => {
       presetConfigSchema.parse({ ...validConfig, tags: tooManyTags })
     ).toThrow();
   });
+
+  it("rejects platform IDs as tags (redundant)", () => {
+    expect(() =>
+      presetConfigSchema.parse({ ...validConfig, tags: ["opencode"] })
+    ).toThrow();
+    expect(() =>
+      presetConfigSchema.parse({ ...validConfig, tags: ["claude"] })
+    ).toThrow();
+    expect(() =>
+      presetConfigSchema.parse({ ...validConfig, tags: ["cursor"] })
+    ).toThrow();
+    expect(() =>
+      presetConfigSchema.parse({ ...validConfig, tags: ["codex"] })
+    ).toThrow();
+  });
+
+  it("allows tags that contain platform names as substrings", () => {
+    const result = presetConfigSchema.parse({
+      ...validConfig,
+      tags: ["opencode-rules", "claude-tips", "for-cursor"],
+    });
+    expect(result.tags).toEqual([
+      "opencode-rules",
+      "claude-tips",
+      "for-cursor",
+    ]);
+  });
 });
 
 describe("presetConfigSchema", () => {

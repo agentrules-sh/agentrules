@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { PLATFORM_IDS } from "../platform";
 
+// Set of platform IDs for fast lookup in tag validation
+const PLATFORM_ID_SET = new Set<string>(PLATFORM_IDS);
+
 // Version format: MAJOR.MINOR (e.g., "1.0", "2.15")
 // MAJOR: set by publisher
 // MINOR: auto-incremented by registry
@@ -33,15 +36,18 @@ const majorVersionSchema = z
   .positive("Major version must be a positive integer");
 // Tags: lowercase alphanumeric with hyphens, no leading/trailing/consecutive hyphens
 const TAG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const TAG_ERROR =
-  "Must be lowercase alphanumeric with hyphens (e.g., my-tag)";
+const TAG_ERROR = "Must be lowercase alphanumeric with hyphens (e.g., my-tag)";
 
 const tagSchema = z
   .string()
   .trim()
   .min(1, "Tag cannot be empty")
   .max(35, "Tag must be 35 characters or less")
-  .regex(TAG_REGEX, TAG_ERROR);
+  .regex(TAG_REGEX, TAG_ERROR)
+  .refine((tag) => !PLATFORM_ID_SET.has(tag), {
+    message:
+      "Platform names cannot be used as tags (redundant with platform field)",
+  });
 
 const tagsSchema = z
   .array(tagSchema)
