@@ -4,7 +4,7 @@ import * as icons from "lucide-static";
 
 export const source = loader({
   source: docs.toFumadocsSource(),
-  baseUrl: "/docs",
+  baseUrl: "/",
   icon(icon) {
     if (!icon) {
       return;

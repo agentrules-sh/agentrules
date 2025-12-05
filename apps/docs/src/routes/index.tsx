@@ -14,9 +14,9 @@ function Home() {
         <Link
           className="rounded-lg bg-fd-primary px-3 py-2 font-medium text-fd-primary-foreground text-sm"
           params={{
-            _splat: "",
+            _splat: "hello",
           }}
-          to="/docs/$"
+          to="/$"
         >
           Open Docs
         </Link>

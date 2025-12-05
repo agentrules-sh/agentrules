@@ -16,7 +16,7 @@ import { NotFound } from "@/components/not-found";
 import { baseOptions } from "@/lib/layout.shared";
 import { source } from "@/lib/source";
 
-export const Route = createFileRoute("/docs/$")({
+export const Route = createFileRoute("/$")({
   component: Page,
   notFoundComponent: NotFound, // notFoundComponent doesn't actually catch invalid routes for this splat route
   errorComponent: NotFound, // errorComponent catches invalid routes for this splat route
