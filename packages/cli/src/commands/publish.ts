@@ -273,9 +273,11 @@ export async function publish(
     })`
   );
 
-  // Show bundle URL
+  // Show registry page URL
+  const presetName = `${data.slug}.${data.platform}`;
+  const presetRegistryUrl = `${ctx.registry.url}preset/${presetName}`;
   log.info("");
-  log.info(ui.keyValue("Download URL", ui.link(data.bundleUrl)));
+  log.info(ui.keyValue("Now live at", ui.link(presetRegistryUrl)));
 
   return {
     success: true,
