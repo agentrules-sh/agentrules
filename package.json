@@ -10,6 +10,7 @@
   "packageManager": "bun@1.3.3",
   "scripts": {
     "build": "turbo run build",
+    "deploy:docs": "bun --cwd apps/docs deploy",
     "check": "biome check --write",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
@@ -28,6 +29,7 @@
     "@biomejs/biome": "2.3.4",
     "@changesets/cli": "^2.29.7",
     "@types/bun": "^1.3.3",
+    "alchemy": "catalog:",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.6",
     "turbo": "^2.6.1",
@@ -36,6 +38,7 @@
   "catalog": {
     "@types/node": "22.10.2",
     "@types/bun": "1.3.3",
+    "alchemy": "0.78.0",
     "typescript": "5.7.2",
     "zod": "^4.1.12"
   }
