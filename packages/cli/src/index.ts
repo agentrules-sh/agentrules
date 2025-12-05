@@ -662,10 +662,16 @@ program
 // Parse and run
 // =============================================================================
 
-program.parseAsync(process.argv).catch((err) => {
-  log.error(err instanceof Error ? err.message : String(err));
-  process.exitCode = 1;
-});
+program
+  .parseAsync(process.argv)
+  .then(() => {
+    // Explicitly exit to avoid hanging on open HTTP connections (e.g., from openid-client)
+    process.exit(process.exitCode ?? 0);
+  })
+  .catch((err) => {
+    log.error(err instanceof Error ? err.message : String(err));
+    process.exit(1);
+  });
 
 // =============================================================================
 // Helpers
