@@ -16,39 +16,23 @@ export default defineConfig({
       projects: ["./tsconfig.json"],
     }),
     tanstackStart({
-      spa: {
+      prerender: {
         enabled: true,
-        /**
-         * Prerendered Pages + SPA Shell for Cloudflare
-         *
-         * We want prerendered HTML for SEO, but also an SPA shell for 404 fallback.
-         *
-         * Cloudflare's "single-page-application" mode serves /index.html for unknown routes.
-         * If index.html is prerendered (not a shell), the router fails to hydrate due to URL mismatch.
-         *
-         * Workaround:
-         *   - maskPath: generate shell at a fake path so it doesn't conflict with prerendering "/"
-         *   - outputPath: save shell to 404.html (Cloudflare's "404-page" mode serves this)
-         *   - pages: prerender real pages with full HTML content
-         *
-         * Result: prerendered pages get 200 + SEO, unknown routes get 404 + shell handles it client-side.
-         *
-         * See: https://tanstack.com/start/latest/docs/framework/react/guide/spa-mode
-         */
-        maskPath: "/__shell",
-        prerender: {
-          outputPath: "404.html",
-          enabled: true,
-          crawlLinks: true,
-        },
+        crawlLinks: true,
       },
-
       pages: [
         {
           path: "/",
         },
         {
           path: "/api/search",
+        },
+        {
+          path: "/404",
+          prerender: {
+            enabled: true,
+            outputPath: "404.html",
+          },
         },
       ],
     }),
