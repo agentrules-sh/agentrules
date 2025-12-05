@@ -12,27 +12,31 @@ import {
 } from "fumadocs-ui/layouts/docs/page";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import { useMemo } from "react";
+import { NotFound } from "@/components/not-found";
 import { baseOptions } from "@/lib/layout.shared";
 import { source } from "@/lib/source";
 
 export const Route = createFileRoute("/docs/$")({
   component: Page,
+  notFoundComponent: NotFound, // notFoundComponent doesn't actually catch invalid routes for this splat route
+  errorComponent: NotFound, // errorComponent catches invalid routes for this splat route
   loader: async ({ params }) => {
     const slugs = params._splat?.split("/") ?? [];
-    const data = await loader({ data: slugs });
+    const data = await getPageData({ data: slugs });
+    if (!data) throw notFound();
     await clientLoader.preload(data.path);
     return data;
   },
 });
 
-const loader = createServerFn({
+const getPageData = createServerFn({
   method: "GET",
 })
   .inputValidator((slugs: string[]) => slugs)
   .middleware([staticFunctionMiddleware])
   .handler(async ({ data: slugs }) => {
     const page = source.getPage(slugs);
-    if (!page) throw notFound();
+    if (!page) return null;
 
     return {
       tree: source.pageTree as object,

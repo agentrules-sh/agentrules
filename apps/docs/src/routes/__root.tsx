@@ -6,10 +6,12 @@ import {
 } from "@tanstack/react-router";
 import { RootProvider } from "fumadocs-ui/provider/tanstack";
 import type * as React from "react";
+import { NotFound } from "@/components/not-found";
 import SearchDialog from "@/components/search";
 import appCss from "@/styles/app.css?url";
 
 export const Route = createRootRoute({
+  notFoundComponent: NotFound,
   head: () => ({
     meta: [
       {
