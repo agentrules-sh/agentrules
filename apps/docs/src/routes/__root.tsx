@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-router";
 import { RootProvider } from "fumadocs-ui/provider/tanstack";
 import type * as React from "react";
+import { Toaster } from "sonner";
 import { NotFound } from "@/components/not-found";
 import SearchDialog from "@/components/search";
 import appCss from "@/styles/app.css?url";
@@ -50,6 +51,16 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body className="flex min-h-screen flex-col">
         <RootProvider search={{ SearchDialog }}>{children}</RootProvider>
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: "hsl(var(--background))",
+              border: "1px solid hsl(var(--border))",
+              color: "hsl(var(--foreground))",
+            },
+          }}
+        />
         <Scripts />
       </body>
     </html>

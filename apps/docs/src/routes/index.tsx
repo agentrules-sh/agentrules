@@ -5,6 +5,7 @@ import type * as PageTree from "fumadocs-core/page-tree";
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import { DocsBody, DocsPage } from "fumadocs-ui/layouts/docs/page";
 import { useMemo } from "react";
+import { toast } from "sonner";
 import { baseOptions } from "@/lib/layout.shared";
 import { source } from "@/lib/source";
 
@@ -49,33 +50,34 @@ function Page() {
             </p>
 
             {/* Install command */}
-            <div className="mb-6 inline-flex items-center gap-2 border border-border bg-card p-1">
-              <code className="px-3 py-2 font-mono text-sm">
-                npx @agentrules/cli add &lt;preset&gt;
+            <figure className="shiki not-prose mb-6 inline-flex items-center gap-2 rounded-xl border bg-fd-card p-1 text-sm shadow-sm">
+              <code className="px-3 py-2 font-mono">
+                npx @agentrules/cli add agentic-dev-starter.opencode
               </code>
               <button
-                className="border border-border bg-background px-3 py-2 text-sm transition-colors hover:bg-accent"
+                className="rounded-lg border bg-fd-background px-3 py-2 transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground"
                 onClick={() => {
                   navigator.clipboard.writeText(
-                    "npx @agentrules/cli add agentic-dev-starter --platform opencode"
+                    "npx @agentrules/cli add agentic-dev-starter.opencode"
                   );
+                  toast.success("Copied! Run in terminal to install preset.");
                 }}
                 type="button"
               >
                 Copy
               </button>
-            </div>
+            </figure>
 
             {/* CTAs */}
             <div className="flex gap-3">
               <a
-                className="border border-foreground bg-foreground px-5 py-2 font-medium text-background text-sm transition-colors hover:bg-foreground/90"
+                className="border border-foreground bg-foreground px-5 py-2 font-medium text-background text-sm no-underline transition-colors hover:bg-foreground/90"
                 href="/overview"
               >
                 Get Started
               </a>
               <a
-                className="border border-border px-5 py-2 font-medium text-sm transition-colors hover:bg-accent"
+                className="border border-border px-5 py-2 font-medium text-sm no-underline transition-colors hover:bg-accent"
                 href="https://agentrules.directory"
               >
                 Browse Presets
@@ -143,32 +145,39 @@ function Page() {
 
           {/* Quick Start */}
           <div className="mt-10">
-            <h2 className="mb-4 font-mono text-muted-foreground text-xs uppercase tracking-wide">
+            <h2 className="mb-4 font-mono text-fd-muted-foreground text-xs uppercase tracking-wide">
               Quick Start
             </h2>
-            <div className="max-w-2xl border border-border bg-card">
-              <div className="border-border border-b px-4 py-2 font-mono text-muted-foreground text-xs">
+            <figure className="shiki not-prose max-w-2xl overflow-hidden rounded-xl border bg-fd-card text-sm shadow-sm">
+              <div className="border-b px-4 py-2 font-mono text-fd-muted-foreground text-xs">
                 Terminal
               </div>
-              <pre className="overflow-x-auto p-4 font-mono text-sm">
-                <code>
-                  <span className="text-muted-foreground">
-                    # Install a preset
-                  </span>
-                  {"\n"}
-                  npx @agentrules/cli add agentic-dev-starter --platform
-                  opencode
-                  {"\n\n"}
-                  <span className="text-muted-foreground">
-                    # Files copied to .opencode/
-                  </span>
-                  {"\n"}
-                  <span className="text-muted-foreground">
-                    # Edit them however you want
-                  </span>
-                </code>
-              </pre>
-            </div>
+              <div className="overflow-auto p-4">
+                <pre className="font-mono text-[0.8125rem]">
+                  <code>
+                    <span className="text-[#6a737d] dark:text-[#6a737d]">
+                      # Install a preset
+                    </span>
+                    {"\n"}
+                    <span className="text-[#6f42c1] dark:text-[#b392f0]">
+                      npx
+                    </span>
+                    <span className="text-[#032f62] dark:text-[#9ecbff]">
+                      {" "}
+                      @agentrules/cli add agentic-dev-starter.opencode
+                    </span>
+                    {"\n\n"}
+                    <span className="text-[#6a737d] dark:text-[#6a737d]">
+                      # Files copied to .opencode/
+                    </span>
+                    {"\n"}
+                    <span className="text-[#6a737d] dark:text-[#6a737d]">
+                      # Edit them however you want
+                    </span>
+                  </code>
+                </pre>
+              </div>
+            </figure>
           </div>
         </DocsBody>
       </DocsPage>
