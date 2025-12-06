@@ -34,7 +34,8 @@ agentrules add <preset> --platform <platform> [options]
 | `-g, --global` | Install to global config directory |
 | `--dir <path>` | Install to a custom directory |
 | `-r, --registry <alias>` | Use a specific registry |
-| `-f, --force` | Overwrite existing files |
+| `-f, --force` | Overwrite existing files (backs up originals to `.bak`) |
+| `--no-backup` | Don't backup files before overwriting (use with `--force`) |
 | `--dry-run` | Preview changes without writing |
 | `--skip-conflicts` | Skip files that already exist |
 
@@ -200,12 +201,32 @@ agentrules publish --dry-run
 
 **Versioning:** Presets use `MAJOR.MINOR` versioning. You set the major version, and the registry auto-increments the minor version on each publish.
 
-### `agentrules unpublish <slug> <platform> <version>`
+### `agentrules unpublish <preset>`
 
 Remove a specific version of a preset from the registry. Requires authentication.
 
 ```bash
-agentrules unpublish my-preset opencode 1.0
+agentrules unpublish <preset> [options]
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `-p, --platform <platform>` | Target platform (if not in preset string) |
+| `-V, --version <version>` | Version to unpublish (if not in preset string) |
+
+**Examples:**
+
+```bash
+# Full format: slug.platform@version
+agentrules unpublish my-preset.opencode@1.0
+
+# With flags
+agentrules unpublish my-preset --platform opencode --version 1.0
+
+# Mixed: version in string, platform as flag
+agentrules unpublish my-preset@1.0 --platform opencode
 ```
 
 **Note:** Unpublished versions cannot be republished with the same version number.
