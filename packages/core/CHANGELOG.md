@@ -1,5 +1,11 @@
 # @agentrules/core
 
+## 0.0.8
+
+### Patch Changes
+
+- eddd490: Require tags to be lower kebab case and don't allow platform names
+
 ## 0.0.7
 
 ### Patch Changes
