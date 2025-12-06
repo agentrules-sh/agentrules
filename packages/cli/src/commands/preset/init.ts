@@ -111,12 +111,6 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
     title,
     version: 1,
     description,
-    tags: [
-      "// TODO: Replace - Tags help users discover your preset (e.g., typescript, react)",
-    ],
-    features: [
-      "// TODO: Replace - Features describe what your preset does (e.g., Built-in commands for common workflows)",
-    ],
     license,
     platform,
   };

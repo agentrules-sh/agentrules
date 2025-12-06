@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { PLATFORMS } from "@agentrules/core";
+import { getPlatformFromDir, PLATFORMS } from "@agentrules/core";
 import { Command } from "commander";
 import { createRequire } from "module";
 import { basename, join } from "path";
@@ -252,15 +252,11 @@ program
           log.print(ui.list([ui.path(result.createdDir)]));
         }
 
-        const nextSteps: string[] = [];
-        if (directory) {
-          nextSteps.push(`Run ${ui.command(`cd ${directory}`)}`);
-        }
-        nextSteps.push(
-          "Add your config files to the files directory",
-          "Replace the placeholder comments in tags and features",
-          `Run ${ui.command("agentrules validate")} to check your preset`
-        );
+        const nextSteps: string[] = [
+          "Add your config files to the platform directory",
+          "Add tags (required) and features (recommended) to agentrules.json",
+          `Run ${ui.command("agentrules publish")} to publish your preset`,
+        ];
 
         log.print(`\n${ui.header("Next steps")}`);
         log.print(ui.numberedList(nextSteps));
@@ -268,19 +264,30 @@ program
       }
 
       // Non-interactive mode
-      const detected = await detectPlatforms(targetDir);
+      // Check if targetDir itself is a platform directory
+      const targetDirName = basename(targetDir);
+      const targetIsPlatformDir = getPlatformFromDir(targetDirName);
 
-      // Use explicit platform, or first detected, or default to opencode
-      const platform = options.platform ?? detected[0]?.id ?? "opencode";
-      const detectedPath = detected.find((d) => d.id === platform)?.path;
+      let platformDir: string;
+      let platform: string;
 
-      // Determine target directory: use detected path or create new platform dir
-      const platformDir = detectedPath
-        ? join(targetDir, detectedPath)
-        : join(
-            targetDir,
-            PLATFORMS[platform as keyof typeof PLATFORMS].projectDir
-          );
+      if (targetIsPlatformDir) {
+        // User passed a platform dir directly (e.g., "init .opencode")
+        platformDir = targetDir;
+        platform = options.platform ?? targetIsPlatformDir;
+      } else {
+        // User passed a base dir, look for platform dirs inside
+        const detected = await detectPlatforms(targetDir);
+        platform = options.platform ?? detected[0]?.id ?? "opencode";
+        const detectedPath = detected.find((d) => d.id === platform)?.path;
+
+        platformDir = detectedPath
+          ? join(targetDir, detectedPath)
+          : join(
+              targetDir,
+              PLATFORMS[platform as keyof typeof PLATFORMS].projectDir
+            );
+      }
 
       const result = await initPreset({
         directory: platformDir,
@@ -299,15 +306,11 @@ program
         log.print(ui.list([ui.path(result.createdDir)]));
       }
 
-      const nextSteps: string[] = [];
-      if (directory) {
-        nextSteps.push(`Run ${ui.command(`cd ${directory}`)}`);
-      }
-      nextSteps.push(
-        "Add your config files to the files directory",
-        "Replace the placeholder comments in tags and features",
-        `Run ${ui.command("agentrules validate")} to check your preset`
-      );
+      const nextSteps: string[] = [
+        "Add your config files to the platform directory",
+        "Add tags (required) and features (recommended) to agentrules.json",
+        `Run ${ui.command("agentrules publish")} to publish your preset`,
+      ];
 
       log.print(`\n${ui.header("Next steps")}`);
       log.print(ui.numberedList(nextSteps));

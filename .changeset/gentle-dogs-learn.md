@@ -12,3 +12,8 @@ Support simpler preset structure for in-project presets:
 Add ignore patterns for file collection:
 - Auto-exclude node_modules, .git, .DS_Store, and lock files from bundles
 - Custom patterns via `ignore` field in agentrules.json (e.g., `["*.log", "tmp"]`)
+
+Fix init command:
+- `init .opencode` now correctly creates `.opencode/agentrules.json` (not nested)
+- Removed invalid placeholder text that caused validation failures
+- Tags must be added manually before publishing
