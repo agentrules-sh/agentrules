@@ -104,6 +104,15 @@ export const licenseSchema = z
 
 const pathSchema = z.string().trim().min(1);
 
+const ignorePatternSchema = z
+  .string()
+  .trim()
+  .min(1, "Ignore pattern cannot be empty");
+
+const ignoreSchema = z
+  .array(ignorePatternSchema)
+  .max(50, "Maximum 50 ignore patterns allowed");
+
 export const presetConfigSchema = z
   .object({
     $schema: z.string().optional(),
@@ -116,6 +125,7 @@ export const presetConfigSchema = z
     license: licenseSchema, // Required SPDX license identifier
     platform: platformIdSchema,
     path: pathSchema.optional(), // Path to config files, defaults to platform's projectDir
+    ignore: ignoreSchema.optional(), // Additional patterns to exclude from bundle
   })
   .strict();
 

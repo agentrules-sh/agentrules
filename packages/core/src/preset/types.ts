@@ -12,6 +12,8 @@ export type PresetConfig = {
   platform: PlatformId;
   /** Path to config files. Defaults to platform's projectDir (e.g., ".claude") */
   path?: string;
+  /** Additional patterns to exclude from bundle (glob patterns) */
+  ignore?: string[];
 };
 
 export type BundledFile = {

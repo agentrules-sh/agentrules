@@ -16,6 +16,20 @@ const README_FILENAME = "README.md";
 const LICENSE_FILENAME = "LICENSE.md";
 
 /**
+ * Files/directories that are always excluded from presets.
+ * These are never useful in a preset bundle.
+ */
+const DEFAULT_IGNORE_PATTERNS = [
+  "node_modules",
+  ".git",
+  ".DS_Store",
+  "*.lock",
+  "package-lock.json",
+  "bun.lockb",
+  "pnpm-lock.yaml",
+];
+
+/**
  * Normalize a string to a valid preset slug (lowercase kebab-case)
  */
 export function normalizeName(input: string): string {
@@ -137,9 +151,12 @@ export async function loadPreset(presetDir: string): Promise<PresetInput> {
     );
   }
 
-  // Collect files, excluding config and metadata dir at the top level
-  const exclude = [PRESET_CONFIG_FILENAME, AGENT_RULES_DIR];
-  const files = await collectFilesExcluding(filesDir, exclude);
+  // Build ignore patterns: defaults + custom from config
+  const ignorePatterns = [...DEFAULT_IGNORE_PATTERNS, ...(config.ignore ?? [])];
+
+  // Collect files, excluding config, metadata dir, and ignored patterns
+  const rootExclude = [PRESET_CONFIG_FILENAME, AGENT_RULES_DIR];
+  const files = await collectFiles(filesDir, rootExclude, ignorePatterns);
 
   if (files.length === 0) {
     throw new Error(
@@ -151,12 +168,42 @@ export async function loadPreset(presetDir: string): Promise<PresetInput> {
 }
 
 /**
- * Recursively collect all files from a directory.
- * Exclusions only apply at the root (not in subdirectories).
+ * Check if a filename matches an ignore pattern.
+ * Supports:
+ * - Exact match: "node_modules"
+ * - Extension match: "*.lock"
+ * - Prefix match: ".git*" (not implemented yet, keeping simple)
  */
-async function collectFilesExcluding(
+function matchesPattern(name: string, pattern: string): boolean {
+  // Extension pattern: *.ext
+  if (pattern.startsWith("*.")) {
+    const ext = pattern.slice(1); // ".lock"
+    return name.endsWith(ext);
+  }
+
+  // Exact match
+  return name === pattern;
+}
+
+/**
+ * Check if a filename should be ignored based on patterns.
+ */
+function shouldIgnore(name: string, patterns: string[]): boolean {
+  return patterns.some((pattern) => matchesPattern(name, pattern));
+}
+
+/**
+ * Recursively collect all files from a directory.
+ *
+ * @param dir - Current directory being scanned
+ * @param rootExclude - Entries to exclude at root level only (config, metadata dir)
+ * @param ignorePatterns - Patterns to ignore at all levels
+ * @param root - The root directory (for computing relative paths)
+ */
+async function collectFiles(
   dir: string,
-  exclude: string[],
+  rootExclude: string[],
+  ignorePatterns: string[],
   root?: string
 ): Promise<Array<{ path: string; contents: string }>> {
   const configRoot = root ?? dir;
@@ -165,15 +212,26 @@ async function collectFilesExcluding(
   const files: Array<{ path: string; contents: string }> = [];
 
   for (const entry of entries) {
-    // Skip excluded entries at root only
-    if (isRoot && exclude.includes(entry.name)) {
+    // Skip config and metadata dir at root only
+    if (isRoot && rootExclude.includes(entry.name)) {
+      continue;
+    }
+
+    // Skip ignored patterns at all levels
+    if (shouldIgnore(entry.name, ignorePatterns)) {
+      log.debug(`Ignoring: ${entry.name}`);
       continue;
     }
 
     const fullPath = join(dir, entry.name);
 
     if (entry.isDirectory()) {
-      const nested = await collectFilesExcluding(fullPath, exclude, configRoot);
+      const nested = await collectFiles(
+        fullPath,
+        rootExclude,
+        ignorePatterns,
+        configRoot
+      );
       files.push(...nested);
     } else if (entry.isFile()) {
       const contents = await readFile(fullPath, "utf8");
