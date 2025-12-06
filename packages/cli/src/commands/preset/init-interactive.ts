@@ -4,22 +4,21 @@ import {
   getPlatformFromDir,
   licenseSchema,
   PLATFORM_IDS,
-  PLATFORMS,
   type PlatformId,
   PRESET_CONFIG_FILENAME,
   slugSchema,
   titleSchema,
 } from "@agentrules/core";
 import * as p from "@clack/prompts";
-import { join } from "path";
+import { basename, join } from "path";
 import { fileExists } from "@/lib/fs";
 import { normalizeName, toTitleCase } from "@/lib/preset-utils";
 import { check } from "@/lib/zod-validator";
 import {
-  detectPlatforms,
   type InitOptions,
   type InitResult,
   initPreset,
+  resolvePlatformDirectory,
 } from "./init";
 
 const DEFAULT_PRESET_NAME = "my-preset";
@@ -68,50 +67,63 @@ export async function initInteractive(
     // User specified a platform directory explicitly
     targetPlatformDir = explicitPlatformDir;
     // Try to infer platform from directory name, or use provided platform option
-    const dirName = explicitPlatformDir.split("/").pop() ?? explicitPlatformDir;
+    const dirName = basename(explicitPlatformDir);
     selectedPlatform =
       (platformOption as PlatformId) ??
       getPlatformFromDir(dirName) ??
       "opencode";
   } else {
-    // Detect existing platform directories in baseDir
-    const detected = await detectPlatforms(baseDir);
-    const detectedMap = new Map(detected.map((d) => [d.id, d]));
+    // Use centralized resolution logic
+    const resolved = await resolvePlatformDirectory(baseDir, platformOption);
 
-    if (detected.length > 0) {
+    if (resolved.isTargetPlatformDir) {
+      // Already in a platform directory - use it directly, no prompt needed
+      targetPlatformDir = resolved.platformDir;
+      selectedPlatform = resolved.platform;
+
       p.note(
-        detected.map((d) => `${d.id} → ${d.path}`).join("\n"),
-        "Detected platform directories"
+        `Detected platform directory: ${resolved.platform}`,
+        "Using current directory"
       );
-    }
-
-    // Prompt for platform selection
-    const defaultPlatform =
-      platformOption ?? (detected.length > 0 ? detected[0].id : "opencode");
-
-    const platformChoice = await p.select({
-      message: "Platform",
-      options: PLATFORM_IDS.map((id) => ({
-        value: id,
-        label: detectedMap.has(id) ? `${id} (detected)` : id,
-        hint: detectedMap.get(id)?.path,
-      })),
-      initialValue: defaultPlatform as PlatformId,
-    });
-
-    if (p.isCancel(platformChoice)) {
-      p.cancel("Cancelled");
-      process.exit(0);
-    }
-
-    selectedPlatform = platformChoice as PlatformId;
-
-    // Determine target directory: use detected path or create new platform dir
-    const detectedInfo = detectedMap.get(selectedPlatform);
-    if (detectedInfo) {
-      targetPlatformDir = join(baseDir, detectedInfo.path);
     } else {
-      targetPlatformDir = join(baseDir, PLATFORMS[selectedPlatform].projectDir);
+      // Show detected platforms and prompt for selection
+      const detectedMap = new Map(resolved.detected.map((d) => [d.id, d]));
+
+      if (resolved.detected.length > 0) {
+        p.note(
+          resolved.detected.map((d) => `${d.id} → ${d.path}`).join("\n"),
+          "Detected platform directories"
+        );
+      }
+
+      // Prompt for platform selection
+      const platformChoice = await p.select({
+        message: "Platform",
+        options: PLATFORM_IDS.map((id) => ({
+          value: id,
+          label: detectedMap.has(id) ? `${id} (detected)` : id,
+          hint: detectedMap.get(id)?.path,
+        })),
+        initialValue: resolved.platform,
+      });
+
+      if (p.isCancel(platformChoice)) {
+        p.cancel("Cancelled");
+        process.exit(0);
+      }
+
+      selectedPlatform = platformChoice as PlatformId;
+
+      // Re-resolve if user selected a different platform than the default
+      if (selectedPlatform !== resolved.platform) {
+        const reResolved = await resolvePlatformDirectory(
+          baseDir,
+          selectedPlatform
+        );
+        targetPlatformDir = reResolved.platformDir;
+      } else {
+        targetPlatformDir = resolved.platformDir;
+      }
     }
   }
 

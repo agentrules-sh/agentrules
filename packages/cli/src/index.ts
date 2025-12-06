@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-import { getPlatformFromDir, PLATFORM_IDS, PLATFORMS } from "@agentrules/core";
+import { PLATFORM_IDS } from "@agentrules/core";
 import { Command } from "commander";
 import { createRequire } from "module";
-import { basename, join } from "path";
+import { basename } from "path";
 import { login } from "@/commands/auth/login";
 import { logout } from "@/commands/auth/logout";
 import { whoami } from "@/commands/auth/whoami";
@@ -12,7 +12,11 @@ import {
   addPreset,
   normalizePlatformInput,
 } from "@/commands/preset/add";
-import { detectPlatforms, initPreset } from "@/commands/preset/init";
+import {
+  initPreset,
+  requiresPlatformFlag,
+  resolvePlatformDirectory,
+} from "@/commands/preset/init";
 import { initInteractive } from "@/commands/preset/init-interactive";
 import { validatePreset } from "@/commands/preset/validate";
 import { publish } from "@/commands/publish";
@@ -281,47 +285,38 @@ program
         return;
       }
 
-      // Non-interactive mode
-      // Check if targetDir itself is a platform directory
-      const targetDirName = basename(targetDir);
-      const targetIsPlatformDir = getPlatformFromDir(targetDirName);
+      // Non-interactive mode - use centralized resolution
+      const resolved = await resolvePlatformDirectory(
+        targetDir,
+        options.platform
+      );
 
-      let platformDir: string;
-      let platform: string;
-
-      if (targetIsPlatformDir) {
-        // User passed a platform dir directly (e.g., "init .opencode")
-        platformDir = targetDir;
-        platform = options.platform ?? targetIsPlatformDir;
-      } else {
-        // User passed a base dir, look for platform dirs inside
-        const detected = await detectPlatforms(targetDir);
-
-        if (!options.platform && detected.length === 0) {
-          log.error(
-            `Cannot infer platform from "${targetDirName}". ` +
-              `Specify --platform (${PLATFORM_IDS.join(", ")}) or run from a platform directory.`
-          );
+      // In non-interactive mode, require explicit --platform if we can't determine which one
+      if (!options.platform) {
+        const check = requiresPlatformFlag(resolved);
+        if (check.required) {
+          if (check.reason === "no_platforms") {
+            const targetDirName = basename(targetDir);
+            log.error(
+              `No platform directory found in "${targetDirName}". ` +
+                `Specify --platform (${PLATFORM_IDS.join(", ")}) or run from a platform directory.`
+            );
+          } else {
+            log.error(
+              `Multiple platform directories found (${check.platforms.join(", ")}). ` +
+                "Specify --platform to choose one."
+            );
+          }
           process.exit(1);
         }
-
-        platform = options.platform ?? detected[0].id;
-        const detectedPath = detected.find((d) => d.id === platform)?.path;
-
-        platformDir = detectedPath
-          ? join(targetDir, detectedPath)
-          : join(
-              targetDir,
-              PLATFORMS[platform as keyof typeof PLATFORMS].projectDir
-            );
       }
 
       const result = await initPreset({
-        directory: platformDir,
+        directory: resolved.platformDir,
         name: options.name ?? defaultName,
         title: options.title,
         description: options.description,
-        platform,
+        platform: resolved.platform,
         license: options.license,
         force: options.force,
       });
