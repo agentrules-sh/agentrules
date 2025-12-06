@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { getPlatformFromDir, PLATFORMS } from "@agentrules/core";
+import { getPlatformFromDir, PLATFORM_IDS, PLATFORMS } from "@agentrules/core";
 import { Command } from "commander";
 import { createRequire } from "module";
 import { basename, join } from "path";
@@ -296,7 +296,16 @@ program
       } else {
         // User passed a base dir, look for platform dirs inside
         const detected = await detectPlatforms(targetDir);
-        platform = options.platform ?? detected[0]?.id ?? "opencode";
+
+        if (!options.platform && detected.length === 0) {
+          log.error(
+            `Cannot infer platform from "${targetDirName}". ` +
+              `Specify --platform (${PLATFORM_IDS.join(", ")}) or run from a platform directory.`
+          );
+          process.exit(1);
+        }
+
+        platform = options.platform ?? detected[0].id;
         const detectedPath = detected.find((d) => d.id === platform)?.path;
 
         platformDir = detectedPath
