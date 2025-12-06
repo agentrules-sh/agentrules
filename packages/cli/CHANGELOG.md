@@ -1,5 +1,13 @@
 # @agentrules/cli
 
+## 0.0.10
+
+### Patch Changes
+
+- eddd490: Require tags to be lower kebab case and don't allow platform names
+- Updated dependencies [eddd490]
+  - @agentrules/core@0.0.8
+
 ## 0.0.9
 
 ### Patch Changes
