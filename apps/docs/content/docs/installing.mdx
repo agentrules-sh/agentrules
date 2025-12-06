@@ -1,0 +1,41 @@
+---
+title: Quick Start
+description: One command to install a preset.
+---
+
+Install any preset with a single command:
+
+```bash
+npx @agentrules/cli add <preset-name> --platform <platform>
+```
+
+For example:
+
+```bash
+npx @agentrules/cli add agentic-dev-starter --platform opencode
+```
+
+That's it. Files are copied to your project's platform directory (`.opencode/`, `.claude/`, etc.) and they're yours to customize.
+
+## Finding Presets
+
+Browse [agentrules.directory](https://agentrules.directory) to discover presets. Each preset page shows:
+
+- What files are included
+- A ready-to-copy install command
+- The platform it's designed for
+
+## Supported Platforms
+
+| Platform | Directory |
+|----------|-----------|
+| OpenCode | `.opencode/` |
+| Claude Code | `.claude/` |
+| Cursor | `.cursor/` |
+| Codex | `.codex/` |
+
+## Next Steps
+
+The files are now yours. Edit them, remove what you don't need, and evolve them as your workflow changes.
+
+Need more control? See [Install Options](/install-options) for version pinning, global installs, handling conflicts, and more.

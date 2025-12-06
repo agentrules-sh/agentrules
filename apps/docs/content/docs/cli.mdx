@@ -1,0 +1,413 @@
+---
+title: CLI Reference
+description: Complete command reference for @agentrules/cli.
+---
+
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+
+## Installation
+
+```bash
+# Run with npx
+npx @agentrules/cli <command>
+
+# Or install globally
+npm install -g @agentrules/cli
+agentrules <command>
+```
+
+---
+
+## Installing Presets
+
+### add
+
+Install a preset from the registry.
+
+```bash
+agentrules add <preset> [options]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `preset` | Preset name, optionally with platform suffix and version (e.g., `my-preset`, `my-preset.opencode`, `my-preset@1.0`) |
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `-p, --platform <platform>` | Target platform: `opencode`, `claude`, `cursor`, `codex` |
+| `-V, --version <version>` | Install a specific version (default: latest) |
+| `-g, --global` | Install to global config directory |
+| `--dir <path>` | Install to a custom directory |
+| `-r, --registry <alias>` | Use a specific registry |
+| `-f, --force` | Overwrite existing files (backs up originals to `.bak`) |
+| `--no-backup` | Don't backup files when using `--force` |
+| `--dry-run` | Preview changes without writing |
+| `--skip-conflicts` | Skip files that already exist |
+
+**Examples:**
+
+```bash
+# Basic install
+agentrules add agentic-dev-starter --platform opencode
+
+# Install globally
+agentrules add agentic-dev-starter -p opencode --global
+
+# Install specific version
+agentrules add agentic-dev-starter -p opencode --version 1.0
+
+# Using @ syntax for version
+agentrules add agentic-dev-starter.opencode@1.0
+
+# Preview without writing
+agentrules add agentic-dev-starter -p opencode --dry-run
+
+# Force overwrite (backs up existing files to .bak)
+agentrules add agentic-dev-starter -p opencode --force
+
+# Force overwrite without backups
+agentrules add agentic-dev-starter -p opencode --force --no-backup
+```
+
+---
+
+## Creating Presets
+
+### init
+
+Initialize a preset config in a platform directory.
+
+```bash
+agentrules init [directory] [options]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `directory` | Platform directory to initialize (default: current directory) |
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `-n, --name <name>` | Preset name (default: `my-preset`) |
+| `-t, --title <title>` | Display title |
+| `--description <text>` | Preset description |
+| `-p, --platform <platform>` | Target platform |
+| `-l, --license <license>` | License (e.g., `MIT`) |
+| `-f, --force` | Overwrite existing config |
+| `-y, --yes` | Accept defaults, skip prompts |
+
+**Examples:**
+
+```bash
+# Initialize inside a platform directory (interactive)
+cd .opencode
+agentrules init
+
+# Initialize a specific platform directory
+agentrules init .claude
+
+# Non-interactive with options
+agentrules init .opencode --name my-preset --license MIT --yes
+
+# From project root, auto-detect platform directory
+agentrules init --yes
+```
+
+**Result:**
+
+```
+.opencode/
+├── agentrules.json       # Preset config (created by init)
+├── AGENTS.md             # Your config files (included in bundle)
+├── commands/
+│   └── review.md
+└── .agentrules/          # Optional metadata folder
+    ├── README.md         # Shown on registry page
+    ├── LICENSE.md        # Full license text
+    └── INSTALL.txt       # Shown after install
+```
+
+### validate
+
+Validate a preset configuration.
+
+```bash
+agentrules validate [path]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `path` | Path to `agentrules.json` or directory containing it (default: current directory) |
+
+**Examples:**
+
+```bash
+# Validate current directory
+agentrules validate
+
+# Validate specific path
+agentrules validate .opencode
+```
+
+---
+
+## Publishing Presets
+
+### login
+
+Authenticate with the registry. Opens a browser for OAuth.
+
+```bash
+agentrules login
+```
+
+### logout
+
+Log out and clear stored credentials.
+
+```bash
+agentrules logout
+```
+
+### whoami
+
+Show the currently authenticated user.
+
+```bash
+agentrules whoami
+```
+
+### publish
+
+Publish a preset to the registry. Requires authentication.
+
+```bash
+agentrules publish [path] [options]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `path` | Path to `agentrules.json` or directory containing it (default: current directory) |
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `-v, --version <major>` | Major version to publish (default: 1) |
+| `--dry-run` | Preview without publishing |
+
+**Examples:**
+
+```bash
+# Publish from inside platform directory
+cd .opencode
+agentrules publish
+
+# Publish a specific preset
+agentrules publish .opencode
+
+# Publish to major version 2
+agentrules publish .opencode --version 2
+
+# Preview what would be published
+agentrules publish .opencode --dry-run
+```
+
+### unpublish
+
+Remove a specific version of a preset from the registry. Requires authentication.
+
+```bash
+agentrules unpublish <preset> [options]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `preset` | Preset identifier (e.g., `my-preset`, `my-preset.opencode`, `my-preset.opencode@1.0`) |
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `-p, --platform <platform>` | Target platform (if not in preset string) |
+| `-V, --version <version>` | Version to unpublish (if not in preset string) |
+
+**Examples:**
+
+```bash
+# Full format: slug.platform@version
+agentrules unpublish my-preset.opencode@1.0
+
+# With flags
+agentrules unpublish my-preset --platform opencode --version 1.0
+
+# Mixed: version in string, platform as flag
+agentrules unpublish my-preset@1.0 --platform opencode
+```
+
+<Callout type="warn">
+Unpublished versions cannot be republished with the same version number.
+</Callout>
+
+---
+
+## Registry Management
+
+### registry list
+
+List configured registries.
+
+```bash
+agentrules registry list
+```
+
+### registry add
+
+Add a custom registry.
+
+```bash
+agentrules registry add <alias> <url> [options]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `alias` | Short name for the registry |
+| `url` | Registry URL |
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--default` | Set as the default registry |
+
+**Examples:**
+
+```bash
+# Add a registry
+agentrules registry add company https://registry.company.com
+
+# Add and set as default
+agentrules registry add company https://registry.company.com --default
+```
+
+### registry remove
+
+Remove a registry.
+
+```bash
+agentrules registry remove <alias>
+```
+
+### registry use
+
+Set the default registry.
+
+```bash
+agentrules registry use <alias>
+```
+
+### registry build
+
+Build registry artifacts from preset directories. For self-hosted registries.
+
+```bash
+agentrules registry build [options]
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `-i, --input <path>` | Directory containing preset folders |
+| `-o, --out <path>` | Output directory for registry artifacts |
+| `-b, --bundle-base <url>` | URL prefix for bundle locations |
+| `-c, --compact` | Emit minified JSON |
+| `--validate-only` | Validate without writing files |
+
+---
+
+## Configuration
+
+CLI configuration is stored at `~/.agentrules/config.json`.
+
+You can override the config directory with the `AGENT_RULES_HOME` environment variable.
+
+**Default config:**
+
+```json title="~/.agentrules/config.json"
+{
+  "defaultRegistry": "main",
+  "registries": {
+    "main": {
+      "url": "https://agentrules.directory/"
+    }
+  }
+}
+```
+
+---
+
+## Supported Platforms
+
+| Platform | ID | Project Directory | Global Directory |
+|----------|-----|-------------------|------------------|
+| OpenCode | `opencode` | `.opencode/` | `~/.config/opencode` |
+| Claude Code | `claude` | `.claude/` | `~/.claude` |
+| Cursor | `cursor` | `.cursor/` | `~/.cursor` |
+| Codex | `codex` | `.codex/` | `~/.codex` |
+
+---
+
+## FAQ
+
+<Accordions>
+<Accordion id="multiple-platforms" title="Can I install the same preset for multiple platforms?">
+
+Each preset is platform-specific. If an author has published versions for multiple platforms, you'll need to install each separately:
+
+```bash
+agentrules add my-preset --platform opencode
+agentrules add my-preset --platform claude
+```
+
+</Accordion>
+
+<Accordion id="update-preset" title="How do I update a preset I've installed?">
+
+Run the `add` command again with `--force` to overwrite existing files:
+
+```bash
+agentrules add my-preset --platform opencode --force
+```
+
+Your existing files are automatically backed up to `.bak` files. Use `--no-backup` to skip backups.
+
+Or use `--skip-conflicts` to only add new files without overwriting your changes.
+
+</Accordion>
+
+<Accordion id="preset-conflicts" title="What happens if files conflict?">
+
+Without flags, the CLI shows you which files conflict and their differences. You can then:
+- Use `--force` to overwrite all (backs up existing files)
+- Use `--force --no-backup` to overwrite without backups
+- Use `--skip-conflicts` to keep existing files
+- Manually resolve conflicts
+
+</Accordion>
+</Accordions>

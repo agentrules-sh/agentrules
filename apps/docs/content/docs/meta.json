@@ -1,0 +1,14 @@
+{
+  "title": "Docs",
+  "pages": [
+    "overview",
+    "---Installing---",
+    "installing",
+    "install-options",
+    "---Publishing---",
+    "publishing",
+    "preset-configuration",
+    "---Reference---",
+    "cli"
+  ]
+}

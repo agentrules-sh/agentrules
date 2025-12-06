@@ -1,0 +1,129 @@
+---
+title: Configuration
+description: Config fields, metadata files, versioning, and more.
+---
+
+## Config Fields
+
+The `agentrules.json` file created by `init` supports these fields:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | URL-safe identifier (lowercase, hyphens only) |
+| `title` | Yes | Display name shown in the registry |
+| `description` | Yes | Short description (max 500 characters) |
+| `license` | Yes | SPDX license identifier (e.g., `MIT`, `Apache-2.0`) |
+| `platform` | Yes | Target platform: `opencode`, `claude`, `cursor`, `codex` |
+| `version` | No | Major version (default: 1) |
+| `tags` | No | Up to 10 tags for discoverability |
+| `features` | No | Up to 5 key features to highlight |
+| `ignore` | No | Glob patterns to exclude from bundle |
+
+Example with optional fields:
+
+```json
+{
+  "$schema": "https://agentrules.directory/schema/agentrules.json",
+  "name": "my-preset",
+  "title": "My Awesome Preset",
+  "description": "A helpful preset for TypeScript projects",
+  "license": "MIT",
+  "platform": "opencode",
+  "tags": ["typescript", "testing", "tdd"],
+  "features": [
+    "Code review agent",
+    "Test generation commands",
+    "PR description generator"
+  ]
+}
+```
+
+## Metadata Files
+
+Add a `.agentrules/` subfolder for registry metadata:
+
+```
+.opencode/
+├── agentrules.json
+├── AGENTS.md
+└── .agentrules/
+    ├── README.md      ← Displayed on your preset's registry page
+    ├── LICENSE.md     ← Full license text
+    └── INSTALL.txt    ← Message shown after install
+```
+
+These files are **not** copied when users install — they're only for the registry.
+
+## Ignoring Files
+
+Some files are automatically excluded:
+
+- `node_modules/`, `.git/`, `.DS_Store`
+- Lock files (`package-lock.json`, `bun.lockb`, etc.)
+- `agentrules.json` itself
+- `.agentrules/` metadata folder
+
+Add custom exclusions with the `ignore` field:
+
+```json
+{
+  "ignore": ["*.log", "test-fixtures/", "*.tmp"]
+}
+```
+
+## Versioning
+
+Presets use `MAJOR.MINOR` versioning:
+
+- **You control the major version** — bump when you make breaking changes
+- **The registry auto-increments minor** — each publish gets the next minor
+
+```bash
+# Publish to major version 1 (default)
+npx @agentrules/cli publish .opencode
+
+# Publish to major version 2 (breaking changes)
+npx @agentrules/cli publish .opencode --version 2
+```
+
+Users can install specific versions:
+
+```bash
+npx @agentrules/cli add my-preset.opencode@1.0  # Specific version
+npx @agentrules/cli add my-preset.opencode@2    # Latest of major 2
+npx @agentrules/cli add my-preset.opencode      # Latest overall
+```
+
+## Unpublishing
+
+Remove a specific version from the registry:
+
+```bash
+npx @agentrules/cli unpublish my-preset.opencode@1.0
+```
+
+<Callout type="warn">
+Unpublished versions cannot be republished with the same version number.
+</Callout>
+
+## Platform-Specific Presets
+
+Each platform has different features and config formats. If you want to support multiple platforms, publish separate presets:
+
+```bash
+# Publish for OpenCode
+npx @agentrules/cli init .opencode
+npx @agentrules/cli publish .opencode
+
+# Publish for Claude
+npx @agentrules/cli init .claude
+npx @agentrules/cli publish .claude
+```
+
+## Authentication
+
+| Command | Description |
+|---------|-------------|
+| `npx @agentrules/cli login` | Authenticate with the registry |
+| `npx @agentrules/cli logout` | Log out and clear credentials |
+| `npx @agentrules/cli whoami` | Show current user |

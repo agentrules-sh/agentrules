@@ -1,0 +1,109 @@
+---
+title: Options
+description: Version pinning, global installs, conflicts, and more.
+---
+
+## Platform Shorthand
+
+The `--platform` flag can be shortened to `-p`:
+
+```bash
+npx @agentrules/cli add my-preset -p opencode
+```
+
+Or specify the platform in the preset name using dot notation:
+
+```bash
+npx @agentrules/cli add my-preset.opencode
+```
+
+## Installing a Specific Version
+
+Presets use `MAJOR.MINOR` versioning. By default, the latest version is installed.
+
+```bash
+# With --version flag
+npx @agentrules/cli add my-preset -p opencode --version 1.0
+
+# Or use @ syntax
+npx @agentrules/cli add my-preset.opencode@1.0
+```
+
+## Global vs Project Install
+
+By default, presets install to your current project directory.
+
+```bash
+# Project install (default) → .opencode/
+npx @agentrules/cli add my-preset -p opencode
+
+# Global install → ~/.config/opencode
+npx @agentrules/cli add my-preset -p opencode --global
+```
+
+| Install Type | OpenCode | Claude | Cursor | Codex |
+|--------------|----------|--------|--------|-------|
+| Project | `.opencode/` | `.claude/` | `.cursor/` | `.codex/` |
+| Global | `~/.config/opencode` | `~/.claude` | `~/.cursor` | `~/.codex` |
+
+## Preview Before Installing
+
+See what files would be installed without writing anything:
+
+```bash
+npx @agentrules/cli add my-preset -p opencode --dry-run
+```
+
+## Handling Conflicts
+
+When a file already exists:
+
+```bash
+# Overwrite (backs up existing files to .bak)
+npx @agentrules/cli add my-preset -p opencode --force
+
+# Overwrite without backups
+npx @agentrules/cli add my-preset -p opencode --force --no-backup
+
+# Skip conflicting files, only add new ones
+npx @agentrules/cli add my-preset -p opencode --skip-conflicts
+```
+
+Without these flags, the CLI shows you what conflicts exist and lets you decide.
+
+## Custom Directory
+
+Install to a specific directory instead of the default:
+
+```bash
+npx @agentrules/cli add my-preset -p opencode --dir ./custom/path
+```
+
+## Using Custom Registries
+
+By default, presets come from `agentrules.directory`. You can add other registries:
+
+```bash
+# Add a registry
+npx @agentrules/cli registry add company https://registry.company.com
+
+# Install from it
+npx @agentrules/cli add my-preset -p opencode --registry company
+
+# Set as default
+npx @agentrules/cli registry use company
+```
+
+## All Options
+
+| Option | Description |
+|--------|-------------|
+| `-p, --platform` | Target platform: `opencode`, `claude`, `cursor`, `codex` |
+| `-V, --version` | Install a specific version |
+| `-g, --global` | Install to global config directory |
+| `--dir` | Install to a custom directory |
+| `-r, --registry` | Use a specific registry |
+| `-f, --force` | Overwrite existing files (backs up to `.bak`) |
+| `--no-backup` | Don't backup when using `--force` |
+| `--dry-run` | Preview without writing |
+| `--skip-conflicts` | Skip files that already exist |

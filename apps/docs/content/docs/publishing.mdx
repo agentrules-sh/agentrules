@@ -1,0 +1,67 @@
+---
+title: Quick Start
+description: Share your agentic workflow with the community.
+---
+
+## Why Publish?
+
+- **Showcase your setup** — All your presets on your personal profile page
+- **Reach developers** — Put your work in front of developers browsing for presets
+- **Get featured** — Popular presets appear in trending and get more visibility
+- **Drop your links** — Users see your custom message on install (tips, links, whatever you want)
+
+## How to Publish
+
+Already have configurations in `.opencode/`, `.claude/`, or another platform directory? Three commands:
+
+### 1. Initialize
+
+```bash
+npx @agentrules/cli init
+```
+
+Run this inside your platform directory. It creates `agentrules.json` with your preset's metadata (name, description, license).
+
+### 2. Login
+
+```bash
+npx @agentrules/cli login
+```
+
+Opens a browser for authentication.
+
+### 3. Publish
+
+```bash
+npx @agentrules/cli publish
+```
+
+Your preset is now live.
+
+## What Gets Published
+
+Everything in your platform directory becomes your preset:
+
+```
+.opencode/
+├── agentrules.json    ← Config (not included in preset)
+├── AGENTS.md          ← Included
+├── commands/          ← Included
+│   └── review.md
+└── .agentrules/       ← Metadata for registry (not included)
+    └── README.md
+```
+
+## Updating
+
+Made changes? Just publish again:
+
+```bash
+npx @agentrules/cli publish
+```
+
+The version auto-increments. Users installing your preset get your latest changes.
+
+## Learn More
+
+See [Preset Configuration](/preset-configuration) for config fields, metadata files, versioning, and more.
