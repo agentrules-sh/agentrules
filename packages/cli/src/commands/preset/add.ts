@@ -13,7 +13,7 @@ import {
   verifyBundledFileChecksum,
 } from "@agentrules/core";
 import chalk from "chalk";
-import { mkdir, readFile, writeFile } from "fs/promises";
+import { copyFile, mkdir, readFile, writeFile } from "fs/promises";
 import { homedir } from "os";
 import { dirname, relative, resolve, sep } from "path";
 import { useAppContext } from "@/lib/context";
@@ -35,6 +35,7 @@ export type AddPresetOptions = {
   force?: boolean;
   dryRun?: boolean;
   skipConflicts?: boolean;
+  noBackup?: boolean;
 };
 
 export type FileResult = {
@@ -47,6 +48,7 @@ export type AddPresetResult = {
   bundle: PresetBundle;
   files: FileResult[];
   conflicts: ConflictDetail[];
+  backups: BackupDetail[];
   targetRoot: string;
   targetLabel: string;
   registryAlias: string;
@@ -66,9 +68,15 @@ type ConflictDetail = {
   diff: string | null;
 };
 
+type BackupDetail = {
+  originalPath: string;
+  backupPath: string;
+};
+
 type WriteBundleStats = {
   files: FileResult[];
   conflicts: ConflictDetail[];
+  backups: BackupDetail[];
 };
 
 export { normalizePlatformInput } from "@agentrules/core";
@@ -112,6 +120,7 @@ export async function addPreset(
   const writeStats = await writeBundleFiles(bundle, target, {
     force: Boolean(options.force),
     skipConflicts: Boolean(options.skipConflicts),
+    noBackup: Boolean(options.noBackup),
     dryRun,
   });
 
@@ -120,6 +129,7 @@ export async function addPreset(
     bundle,
     files: writeStats.files,
     conflicts: writeStats.conflicts,
+    backups: writeStats.backups,
     targetRoot: target.root,
     targetLabel: target.label,
     registryAlias,
@@ -227,10 +237,16 @@ function resolveInstallTarget(
 async function writeBundleFiles(
   bundle: PresetBundle,
   target: InstallTarget,
-  behavior: { force: boolean; skipConflicts: boolean; dryRun: boolean }
+  behavior: {
+    force: boolean;
+    skipConflicts: boolean;
+    noBackup: boolean;
+    dryRun: boolean;
+  }
 ): Promise<WriteBundleStats> {
   const files: FileResult[] = [];
   const conflicts: ConflictDetail[] = [];
+  const backups: BackupDetail[] = [];
 
   if (!behavior.dryRun) {
     await mkdir(target.root, { recursive: true });
@@ -267,6 +283,20 @@ async function writeBundleFiles(
     }
 
     if (behavior.force) {
+      // Backup existing file before overwriting (unless --no-backup)
+      if (!behavior.noBackup) {
+        const backupPath = `${destination}.bak`;
+        const relativeBackupPath = `${relativePath}.bak`;
+        if (!behavior.dryRun) {
+          await copyFile(destination, backupPath);
+        }
+        backups.push({
+          originalPath: relativePath,
+          backupPath: relativeBackupPath,
+        });
+        log.debug(`Backed up: ${relativePath} → ${relativeBackupPath}`);
+      }
+
       if (!behavior.dryRun) {
         await writeFile(destination, data);
       }
@@ -286,7 +316,7 @@ async function writeBundleFiles(
 
   // Note: conflicts are returned in the result for the CLI to handle display
 
-  return { files, conflicts };
+  return { files, conflicts, backups };
 }
 
 type DestinationResult = { path: string };

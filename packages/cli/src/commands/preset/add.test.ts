@@ -146,6 +146,94 @@ describe("addPreset", () => {
     expect(result.conflicts[0]?.diff).toContain("# Local");
   });
 
+  it("backs up files by default when overwriting with --force", async () => {
+    // First install
+    let fixture = await createFixtures("# Original content\n");
+    mockPresetRequests(DEFAULT_BASE_URL, fixture);
+    await addPreset({ preset: `${PRESET_SLUG}.${PLATFORM}`, force: true });
+
+    const rulesPath = join(projectDir, ".opencode/AGENT_RULES.md");
+    await appendFile(rulesPath, "\n# My local changes\n");
+    const localContent = await readFile(rulesPath, "utf8");
+
+    // Second install with force - should backup
+    fixture = await createFixtures("# Updated content\n");
+    mockPresetRequests(DEFAULT_BASE_URL, fixture);
+    const result = await addPreset({
+      preset: `${PRESET_SLUG}.${PLATFORM}`,
+      force: true,
+    });
+
+    // Should have one backup
+    expect(result.backups).toHaveLength(1);
+    expect(result.backups[0]?.originalPath).toBe(".opencode/AGENT_RULES.md");
+    expect(result.backups[0]?.backupPath).toBe(".opencode/AGENT_RULES.md.bak");
+
+    // Backup file should exist with original content
+    const backupPath = join(projectDir, ".opencode/AGENT_RULES.md.bak");
+    expect(await fileExists(backupPath)).toBeTrue();
+    const backupContent = await readFile(backupPath, "utf8");
+    expect(backupContent).toBe(localContent);
+
+    // New file should have updated content
+    const newContent = await readFile(rulesPath, "utf8");
+    expect(newContent).toBe("# Updated content\n");
+  });
+
+  it("does not backup files when --no-backup is provided", async () => {
+    // First install
+    let fixture = await createFixtures("# Original content\n");
+    mockPresetRequests(DEFAULT_BASE_URL, fixture);
+    await addPreset({ preset: `${PRESET_SLUG}.${PLATFORM}`, force: true });
+
+    const rulesPath = join(projectDir, ".opencode/AGENT_RULES.md");
+    await appendFile(rulesPath, "\n# My local changes\n");
+
+    // Second install with force and noBackup
+    fixture = await createFixtures("# Updated content\n");
+    mockPresetRequests(DEFAULT_BASE_URL, fixture);
+    const result = await addPreset({
+      preset: `${PRESET_SLUG}.${PLATFORM}`,
+      force: true,
+      noBackup: true,
+    });
+
+    // Should have no backups
+    expect(result.backups).toHaveLength(0);
+
+    // Backup file should not exist
+    const backupPath = join(projectDir, ".opencode/AGENT_RULES.md.bak");
+    expect(await fileExists(backupPath)).toBeFalse();
+  });
+
+  it("records backups in dry-run mode without writing backup files", async () => {
+    // First install
+    let fixture = await createFixtures("# Original content\n");
+    mockPresetRequests(DEFAULT_BASE_URL, fixture);
+    await addPreset({ preset: `${PRESET_SLUG}.${PLATFORM}`, force: true });
+
+    const rulesPath = join(projectDir, ".opencode/AGENT_RULES.md");
+    await appendFile(rulesPath, "\n# My local changes\n");
+
+    // Second install with force and dryRun
+    fixture = await createFixtures("# Updated content\n");
+    mockPresetRequests(DEFAULT_BASE_URL, fixture);
+    const result = await addPreset({
+      preset: `${PRESET_SLUG}.${PLATFORM}`,
+      force: true,
+      dryRun: true,
+    });
+
+    // Should record the backup that would happen
+    expect(result.backups).toHaveLength(1);
+    expect(result.backups[0]?.originalPath).toBe(".opencode/AGENT_RULES.md");
+    expect(result.backups[0]?.backupPath).toBe(".opencode/AGENT_RULES.md.bak");
+
+    // But backup file should not exist (dry run)
+    const backupPath = join(projectDir, ".opencode/AGENT_RULES.md.bak");
+    expect(await fileExists(backupPath)).toBeFalse();
+  });
+
   it("installs into custom directories when --dir is provided", async () => {
     const fixture = await createFixtures("# Custom dir\n");
     mockPresetRequests(DEFAULT_BASE_URL, fixture);

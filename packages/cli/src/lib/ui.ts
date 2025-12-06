@@ -335,6 +335,19 @@ export function fileStatus(
   return `${config.style(config.symbol)} ${config.style(pad(label, 14))} ${filePath}`;
 }
 
+/**
+ * Format a backup status line
+ * e.g., "↪ backed up    .opencode/AGENT_RULES.md → .opencode/AGENT_RULES.md.bak"
+ */
+export function backupStatus(
+  originalPath: string,
+  backupPath: string,
+  options: { dryRun?: boolean } = {}
+): string {
+  const label = options.dryRun ? "would backup" : "backed up";
+  return `${theme.info("↪")} ${theme.info(pad(label, 14))} ${originalPath} ${symbols.arrow} ${backupPath}`;
+}
+
 // =============================================================================
 // Progress
 // =============================================================================
@@ -491,6 +504,7 @@ export const ui = {
 
   // Files
   fileStatus,
+  backupStatus,
 
   // Progress
   step,

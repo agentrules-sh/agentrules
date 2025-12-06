@@ -81,10 +81,14 @@ program
   .option("-r, --registry <alias>", "Use a specific registry alias")
   .option("-g, --global", "Install to global directory")
   .option("--dir <path>", "Install to a custom directory")
-  .option("-f, --force", "Overwrite existing files")
+  .option("-f, --force", "Overwrite existing files (backs up originals)")
   .option("-y, --yes", "Alias for --force")
   .option("--dry-run", "Preview changes without writing")
   .option("--skip-conflicts", "Skip conflicting files")
+  .option(
+    "--no-backup",
+    "Don't backup files before overwriting (use with --force)"
+  )
   .action(
     handle(async (preset: string, options) => {
       const platform = options.platform
@@ -105,6 +109,7 @@ program
           force: Boolean(options.force || options.yes),
           dryRun,
           skipConflicts: Boolean(options.skipConflicts),
+          noBackup: options.backup === false,
         });
       } catch (err) {
         spinner.stop();
@@ -123,9 +128,8 @@ program
           result.conflicts.length === 1
             ? "1 file has"
             : `${result.conflicts.length} files have`;
-        log.error(
-          `${count} conflicts. Use ${ui.command("--force")} to overwrite.`
-        );
+        const forceHint = `Use ${ui.command("--force")} to overwrite ${ui.muted("(--no-backup to skip backups)")}`;
+        log.error(`${count} conflicts. ${forceHint}`);
         log.print("");
 
         for (const conflict of result.conflicts.slice(0, 3)) {
@@ -146,8 +150,22 @@ program
           );
         }
 
+        // Repeat hint at bottom so it doesn't get buried in diff output
+        log.print("");
+        log.print(forceHint);
+
         process.exitCode = 1;
         return;
+      }
+
+      // Show backup operations first
+      if (result.backups.length > 0) {
+        log.print("");
+        for (const backup of result.backups) {
+          log.print(
+            ui.backupStatus(backup.originalPath, backup.backupPath, { dryRun })
+          );
+        }
       }
 
       // Show file operations
