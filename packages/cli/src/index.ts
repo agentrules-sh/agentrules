@@ -685,12 +685,26 @@ program
 program
   .command("unpublish")
   .description("Remove a preset version from the registry")
-  .argument("<slug>", "Preset slug (e.g., my-preset)")
-  .argument("<platform>", "Platform (e.g., opencode, claude)")
-  .argument("<version>", "Version to unpublish (e.g., 1.1, 2.3)")
+  .argument(
+    "<preset>",
+    "Preset to unpublish (e.g., my-preset.claude@1.0 or my-preset@1.0)"
+  )
+  .option(
+    "-p, --platform <platform>",
+    "Target platform (opencode, codex, claude, cursor)"
+  )
+  .option("-V, --version <version>", "Version to unpublish")
   .action(
-    handle(async (slug: string, platform: string, version: string) => {
-      const result = await unpublish({ slug, platform, version });
+    handle(async (preset: string, options) => {
+      const platform = options.platform
+        ? normalizePlatformInput(options.platform)
+        : undefined;
+
+      const result = await unpublish({
+        preset,
+        platform,
+        version: options.version,
+      });
 
       if (!result.success) {
         process.exitCode = 1;

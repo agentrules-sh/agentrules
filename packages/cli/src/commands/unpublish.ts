@@ -5,18 +5,20 @@
  * Requires authentication - run `agentrules login` first.
  */
 
+import type { PlatformId } from "@agentrules/core";
+import { isSupportedPlatform } from "@agentrules/core";
 import { unpublishPreset } from "@/lib/api/presets";
 import { useAppContext } from "@/lib/context";
 import { log } from "@/lib/log";
 import { ui } from "@/lib/ui";
 
 export type UnpublishOptions = {
-  /** Slug of the preset to unpublish */
-  slug: string;
-  /** Platform to unpublish */
-  platform: string;
-  /** Version to unpublish */
-  version: string;
+  /** Preset identifier (e.g., my-preset.claude@1.0 or my-preset@1.0) */
+  preset: string;
+  /** Platform override */
+  platform?: PlatformId;
+  /** Version override */
+  version?: string;
 };
 
 export type UnpublishResult = {
@@ -33,12 +35,61 @@ export type UnpublishResult = {
 };
 
 /**
+ * Parses preset input to extract slug, platform, and version.
+ * Supports formats:
+ * - "my-preset.claude@1.0" (platform and version in string)
+ * - "my-preset@1.0" (requires explicit platform)
+ * - "my-preset.claude" (requires explicit version)
+ *
+ * Explicit --platform and --version flags take precedence.
+ */
+function parseUnpublishInput(
+  input: string,
+  explicitPlatform?: PlatformId,
+  explicitVersion?: string
+): { slug: string; platform?: PlatformId; version?: string } {
+  let normalized = input.toLowerCase().trim();
+
+  // Extract version from @version suffix
+  let parsedVersion: string | undefined;
+  const atIndex = normalized.lastIndexOf("@");
+  if (atIndex > 0) {
+    parsedVersion = normalized.slice(atIndex + 1);
+    normalized = normalized.slice(0, atIndex);
+  }
+
+  // Explicit version flag takes precedence
+  const version = explicitVersion ?? parsedVersion;
+
+  // Try to extract platform from suffix (e.g., "my-preset.claude")
+  const parts = normalized.split(".");
+  const maybePlatform = parts.at(-1);
+
+  let slug: string;
+  let platform: PlatformId | undefined;
+
+  if (maybePlatform && isSupportedPlatform(maybePlatform)) {
+    slug = parts.slice(0, -1).join(".");
+    platform = explicitPlatform ?? maybePlatform;
+  } else {
+    slug = normalized;
+    platform = explicitPlatform;
+  }
+
+  return { slug, platform, version };
+}
+
+/**
  * Unpublishes a preset version from the registry
  */
 export async function unpublish(
   options: UnpublishOptions
 ): Promise<UnpublishResult> {
-  const { slug, platform, version } = options;
+  const { slug, platform, version } = parseUnpublishInput(
+    options.preset,
+    options.platform,
+    options.version
+  );
 
   if (!slug) {
     log.error("Preset slug is required");
@@ -49,7 +100,9 @@ export async function unpublish(
   }
 
   if (!platform) {
-    log.error("Platform is required");
+    log.error(
+      "Platform is required. Use --platform or specify as <slug>.<platform>@<version>"
+    );
     return {
       success: false,
       error: "Platform is required",
@@ -57,7 +110,9 @@ export async function unpublish(
   }
 
   if (!version) {
-    log.error("Version is required");
+    log.error(
+      "Version is required. Use --version or specify as <slug>.<platform>@<version>"
+    );
     return {
       success: false,
       error: "Version is required",

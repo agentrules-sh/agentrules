@@ -44,39 +44,33 @@ describe("unpublish", () => {
     globalThis.fetch = originalFetch;
   });
 
-  it("fails when slug is empty", async () => {
+  it("fails when preset is empty", async () => {
     await setupLoggedInContext();
 
     const result = await unpublish({
-      slug: "",
-      platform: "opencode",
-      version: "1.0",
+      preset: "",
     });
 
     expect(result.success).toBeFalse();
     expect(result.error).toContain("slug is required");
   });
 
-  it("fails when platform is empty", async () => {
+  it("fails when platform is not specified", async () => {
     await setupLoggedInContext();
 
     const result = await unpublish({
-      slug: "my-preset",
-      platform: "",
-      version: "1.0",
+      preset: "my-preset@1.0",
     });
 
     expect(result.success).toBeFalse();
     expect(result.error).toContain("Platform is required");
   });
 
-  it("fails when version is empty", async () => {
+  it("fails when version is not specified", async () => {
     await setupLoggedInContext();
 
     const result = await unpublish({
-      slug: "my-preset",
-      platform: "opencode",
-      version: "",
+      preset: "my-preset.opencode",
     });
 
     expect(result.success).toBeFalse();
@@ -87,16 +81,14 @@ describe("unpublish", () => {
     await setupLoggedOutContext();
 
     const result = await unpublish({
-      slug: "my-preset",
-      platform: "opencode",
-      version: "1.0",
+      preset: "my-preset.opencode@1.0",
     });
 
     expect(result.success).toBeFalse();
     expect(result.error).toContain("Not logged in");
   });
 
-  it("unpublishes a preset successfully", async () => {
+  it("unpublishes a preset using full format (slug.platform@version)", async () => {
     await setupLoggedInContext();
 
     mockFetch({
@@ -110,15 +102,62 @@ describe("unpublish", () => {
     });
 
     const result = await unpublish({
-      slug: "my-preset",
-      platform: "opencode",
-      version: "1.0",
+      preset: "my-preset.opencode@1.0",
     });
 
     expect(result.success).toBeTrue();
     expect(result.preset?.slug).toBe("my-preset");
     expect(result.preset?.platform).toBe("opencode");
     expect(result.preset?.version).toBe("1.0");
+  });
+
+  it("unpublishes using --platform and --version flags", async () => {
+    await setupLoggedInContext();
+
+    mockFetch({
+      url: `${DEFAULT_REGISTRY_URL}api/presets/my-preset/claude/2.0`,
+      method: "DELETE",
+      response: {
+        slug: "my-preset",
+        platform: "claude",
+        version: "2.0",
+      },
+    });
+
+    const result = await unpublish({
+      preset: "my-preset",
+      platform: "claude",
+      version: "2.0",
+    });
+
+    expect(result.success).toBeTrue();
+    expect(result.preset?.platform).toBe("claude");
+    expect(result.preset?.version).toBe("2.0");
+  });
+
+  it("flags override values in preset string", async () => {
+    await setupLoggedInContext();
+
+    mockFetch({
+      url: `${DEFAULT_REGISTRY_URL}api/presets/my-preset/cursor/3.0`,
+      method: "DELETE",
+      response: {
+        slug: "my-preset",
+        platform: "cursor",
+        version: "3.0",
+      },
+    });
+
+    // preset string has claude@1.0, but flags override to cursor@3.0
+    const result = await unpublish({
+      preset: "my-preset.claude@1.0",
+      platform: "cursor",
+      version: "3.0",
+    });
+
+    expect(result.success).toBeTrue();
+    expect(result.preset?.platform).toBe("cursor");
+    expect(result.preset?.version).toBe("3.0");
   });
 
   it("handles 404 errors for non-existent presets", async () => {
@@ -134,9 +173,7 @@ describe("unpublish", () => {
     });
 
     const result = await unpublish({
-      slug: "nonexistent",
-      platform: "opencode",
-      version: "1.0",
+      preset: "nonexistent.opencode@1.0",
     });
 
     expect(result.success).toBeFalse();
@@ -156,9 +193,7 @@ describe("unpublish", () => {
     });
 
     const result = await unpublish({
-      slug: "not-yours",
-      platform: "opencode",
-      version: "1.0",
+      preset: "not-yours.opencode@1.0",
     });
 
     expect(result.success).toBeFalse();
@@ -171,9 +206,7 @@ describe("unpublish", () => {
     mockFetchError("Connection refused");
 
     const result = await unpublish({
-      slug: "my-preset",
-      platform: "opencode",
-      version: "1.0",
+      preset: "my-preset.opencode@1.0",
     });
 
     expect(result.success).toBeFalse();
@@ -200,9 +233,7 @@ describe("unpublish", () => {
     });
 
     const result = await unpublish({
-      slug: "custom-preset",
-      platform: "opencode",
-      version: "1.0",
+      preset: "custom-preset.opencode@1.0",
     });
 
     expect(result.success).toBeTrue();
@@ -230,9 +261,7 @@ describe("unpublish", () => {
     });
 
     await unpublish({
-      slug: "auth-test",
-      platform: "opencode",
-      version: "1.0",
+      preset: "auth-test.opencode@1.0",
     });
 
     const authHeader =
@@ -255,9 +284,7 @@ describe("unpublish", () => {
     });
 
     const result = await unpublish({
-      slug: "error-preset",
-      platform: "opencode",
-      version: "1.0",
+      preset: "error-preset.opencode@1.0",
     });
 
     expect(result.success).toBeFalse();
@@ -281,8 +308,9 @@ describe("unpublish", () => {
       },
     });
 
+    // Use flags for this since my/slug.opencode would parse weirdly
     const result = await unpublish({
-      slug: "my/slug",
+      preset: "my/slug",
       platform: "opencode",
       version: "1.0",
     });
