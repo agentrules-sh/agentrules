@@ -20,6 +20,7 @@ const VALID_CONFIG = {
   description: "A test preset",
   license: "MIT",
   platform: "opencode",
+  tags: ["test"],
   path: "files",
 };
 

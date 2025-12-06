@@ -38,7 +38,7 @@ const majorVersionSchema = z
 const TAG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const TAG_ERROR = "Must be lowercase alphanumeric with hyphens (e.g., my-tag)";
 
-const tagSchema = z
+export const tagSchema = z
   .string()
   .trim()
   .min(1, "Tag cannot be empty")
@@ -49,7 +49,7 @@ const tagSchema = z
       "Platform names cannot be used as tags (redundant with platform field)",
   });
 
-const tagsSchema = z
+export const tagsSchema = z
   .array(tagSchema)
   .min(1, "At least one tag is required")
   .max(10, "Maximum 10 tags allowed");
@@ -120,7 +120,7 @@ export const presetConfigSchema = z
     title: titleSchema,
     version: majorVersionSchema.optional(), // Major version. Registry assigns minor.
     description: descriptionSchema,
-    tags: tagsSchema.optional(),
+    tags: tagsSchema, // Required - at least one tag for discoverability
     features: featuresSchema.optional(),
     license: licenseSchema, // Required SPDX license identifier
     platform: platformIdSchema,

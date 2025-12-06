@@ -22,6 +22,7 @@ export type InitOptions = {
   description?: string;
   platform?: string;
   license?: string;
+  tags?: string[];
   force?: boolean;
 };
 
@@ -219,6 +220,7 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
     title,
     version: 1,
     description,
+    tags: options.tags ?? [],
     license,
     platform,
   };

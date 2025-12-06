@@ -7,6 +7,7 @@ import {
   type PlatformId,
   PRESET_CONFIG_FILENAME,
   slugSchema,
+  tagsSchema,
   titleSchema,
 } from "@agentrules/core";
 import * as p from "@clack/prompts";
@@ -22,6 +23,27 @@ import {
 } from "./init";
 
 const DEFAULT_PRESET_NAME = "my-preset";
+
+/**
+ * Parse comma-separated tags string into array
+ */
+function parseTags(input: string): string[] {
+  return input
+    .split(",")
+    .map((tag) => tag.trim().toLowerCase())
+    .filter((tag) => tag.length > 0);
+}
+
+/**
+ * Validator for comma-separated tags input
+ */
+function checkTags(value: string): string | undefined {
+  const tags = parseTags(value);
+  const result = tagsSchema.safeParse(tags);
+  if (!result.success) {
+    return result.error.issues[0]?.message;
+  }
+}
 
 export type InteractiveInitOptions = {
   /** Base directory to search for platform dirs (defaults to cwd) */
@@ -176,6 +198,13 @@ export async function initInteractive(
         });
       },
 
+      tags: () =>
+        p.text({
+          message: "Tags (comma-separated, at least one)",
+          placeholder: "e.g., typescript, testing, react",
+          validate: checkTags,
+        }),
+
       license: async () => {
         const defaultLicense = licenseOption ?? "MIT";
         const choice = await p.select({
@@ -223,6 +252,7 @@ export async function initInteractive(
     name: result.name,
     title: result.title as string,
     description: result.description as string,
+    tags: parseTags(result.tags as string),
     platform: selectedPlatform,
     license: result.license as string,
     force,

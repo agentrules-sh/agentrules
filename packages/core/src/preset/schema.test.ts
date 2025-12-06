@@ -135,6 +135,7 @@ describe("tags validation", () => {
     description: "A test preset",
     license: "MIT",
     platform: "opencode",
+    tags: ["test"],
   };
 
   it("accepts valid kebab-case tags", () => {
@@ -253,6 +254,7 @@ describe("presetConfigSchema", () => {
     description: "A test preset",
     license: "MIT",
     platform: "opencode",
+    tags: ["test"],
     path: ".opencode",
   };
 

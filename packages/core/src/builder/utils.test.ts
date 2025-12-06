@@ -12,6 +12,7 @@ const MINIMAL_PRESET = {
   description: "Desc",
   license: "MIT",
   platform: "opencode" as const,
+  tags: ["test"],
   path: ".opencode",
 };
 
