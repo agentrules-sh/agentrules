@@ -5,6 +5,7 @@
  */
 
 import { API_ENDPOINTS, type PresetPublishInput } from "@agentrules/core";
+import { getErrorMessage } from "@/lib/errors";
 import { log } from "@/lib/log";
 
 // =============================================================================
@@ -81,10 +82,9 @@ export async function publishPreset(
     const data = (await response.json()) as PublishResponse;
     return { success: true, data };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
     return {
       success: false,
-      error: `Failed to connect to registry: ${message}`,
+      error: `Failed to connect to registry: ${getErrorMessage(error)}`,
     };
   }
 }
@@ -128,10 +128,9 @@ export async function unpublishPreset(
     const data = (await response.json()) as UnpublishResponse;
     return { success: true, data };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
     return {
       success: false,
-      error: `Failed to connect to registry: ${message}`,
+      error: `Failed to connect to registry: ${getErrorMessage(error)}`,
     };
   }
 }

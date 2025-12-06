@@ -35,10 +35,6 @@ export async function logout(
   }
 
   const ctx = useAppContext();
-  if (!ctx) {
-    throw new Error("App context not initialized");
-  }
-
   const { url: registryUrl } = ctx.registry;
   const hadCredentials = ctx.credentials !== null;
 

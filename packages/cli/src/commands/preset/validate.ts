@@ -1,4 +1,5 @@
 import {
+  isPlatformDir,
   isSupportedPlatform,
   PLATFORM_IDS,
   PLATFORMS,
@@ -6,7 +7,7 @@ import {
   validatePresetConfig,
 } from "@agentrules/core";
 import { readFile } from "fs/promises";
-import { dirname, join } from "path";
+import { basename, dirname, join } from "path";
 import { directoryExists } from "@/lib/fs";
 import { log } from "@/lib/log";
 import { resolveConfigPath } from "@/lib/preset-utils";
@@ -72,17 +73,27 @@ export async function validatePreset(
   log.debug(`Checking platform: ${platform}`);
 
   if (isSupportedPlatform(platform)) {
-    // Default to platform's standard projectDir if path not specified
-    const filesPath = preset.path ?? PLATFORMS[platform].projectDir;
-    const filesDir = join(presetDir, filesPath);
-    const filesExists = await directoryExists(filesDir);
+    // Determine mode based on whether config is inside a platform directory
+    const dirName = basename(presetDir);
+    const isInProjectMode = isPlatformDir(dirName);
 
-    log.debug(
-      `Files directory check: ${filesDir} - ${filesExists ? "exists" : "not found"}`
-    );
+    if (isInProjectMode) {
+      // In-project mode: files are siblings of config
+      // No additional directory check needed - files are in same dir as config
+      log.debug(`In-project mode: files expected in ${presetDir}`);
+    } else {
+      // Standalone mode: files are in config.path or platform's default projectDir
+      const filesPath = preset.path ?? PLATFORMS[platform].projectDir;
+      const filesDir = join(presetDir, filesPath);
+      const filesExists = await directoryExists(filesDir);
 
-    if (!filesExists) {
-      errors.push(`Files directory not found: ${filesPath}`);
+      log.debug(
+        `Standalone mode: files directory check: ${filesDir} - ${filesExists ? "exists" : "not found"}`
+      );
+
+      if (!filesExists) {
+        errors.push(`Files directory not found: ${filesPath}`);
+      }
     }
   } else {
     errors.push(

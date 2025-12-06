@@ -4,6 +4,7 @@ import { homedir } from "os";
 import { dirname, join } from "path";
 import { log } from "./log";
 
+/** Directory for CLI configuration and credentials (e.g., ~/.agentrules/) */
 const CONFIG_DIRNAME = ".agentrules";
 const CONFIG_FILENAME = "config.json";
 const CONFIG_HOME_ENV = "AGENT_RULES_HOME";

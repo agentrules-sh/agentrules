@@ -14,6 +14,7 @@ import {
   type RegistryCredentials,
   saveCredentials,
 } from "./credentials";
+import { getErrorMessage } from "./errors";
 import { log } from "./log";
 
 /**
@@ -113,9 +114,7 @@ export async function createAppContext(
           log.debug("Saved fetched user info to credentials");
         }
       } catch (error) {
-        log.debug(
-          `Failed to fetch user info: ${error instanceof Error ? error.message : String(error)}`
-        );
+        log.debug(`Failed to fetch user info: ${getErrorMessage(error)}`);
       }
     }
   }
@@ -170,11 +169,23 @@ export function resolveRegistry(config: Config, alias?: string): AppRegistry {
 let globalContext: AppContext | null = null;
 
 /**
- * Gets the global app context, or null if not initialized.
- * Use this in commands to access cached config, registry, and auth state.
+ * Gets the global app context.
+ * Throws if context has not been initialized via initAppContext().
  */
-export function useAppContext(): AppContext | null {
+export function useAppContext(): AppContext {
+  if (!globalContext) {
+    throw new Error("App context not initialized");
+  }
   return globalContext;
+}
+
+/**
+ * Verifies the user is logged in. Throws if not authenticated.
+ */
+export function requireAuth(ctx: AppContext): void {
+  if (!(ctx.isLoggedIn && ctx.credentials)) {
+    throw new Error("Not logged in. Run `agentrules login` to authenticate.");
+  }
 }
 
 /**

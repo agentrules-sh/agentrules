@@ -1,26 +1,25 @@
 import {
+  getPlatformFromDir,
   isSupportedPlatform,
   PLATFORM_IDS,
-  PLATFORMS,
   type PlatformId,
   PRESET_CONFIG_FILENAME,
   PRESET_SCHEMA_URL,
   type PresetConfig,
 } from "@agentrules/core";
 import { mkdir, writeFile } from "fs/promises";
-import { join } from "path";
+import { basename, join } from "path";
 import { directoryExists, fileExists } from "@/lib/fs";
 import { log } from "@/lib/log";
 import { normalizeName, toTitleCase } from "@/lib/preset-utils";
 
 export type InitOptions = {
+  /** Platform directory path (e.g., ".opencode" or "/path/to/.claude") */
   directory?: string;
   name?: string;
   title?: string;
   description?: string;
   platform?: string;
-  /** Detected path for the platform (e.g., ".opencode") */
-  detectedPath?: string;
   license?: string;
   force?: boolean;
 };
@@ -40,12 +39,9 @@ export type DetectedPlatform = {
 const PLATFORM_DETECTION_PATHS: Record<PlatformId, string[]> = {
   opencode: [".opencode"],
   claude: [".claude"],
-  cursor: [".cursor", ".cursorrules"],
+  cursor: [".cursor"],
   codex: [".codex"],
 };
-
-/** Default path for new preset authoring */
-const DEFAULT_FILES_PATH = "files";
 
 /** Default preset name when none specified */
 const DEFAULT_PRESET_NAME = "my-preset";
@@ -73,22 +69,34 @@ export async function detectPlatforms(
   return detected;
 }
 
+/**
+ * Initialize a preset in a platform directory.
+ *
+ * Structure:
+ * - platformDir/agentrules.json - preset config
+ * - platformDir/* - platform files (added by user)
+ * - platformDir/.agentrules/ - optional metadata folder (README, LICENSE, etc.)
+ */
 export async function initPreset(options: InitOptions): Promise<InitResult> {
-  const directory = options.directory ?? process.cwd();
+  const platformDir = options.directory ?? process.cwd();
 
-  log.debug(`Initializing preset in: ${directory}`);
+  log.debug(`Initializing preset in: ${platformDir}`);
+
+  // Infer platform from directory name if not provided
+  const inferredPlatform = getPlatformFromDir(basename(platformDir));
+  const platform = normalizePlatform(
+    options.platform ?? inferredPlatform ?? "opencode"
+  );
 
   // Validate/normalize inputs
   const name = normalizeName(options.name ?? DEFAULT_PRESET_NAME);
   const title = options.title ?? toTitleCase(name);
   const description = options.description ?? `${title} preset`;
-  const platform = normalizePlatform(options.platform ?? "opencode");
-  const detectedPath = options.detectedPath;
-  const license = options.license ?? "MIT"; // Default to MIT if not specified
+  const license = options.license ?? "MIT";
 
   log.debug(`Preset name: ${name}, platform: ${platform}`);
 
-  const configPath = join(directory, PRESET_CONFIG_FILENAME);
+  const configPath = join(platformDir, PRESET_CONFIG_FILENAME);
 
   // Check if config already exists
   if (!options.force && (await fileExists(configPath))) {
@@ -96,11 +104,6 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
       `${PRESET_CONFIG_FILENAME} already exists. Use --force to overwrite.`
     );
   }
-
-  // Determine the files path
-  // Use detected path if provided, otherwise use default
-  const defaultPath = PLATFORMS[platform].projectDir;
-  const effectivePath = detectedPath ?? DEFAULT_FILES_PATH;
 
   const preset: PresetConfig = {
     $schema: PRESET_SCHEMA_URL,
@@ -118,36 +121,20 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
     platform,
   };
 
-  // Only include path in config if it's not the platform's default projectDir
-  if (effectivePath !== defaultPath) {
-    preset.path = effectivePath;
+  // Create platform directory if needed
+  let createdDir: string | undefined;
+  if (await directoryExists(platformDir)) {
+    log.debug(`Platform directory exists: ${platformDir}`);
+  } else {
+    await mkdir(platformDir, { recursive: true });
+    createdDir = platformDir;
+    log.debug(`Created platform directory: ${platformDir}`);
   }
-
-  // Create directory if needed
-  await mkdir(directory, { recursive: true });
-  log.debug(`Created/verified directory: ${directory}`);
 
   // Write config
   const content = `${JSON.stringify(preset, null, 2)}\n`;
   await writeFile(configPath, content, "utf8");
   log.debug(`Wrote config file: ${configPath}`);
-
-  // Create files directory (only if not using detected path)
-  let createdDir: string | undefined;
-  if (detectedPath) {
-    log.debug(`Using detected platform directory: ${detectedPath}`);
-  } else {
-    const filesPath = effectivePath;
-    const fullPath = join(directory, filesPath);
-
-    if (await directoryExists(fullPath)) {
-      log.debug(`Files directory already exists: ${filesPath}`);
-    } else {
-      await mkdir(fullPath, { recursive: true });
-      createdDir = filesPath;
-      log.debug(`Created files directory: ${filesPath}`);
-    }
-  }
 
   log.debug("Preset initialization complete.");
   return { configPath, preset, createdDir };

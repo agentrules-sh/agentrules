@@ -78,51 +78,40 @@ See the [CLI documentation](./packages/cli) for all options.
 
 Share your agentic workflow and get discovered. Publishing to [agentrules.directory](https://agentrules.directory) gives you a profile page, puts your work in front of developers, and popular presets get featured in trending.
 
-### 1. Initialize a preset
+### 1. Add config to your platform directory
+
+If you already have a `.opencode/`, `.claude/`, or other platform directory with your configs, just add an `agentrules.json` file:
 
 ```bash
-npx @agentrules/cli init my-preset
-cd my-preset
+cd .opencode
+npx @agentrules/cli init
 ```
 
-This creates a `my-preset/` directory with an `agentrules.json` config and a `files/` directory for your config files.
-
-### 2. Add your files
-
-Put your agents, commands, and configs in the `files/` directory:
+The `init` command guides you through the required fields. Your preset structure is simply:
 
 ```
-my-preset/
-├── agentrules.json
-└── files/
-    ├── opencode.json
-    ├── agent/
-    │   └── planner.md
-    └── command/
-        └── review.md
+.opencode/
+├── agentrules.json    # Preset config
+├── AGENTS.md          # Your existing files
+└── commands/
+    └── review.md
 ```
 
-### 3. Validate
-
-```bash
-npx @agentrules/cli validate
-```
-
-### 4. Login
+### 2. Login
 
 ```bash
 npx @agentrules/cli login
 ```
 
-This opens a browser for authentication. Once logged in, you're ready to publish.
+This opens a browser for authentication.
 
-### 5. Publish
+### 3. Publish
 
 ```bash
-npx @agentrules/cli publish
+npx @agentrules/cli publish .opencode
 ```
 
-Your preset is now discoverable at [agentrules.directory](https://agentrules.directory). When you publish, you create an account with a profile page that showcases all your published presets. Popular presets are featured in trending.
+That's it! Your preset is now discoverable at [agentrules.directory](https://agentrules.directory). You'll get a profile page showcasing all your published presets, and popular presets get featured in trending.
 
 ## Preset Format
 
@@ -135,10 +124,9 @@ Presets use `agentrules.json` for configuration:
   "title": "My Preset",
   "description": "A helpful preset for...",
   "license": "MIT",
-  "tags": ["starter"],
-  "features": ["Feature 1", "Feature 2"],
-  "platform": "opencode",
-  "path": "files"
+  "tags": ["productivity", "typescript"],
+  "features": ["Smart code review", "Auto-formatting"],
+  "platform": "opencode"
 }
 ```
 
@@ -151,7 +139,6 @@ Presets use `agentrules.json` for configuration:
 | `tags` | Up to 10 tags for discoverability |
 | `features` | Up to 5 key features to highlight |
 | `platform` | Target platform: `opencode`, `claude`, `cursor`, `codex` |
-| `path` | Directory containing your config files |
 
 ## Packages
 

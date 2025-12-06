@@ -17,6 +17,7 @@ import {
 import { dirname, join } from "path";
 import { promisify } from "util";
 import { getConfigDir } from "@/lib/config";
+import { getErrorMessage } from "@/lib/errors";
 import { log } from "@/lib/log";
 
 const chmodAsync = promisify(chmod);
@@ -77,9 +78,7 @@ async function loadStore(): Promise<CredentialsStore> {
     const store = JSON.parse(raw) as CredentialsStore;
     return store;
   } catch (error) {
-    log.debug(
-      `Failed to load credentials: ${error instanceof Error ? error.message : String(error)}`
-    );
+    log.debug(`Failed to load credentials: ${getErrorMessage(error)}`);
     return {};
   }
 }

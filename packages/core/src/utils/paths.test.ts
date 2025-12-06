@@ -1,22 +1,22 @@
 import { describe, expect, it } from "bun:test";
-import {
-  maybeStripPrefix,
-  normalizeBundlePath,
-  normalizePathFragment,
-} from "./paths";
+import { normalizeBundlePath } from "./paths";
 
 describe("path helpers", () => {
-  it("normalizes bundle paths", () => {
+  it("normalizes bundle paths with backslashes", () => {
     expect(normalizeBundlePath("./foo\\bar/baz.ts")).toBe("foo/bar/baz.ts");
   });
 
-  it("normalizes optional fragments", () => {
-    expect(normalizePathFragment("/tmp/foo//")).toBe("tmp/foo");
-    expect(normalizePathFragment(undefined)).toBeUndefined();
+  it("removes leading slashes", () => {
+    expect(normalizeBundlePath("/foo/bar")).toBe("foo/bar");
+    expect(normalizeBundlePath("///foo")).toBe("foo");
   });
 
-  it("strips known prefixes", () => {
-    expect(maybeStripPrefix("foo/bar", "foo")).toBe("bar");
-    expect(maybeStripPrefix("foo", "foo")).toBe("");
+  it("removes leading ./", () => {
+    expect(normalizeBundlePath("./foo")).toBe("foo");
+    expect(normalizeBundlePath("./")).toBe("");
+  });
+
+  it("handles mixed path separators", () => {
+    expect(normalizeBundlePath(".\\foo\\bar")).toBe("foo/bar");
   });
 });

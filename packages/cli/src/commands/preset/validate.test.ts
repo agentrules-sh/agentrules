@@ -153,4 +153,60 @@ describe("validatePreset", () => {
 
     expect(result.valid).toBeTrue();
   });
+
+  describe("in-project preset (config inside platform dir)", () => {
+    const IN_PROJECT_CONFIG = {
+      $schema: "https://agentrules.directory/schema/agentrules.json",
+      name: "test-preset",
+      title: "Test Preset",
+      description: "A test preset",
+      license: "MIT",
+      tags: ["test"],
+      platform: "opencode",
+      // No path field needed - files are siblings
+    };
+
+    it("validates when config is inside platform directory", async () => {
+      // Config inside .opencode/ directory
+      const platformDir = join(testDir, ".opencode");
+      await mkdir(platformDir, { recursive: true });
+      await writeFile(
+        join(platformDir, "agentrules.json"),
+        JSON.stringify(IN_PROJECT_CONFIG)
+      );
+
+      const result = await validatePreset({ path: platformDir });
+
+      expect(result.valid).toBeTrue();
+      expect(result.preset?.name).toBe("test-preset");
+    });
+
+    it("validates .claude directory", async () => {
+      const platformDir = join(testDir, ".claude");
+      await mkdir(platformDir, { recursive: true });
+      await writeFile(
+        join(platformDir, "agentrules.json"),
+        JSON.stringify({ ...IN_PROJECT_CONFIG, platform: "claude" })
+      );
+
+      const result = await validatePreset({ path: platformDir });
+
+      expect(result.valid).toBeTrue();
+    });
+
+    it("does not require files directory for in-project preset", async () => {
+      // In-project mode doesn't need a separate files directory
+      const platformDir = join(testDir, ".opencode");
+      await mkdir(platformDir, { recursive: true });
+      await writeFile(
+        join(platformDir, "agentrules.json"),
+        JSON.stringify(IN_PROJECT_CONFIG)
+      );
+      // No files directory created - that's fine for in-project
+
+      const result = await validatePreset({ path: platformDir });
+
+      expect(result.valid).toBeTrue();
+    });
+  });
 });

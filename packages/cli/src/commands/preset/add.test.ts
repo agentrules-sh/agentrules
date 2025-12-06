@@ -179,8 +179,8 @@ describe("addPreset", () => {
     expect(filesWritten.length).toBeGreaterThan(0);
   });
 
-  it("skips root files during global install and reports them", async () => {
-    // Create a fixture with both config files and root files
+  it("installs all files to platform directory during global install", async () => {
+    // Create a fixture with multiple files
     const fixture = await createFixturesWithRootFiles(
       "# Config\n",
       "# README\n"
@@ -195,12 +195,21 @@ describe("addPreset", () => {
 
     // Global path is ~/.config/opencode
     expect(result.targetRoot).toContain(".config/opencode");
-    // Skipped root files should be reported
-    const skippedFiles = result.files.filter((f) => f.status === "skipped");
-    expect(skippedFiles.map((f) => f.path)).toContain("README.md");
+    // All files should be processed (created, overwritten, or unchanged - not skipped/conflict)
+    // Note: os.homedir() may not respect HOME env var, so previous test may have written files
+    const filesProcessed = result.files.filter(
+      (f) =>
+        f.status === "created" ||
+        f.status === "overwritten" ||
+        f.status === "unchanged"
+    );
+    expect(filesProcessed.length).toBe(2);
+    // Verify both files are in the list
+    expect(result.files.map((f) => f.path)).toContain("AGENT_RULES.md");
+    expect(result.files.map((f) => f.path)).toContain("README.md");
   });
 
-  it("installs root files to project root during project install", async () => {
+  it("installs all files to platform directory during project install", async () => {
     const fixture = await createFixturesWithRootFiles(
       "# Config\n",
       "# README\n"
@@ -208,12 +217,13 @@ describe("addPreset", () => {
     mockPresetRequests(DEFAULT_BASE_URL, fixture);
     const result = await addPreset({ preset: `${PRESET_SLUG}.${PLATFORM}` });
 
-    // Config file should be in platform dir
+    // All files should be in platform dir
     expect(
       await fileExists(join(projectDir, ".opencode/AGENT_RULES.md"))
     ).toBeTrue();
-    // Root file should be at project root
-    expect(await fileExists(join(projectDir, "README.md"))).toBeTrue();
+    expect(
+      await fileExists(join(projectDir, ".opencode/README.md"))
+    ).toBeTrue();
     // No files should be skipped
     const skippedFiles = result.files.filter((f) => f.status === "skipped");
     expect(skippedFiles).toHaveLength(0);
@@ -223,13 +233,13 @@ describe("addPreset", () => {
     // With the new API, we request a specific platform directly
     const claudeFixture = await createFixtures("# Claude variant\n", {
       platform: "claude",
-      filePath: "config/config.md",
+      filePath: "config.md",
     });
 
     mockPresetRequests(DEFAULT_BASE_URL, claudeFixture);
     await addPreset({ preset: `${PRESET_SLUG}.claude` });
 
-    // config/config.md maps to .claude/config.md for project install
+    // config.md installs to .claude/config.md for project install
     expect(await fileExists(join(projectDir, ".claude/config.md"))).toBeTrue();
   });
 
@@ -390,8 +400,8 @@ async function createFixtures(
 ): Promise<FixturePayload> {
   const platform = options.platform ?? PLATFORM;
   const slug = options.slug ?? PRESET_SLUG;
-  // Convention: files under config/ map to platform dir
-  const relativePath = options.filePath ?? "config/AGENT_RULES.md";
+  // File paths are relative to the platform directory (no config/ prefix)
+  const relativePath = options.filePath ?? "AGENT_RULES.md";
 
   const size = Buffer.byteLength(fileContents);
   const checksum = await sha256Hex(fileContents);
@@ -450,7 +460,7 @@ async function createFixturesWithRootFiles(
   const configSize = Buffer.byteLength(configContents);
   const configChecksum = await sha256Hex(configContents);
   const configFile = {
-    path: "config/AGENT_RULES.md",
+    path: "AGENT_RULES.md",
     size: configSize,
     checksum: configChecksum,
     encoding: "utf-8" as const,

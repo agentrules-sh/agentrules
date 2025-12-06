@@ -5,6 +5,9 @@
 /** Filename for preset configuration */
 export const PRESET_CONFIG_FILENAME = "agentrules.json";
 
+/** Directory name for preset metadata (README, LICENSE, etc.) */
+export const AGENT_RULES_DIR = ".agentrules";
+
 /** JSON Schema URL for preset configuration */
 export const PRESET_SCHEMA_URL =
   "https://agentrules.directory/schema/agentrules.json";

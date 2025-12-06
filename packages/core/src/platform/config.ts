@@ -26,9 +26,3 @@ export const PLATFORMS: Record<PlatformId, PlatformConfig> = {
     globalDir: "~/.cursor",
   },
 };
-
-/**
- * Convention: preset files under this directory map to the platform config directory.
- * e.g., `config/agent.md` → `.opencode/agent.md` (project) or `agent.md` (global)
- */
-export const CONFIG_DIR_NAME = "config";

@@ -23,6 +23,9 @@ const VALID_CONFIG = {
   path: "files",
 };
 
+/**
+ * Creates a standalone preset: config at preset root, files in subdir
+ */
 async function createPreset(
   name: string,
   config: object,
@@ -35,6 +38,36 @@ async function createPreset(
 
   for (const [filePath, contents] of Object.entries(files)) {
     const fullPath = join(filesDir, filePath);
+    await mkdir(join(fullPath, ".."), { recursive: true });
+    await writeFile(fullPath, contents);
+  }
+}
+
+/**
+ * Creates an in-project preset: config inside platform dir, files as siblings
+ */
+async function createInProjectPreset(
+  name: string,
+  config: object,
+  files: Record<string, string>
+) {
+  // Use platform dir name as the preset directory name
+  const platformDir = join(inputDir, name);
+  await mkdir(platformDir, { recursive: true });
+
+  // Config without path field (not needed for in-project)
+  const { path: _path, ...configWithoutPath } = config as Record<
+    string,
+    unknown
+  >;
+  await writeFile(
+    join(platformDir, "agentrules.json"),
+    JSON.stringify(configWithoutPath)
+  );
+
+  // Files are siblings of config
+  for (const [filePath, contents] of Object.entries(files)) {
+    const fullPath = join(platformDir, filePath);
     await mkdir(join(fullPath, ".."), { recursive: true });
     await writeFile(fullPath, contents);
   }
@@ -275,10 +308,12 @@ describe("buildRegistry", () => {
         "AGENT_RULES.md": "# Rules\n",
       });
 
-      // Add README.md at preset root
+      // Add README.md in .agentrules/ metadata directory
       const presetDir = join(inputDir, "test-preset");
+      const metadataDir = join(presetDir, ".agentrules");
+      await mkdir(metadataDir, { recursive: true });
       await writeFile(
-        join(presetDir, "README.md"),
+        join(metadataDir, "README.md"),
         "# Test Preset\n\nThis is a great preset!"
       );
 
@@ -328,10 +363,12 @@ describe("buildRegistry", () => {
         "AGENT_RULES.md": "# Rules\n",
       });
 
-      // Add preset-level INSTALL.txt
+      // Add INSTALL.txt in .agentrules/ metadata directory
       const presetDir = join(inputDir, "test-preset");
+      const metadataDir = join(presetDir, ".agentrules");
+      await mkdir(metadataDir, { recursive: true });
       await writeFile(
-        join(presetDir, "INSTALL.txt"),
+        join(metadataDir, "INSTALL.txt"),
         "Welcome to the preset!\n\nEnjoy!"
       );
 
@@ -370,6 +407,100 @@ describe("buildRegistry", () => {
       );
       const bundle = JSON.parse(bundleContent);
       expect(bundle.installMessage).toBeUndefined();
+    });
+  });
+
+  describe("in-project preset (config inside platform dir)", () => {
+    it("builds when config is inside platform directory", async () => {
+      // Use .opencode as the preset dir name (platform dir)
+      await createInProjectPreset(
+        ".opencode",
+        { ...VALID_CONFIG, name: "in-project-preset" },
+        { "AGENT_RULES.md": "# Rules\n" }
+      );
+
+      const result = await buildRegistry({
+        input: inputDir,
+        out: outputDir,
+      });
+
+      expect(result.presets).toBe(1);
+      expect(result.bundles).toBe(1);
+
+      const bundleContent = await readFile(
+        join(
+          outputDir,
+          `${STATIC_BUNDLE_DIR}/in-project-preset/opencode/${LATEST_VERSION}`
+        ),
+        "utf8"
+      );
+      const bundle = JSON.parse(bundleContent);
+      expect(bundle.files).toHaveLength(1);
+      expect(bundle.files[0].path).toBe("AGENT_RULES.md");
+    });
+
+    it("reads metadata from .agentrules/ subdirectory", async () => {
+      await createInProjectPreset(
+        ".opencode",
+        { ...VALID_CONFIG, name: "metadata-preset" },
+        { "AGENT_RULES.md": "# Rules\n" }
+      );
+
+      // Add .agentrules/ metadata folder
+      const metadataDir = join(inputDir, ".opencode", ".agentrules");
+      await mkdir(metadataDir, { recursive: true });
+      await writeFile(join(metadataDir, "README.md"), "# In-project README");
+      await writeFile(join(metadataDir, "INSTALL.txt"), "Install instructions");
+
+      await buildRegistry({
+        input: inputDir,
+        out: outputDir,
+      });
+
+      const bundleContent = await readFile(
+        join(
+          outputDir,
+          `${STATIC_BUNDLE_DIR}/metadata-preset/opencode/${LATEST_VERSION}`
+        ),
+        "utf8"
+      );
+      const bundle = JSON.parse(bundleContent);
+      expect(bundle.readmeContent).toBe("# In-project README");
+      expect(bundle.installMessage).toBe("Install instructions");
+    });
+
+    it("excludes config and .agentrules/ from bundle files", async () => {
+      await createInProjectPreset(
+        ".opencode",
+        { ...VALID_CONFIG, name: "exclude-test" },
+        { "AGENT_RULES.md": "# Rules\n" }
+      );
+
+      // Add .agentrules/ metadata folder with files
+      const metadataDir = join(inputDir, ".opencode", ".agentrules");
+      await mkdir(metadataDir, { recursive: true });
+      await writeFile(join(metadataDir, "README.md"), "# README");
+
+      await buildRegistry({
+        input: inputDir,
+        out: outputDir,
+      });
+
+      const bundleContent = await readFile(
+        join(
+          outputDir,
+          `${STATIC_BUNDLE_DIR}/exclude-test/opencode/${LATEST_VERSION}`
+        ),
+        "utf8"
+      );
+      const bundle = JSON.parse(bundleContent);
+      const filePaths = bundle.files.map((f: { path: string }) => f.path);
+
+      expect(filePaths).toContain("AGENT_RULES.md");
+      expect(filePaths).not.toContain("agentrules.json");
+      expect(
+        filePaths.some((p: string) => p.startsWith(".agentrules/"))
+      ).toBeFalse();
     });
   });
 });

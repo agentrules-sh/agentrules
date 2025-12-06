@@ -7,25 +7,17 @@
 
 import {
   buildPresetPublishInput,
-  PLATFORMS,
-  PRESET_CONFIG_FILENAME,
   type PresetInput,
   type PresetPublishInput,
-  validatePresetConfig,
 } from "@agentrules/core";
-import { readdir, readFile } from "fs/promises";
-import { dirname, join, relative } from "path";
+import { dirname } from "path";
 import { validatePreset } from "@/commands/preset/validate";
 import { publishPreset } from "@/lib/api/presets";
 import { useAppContext } from "@/lib/context";
-import { directoryExists, fileExists } from "@/lib/fs";
+import { getErrorMessage } from "@/lib/errors";
 import { log } from "@/lib/log";
-import { resolveConfigPath } from "@/lib/preset-utils";
+import { loadPreset, resolveConfigPath } from "@/lib/preset-utils";
 import { ui } from "@/lib/ui";
-
-const INSTALL_FILENAME = "INSTALL.txt";
-const README_FILENAME = "README.md";
-const LICENSE_FILENAME = "LICENSE.md";
 
 /** Maximum size per bundle in bytes (1MB) */
 const MAX_BUNDLE_SIZE_BYTES = 1 * 1024 * 1024;
@@ -86,23 +78,13 @@ export async function publish(
     }`
   );
 
-  // Get app context
   const ctx = useAppContext();
-  if (!ctx) {
-    throw new Error("App context not initialized");
-  }
 
   // Check authentication (skip for dry run)
   if (!(dryRun || (ctx.isLoggedIn && ctx.credentials))) {
-    log.error(
-      `Not logged in. Run ${ui.command("agentrules login")} to authenticate.`
-    );
-    return {
-      success: false,
-      error: `Not logged in. Run ${ui.command(
-        "agentrules login"
-      )} to authenticate.`,
-    };
+    const error = "Not logged in. Run `agentrules login` to authenticate.";
+    log.error(error);
+    return { success: false, error };
   }
 
   if (!dryRun) {
@@ -137,13 +119,10 @@ export async function publish(
       `Loaded preset "${presetInput.slug}" for platform ${presetInput.config.platform}`
     );
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const message = getErrorMessage(error);
     spinner.fail("Failed to load preset");
-    log.error(errorMessage);
-    return {
-      success: false,
-      error: errorMessage,
-    };
+    log.error(message);
+    return { success: false, error: message };
   }
 
   // Build publish input (version is assigned by registry)
@@ -158,13 +137,10 @@ export async function publish(
     });
     log.debug(`Built publish input for ${publishInput.platform}`);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const message = getErrorMessage(error);
     spinner.fail("Failed to build bundle");
-    log.error(errorMessage);
-    return {
-      success: false,
-      error: errorMessage,
-    };
+    log.error(message);
+    return { success: false, error: message };
   }
 
   // Calculate size for validation and display
@@ -290,101 +266,4 @@ export async function publish(
       bundleUrl: data.bundleUrl,
     },
   };
-}
-
-/**
- * Load a preset from a directory
- */
-async function loadPreset(presetDir: string): Promise<PresetInput> {
-  const configPath = join(presetDir, PRESET_CONFIG_FILENAME);
-
-  if (!(await fileExists(configPath))) {
-    throw new Error(`Config file not found: ${configPath}`);
-  }
-
-  const configRaw = await readFile(configPath, "utf8");
-
-  let configJson: unknown;
-  try {
-    configJson = JSON.parse(configRaw);
-  } catch {
-    throw new Error(`Invalid JSON in ${configPath}`);
-  }
-
-  // Use name from config if available, otherwise show path for clarity
-  const configObj = configJson as Record<string, unknown> | null;
-  const identifier =
-    typeof configObj?.name === "string" ? configObj.name : configPath;
-
-  const config = validatePresetConfig(configJson, identifier);
-  const slug = config.name;
-
-  // Read INSTALL.txt for install message
-  const installPath = join(presetDir, INSTALL_FILENAME);
-  const installMessage = await readFileIfExists(installPath);
-
-  // Read preset README.md for registry display
-  const readmePath = join(presetDir, README_FILENAME);
-  const readmeContent = await readFileIfExists(readmePath);
-
-  // Read preset LICENSE.md for registry display
-  const licensePath = join(presetDir, LICENSE_FILENAME);
-  const licenseContent = await readFileIfExists(licensePath);
-
-  // Default to platform's standard projectDir if path not specified
-  const filesPath = config.path ?? PLATFORMS[config.platform].projectDir;
-  const filesDir = join(presetDir, filesPath);
-
-  if (!(await directoryExists(filesDir))) {
-    throw new Error(
-      `Files directory not found: ${filesDir} (referenced in ${configPath})`
-    );
-  }
-
-  const files = await collectFiles(filesDir);
-
-  if (files.length === 0) {
-    throw new Error(
-      `No files found in ${filesDir}. Presets must include at least one file.`
-    );
-  }
-
-  return { slug, config, files, installMessage, readmeContent, licenseContent };
-}
-
-/**
- * Recursively collect all files from a directory
- */
-async function collectFiles(
-  dir: string,
-  baseDir?: string
-): Promise<Array<{ path: string; contents: string }>> {
-  const root = baseDir ?? dir;
-  const entries = await readdir(dir, { withFileTypes: true });
-  const files: Array<{ path: string; contents: string }> = [];
-
-  for (const entry of entries) {
-    const fullPath = join(dir, entry.name);
-
-    if (entry.isDirectory()) {
-      const nested = await collectFiles(fullPath, root);
-      files.push(...nested);
-    } else if (entry.isFile()) {
-      const contents = await readFile(fullPath, "utf8");
-      const relativePath = relative(root, fullPath);
-      files.push({ path: relativePath, contents });
-    }
-  }
-
-  return files;
-}
-
-/**
- * Read a file if it exists, otherwise return undefined
- */
-async function readFileIfExists(path: string): Promise<string | undefined> {
-  if (await fileExists(path)) {
-    return await readFile(path, "utf8");
-  }
-  return;
 }

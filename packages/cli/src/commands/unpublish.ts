@@ -66,21 +66,13 @@ export async function unpublish(
 
   log.debug(`Unpublishing preset: ${slug}.${platform}@${version}`);
 
-  // Get app context
   const ctx = useAppContext();
-  if (!ctx) {
-    throw new Error("App context not initialized");
-  }
 
   // Check authentication
   if (!(ctx.isLoggedIn && ctx.credentials)) {
-    log.error(
-      `Not logged in. Run ${ui.command("agentrules login")} to authenticate.`
-    );
-    return {
-      success: false,
-      error: `Not logged in. Run ${ui.command("agentrules login")} to authenticate.`,
-    };
+    const error = "Not logged in. Run `agentrules login` to authenticate.";
+    log.error(error);
+    return { success: false, error };
   }
 
   log.debug(`Authenticated, unpublishing from ${ctx.registry.url}`);

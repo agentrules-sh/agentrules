@@ -1,6 +1,5 @@
 import type { PlatformId, PresetBundle } from "@agentrules/core";
 import {
-  CONFIG_DIR_NAME,
   createDiffPreview,
   decodeBundledFile,
   fetchBundle,
@@ -78,10 +77,6 @@ export async function addPreset(
   options: AddPresetOptions
 ): Promise<AddPresetResult> {
   const ctx = useAppContext();
-  if (!ctx) {
-    throw new Error("App context not initialized");
-  }
-
   const { alias: registryAlias, url: registryUrl } = ctx.registry;
   const dryRun = Boolean(options.dryRun);
 
@@ -247,14 +242,6 @@ async function writeBundleFiles(
     await verifyBundledFileChecksum(file, data);
 
     const destResult = computeDestinationPath(file.path, target);
-
-    // Skip root files for global installs
-    if (destResult.skipped) {
-      files.push({ path: file.path, status: "skipped" });
-      log.debug(`Skipped (root file): ${file.path}`);
-      continue;
-    }
-
     const destination = destResult.path;
 
     if (!behavior.dryRun) {
@@ -302,51 +289,41 @@ async function writeBundleFiles(
   return { files, conflicts };
 }
 
-type DestinationResult =
-  | { skipped: false; path: string }
-  | { skipped: true; path: null };
+type DestinationResult = { path: string };
 
+/**
+ * Compute destination path for a bundled file.
+ *
+ * Bundle files are stored with paths relative to the platform directory
+ * (e.g., "AGENTS.md", "commands/test.md") and installed to:
+ * - Project/custom: <root>/<projectDir>/<path> (e.g., .opencode/AGENTS.md)
+ * - Global: <root>/<path> (e.g., ~/.config/opencode/AGENTS.md)
+ */
 function computeDestinationPath(
   pathInput: string,
   target: InstallTarget
 ): DestinationResult {
   const normalized = normalizeBundlePath(pathInput);
-  const configPrefix = `${CONFIG_DIR_NAME}/`;
-  const isConfigFile = normalized.startsWith(configPrefix);
 
-  // For global installs, skip root files (files not under config/)
-  if (target.mode === "global" && !isConfigFile) {
-    return { skipped: true, path: null };
-  }
-
-  let relativePath: string;
-
-  if (isConfigFile) {
-    // Map config/foo → .{platform}/foo (project/custom) or foo (global)
-    const withoutConfigPrefix = normalized.slice(configPrefix.length);
-
-    if (target.mode === "global") {
-      // Global: config/agent.md → agent.md
-      relativePath = withoutConfigPrefix;
-    } else {
-      // Project/custom: config/agent.md → {projectDir}/agent.md
-      // Uses configured project dir (e.g., .opencode) or platform default
-      relativePath = `${target.projectDir}/${withoutConfigPrefix}`;
-    }
-  } else {
-    // Root file: install as-is (only for project/custom mode)
-    relativePath = normalized;
-  }
-
-  if (!relativePath) {
+  if (!normalized) {
     throw new Error(
       `Unable to derive destination for ${pathInput}. The computed relative path is empty.`
     );
   }
 
+  let relativePath: string;
+
+  if (target.mode === "global") {
+    // Global: AGENTS.md → AGENTS.md (goes directly into global dir)
+    relativePath = normalized;
+  } else {
+    // Project/custom: AGENTS.md → .opencode/AGENTS.md
+    relativePath = `${target.projectDir}/${normalized}`;
+  }
+
   const destination = resolve(target.root, relativePath);
   ensureWithinRoot(destination, target.root);
-  return { skipped: false, path: destination };
+  return { path: destination };
 }
 
 async function readExistingFile(pathname: string) {

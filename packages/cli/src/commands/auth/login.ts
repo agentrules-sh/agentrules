@@ -11,6 +11,7 @@ import { promisify } from "util";
 import { fetchSession, pollForToken, requestDeviceCode } from "@/lib/api";
 import { useAppContext } from "@/lib/context";
 import { saveCredentials } from "@/lib/credentials";
+import { getErrorMessage } from "@/lib/errors";
 import { log } from "@/lib/log";
 
 const execAsync = promisify(exec);
@@ -65,10 +66,6 @@ export async function login(options: LoginOptions = {}): Promise<LoginResult> {
   } = options;
 
   const ctx = useAppContext();
-  if (!ctx) {
-    throw new Error("App context not initialized");
-  }
-
   const { url: registryUrl } = ctx.registry;
   log.debug(`Authenticating with ${registryUrl}`);
 
@@ -166,8 +163,7 @@ export async function login(options: LoginOptions = {}): Promise<LoginResult> {
         : undefined,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return { success: false, error: message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 

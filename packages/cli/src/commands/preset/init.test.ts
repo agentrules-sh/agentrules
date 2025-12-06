@@ -16,16 +16,17 @@ describe("initPreset", () => {
   });
 
   it("creates agentrules.json with default values", async () => {
-    const presetDir = join(testDir, "my-preset");
+    // Init in a platform-like directory
+    const platformDir = join(testDir, ".opencode");
 
-    const result = await initPreset({ directory: presetDir });
+    const result = await initPreset({ directory: platformDir });
 
-    expect(result.configPath).toBe(join(presetDir, "agentrules.json"));
-    expect(result.preset.name).toBe("my-preset");
+    expect(result.configPath).toBe(join(platformDir, "agentrules.json"));
+    expect(result.preset.name).toBe("my-preset"); // Default name
     expect(result.preset.title).toBe("My Preset");
     expect(result.preset.version).toBe(1);
     expect(result.preset.license).toBe("MIT"); // Default license
-    expect(result.preset.platform).toBe("opencode");
+    expect(result.preset.platform).toBe("opencode"); // Inferred from dir name
 
     const content = await readFile(result.configPath, "utf8");
     const parsed = JSON.parse(content);
@@ -34,25 +35,26 @@ describe("initPreset", () => {
     );
   });
 
-  it("creates files directory", async () => {
-    const presetDir = join(testDir, "my-preset");
+  it("creates platform directory if it does not exist", async () => {
+    const platformDir = join(testDir, ".opencode");
 
     const result = await initPreset({
-      directory: presetDir,
+      directory: platformDir,
       platform: "opencode",
     });
 
-    expect(result.createdDir).toBe("files");
+    // Should report the created directory
+    expect(result.createdDir).toBe(platformDir);
 
-    const filesStat = await stat(join(presetDir, "files"));
-    expect(filesStat.isDirectory()).toBeTrue();
+    const dirStat = await stat(platformDir);
+    expect(dirStat.isDirectory()).toBeTrue();
   });
 
   it("uses provided options", async () => {
-    const presetDir = join(testDir, "custom");
+    const platformDir = join(testDir, ".claude");
 
     const result = await initPreset({
-      directory: presetDir,
+      directory: platformDir,
       name: "custom-name",
       title: "Custom Title",
       description: "Custom description",
@@ -68,21 +70,21 @@ describe("initPreset", () => {
   });
 
   it("throws if config already exists without --force", async () => {
-    const presetDir = join(testDir, "existing");
+    const platformDir = join(testDir, ".opencode");
 
-    await initPreset({ directory: presetDir });
+    await initPreset({ directory: platformDir });
 
-    await expect(initPreset({ directory: presetDir })).rejects.toThrow(
+    await expect(initPreset({ directory: platformDir })).rejects.toThrow(
       /already exists/
     );
   });
 
   it("overwrites config with --force", async () => {
-    const presetDir = join(testDir, "overwrite");
+    const platformDir = join(testDir, ".opencode");
 
-    await initPreset({ directory: presetDir, title: "Original" });
+    await initPreset({ directory: platformDir, title: "Original" });
     const result = await initPreset({
-      directory: presetDir,
+      directory: platformDir,
       title: "Updated",
       force: true,
     });
@@ -91,18 +93,18 @@ describe("initPreset", () => {
   });
 
   it("uses default preset name when not specified", async () => {
-    const presetDir = join(testDir, "some-random-dir");
+    const platformDir = join(testDir, ".opencode");
 
-    const result = await initPreset({ directory: presetDir });
+    const result = await initPreset({ directory: platformDir });
 
     expect(result.preset.name).toBe("my-preset");
   });
 
   it("normalizes provided name", async () => {
-    const presetDir = join(testDir, "some-dir");
+    const platformDir = join(testDir, ".opencode");
 
     const result = await initPreset({
-      directory: presetDir,
+      directory: platformDir,
       name: "My Cool_Preset!",
     });
 
@@ -110,13 +112,32 @@ describe("initPreset", () => {
   });
 
   it("throws for unknown platform", async () => {
-    const presetDir = join(testDir, "bad-platform");
+    const platformDir = join(testDir, ".unknown");
 
     await expect(
       initPreset({
-        directory: presetDir,
+        directory: platformDir,
         platform: "unknown",
       })
     ).rejects.toThrow(/Unknown platform/);
+  });
+
+  it("infers platform from directory name", async () => {
+    const claudeDir = join(testDir, ".claude");
+
+    const result = await initPreset({ directory: claudeDir });
+
+    // Platform should be inferred from directory name
+    expect(result.preset.platform).toBe("claude");
+  });
+
+  it("does not set createdDir when directory already exists", async () => {
+    const platformDir = join(testDir, ".opencode");
+    const { mkdir } = await import("fs/promises");
+    await mkdir(platformDir, { recursive: true });
+
+    const result = await initPreset({ directory: platformDir });
+
+    expect(result.createdDir).toBeUndefined();
   });
 });

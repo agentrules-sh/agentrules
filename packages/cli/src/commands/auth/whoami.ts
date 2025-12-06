@@ -30,10 +30,6 @@ export type WhoamiResult = {
  */
 export async function whoami(): Promise<WhoamiResult> {
   const ctx = useAppContext();
-  if (!ctx) {
-    throw new Error("App context not initialized");
-  }
-
   const { url: registryUrl } = ctx.registry;
 
   return {

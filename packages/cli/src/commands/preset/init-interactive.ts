@@ -1,8 +1,10 @@
 import {
   COMMON_LICENSES,
   descriptionSchema,
+  getPlatformFromDir,
   licenseSchema,
   PLATFORM_IDS,
+  PLATFORMS,
   type PlatformId,
   PRESET_CONFIG_FILENAME,
   slugSchema,
@@ -23,7 +25,10 @@ import {
 const DEFAULT_PRESET_NAME = "my-preset";
 
 export type InteractiveInitOptions = {
-  directory: string;
+  /** Base directory to search for platform dirs (defaults to cwd) */
+  baseDir: string;
+  /** Explicit platform directory (e.g., ".opencode") */
+  platformDir?: string;
   name?: string;
   title?: string;
   description?: string;
@@ -33,13 +38,17 @@ export type InteractiveInitOptions = {
 };
 
 /**
- * Run interactive init flow with clack prompts
+ * Run interactive init flow with clack prompts.
+ *
+ * If platformDir is provided, init directly in that directory.
+ * Otherwise, detect platform directories and prompt user to select one.
  */
 export async function initInteractive(
   options: InteractiveInitOptions
 ): Promise<InitResult | null> {
   const {
-    directory,
+    baseDir,
+    platformDir: explicitPlatformDir,
     name: nameOption,
     title: titleOption,
     description: descriptionOption,
@@ -51,11 +60,66 @@ export async function initInteractive(
 
   p.intro("Create a new preset");
 
-  // Check if config already exists
-  const configPath = join(directory, PRESET_CONFIG_FILENAME);
+  // Determine the target platform directory
+  let targetPlatformDir: string;
+  let selectedPlatform: PlatformId;
+
+  if (explicitPlatformDir) {
+    // User specified a platform directory explicitly
+    targetPlatformDir = explicitPlatformDir;
+    // Try to infer platform from directory name, or use provided platform option
+    const dirName = explicitPlatformDir.split("/").pop() ?? explicitPlatformDir;
+    selectedPlatform =
+      (platformOption as PlatformId) ??
+      getPlatformFromDir(dirName) ??
+      "opencode";
+  } else {
+    // Detect existing platform directories in baseDir
+    const detected = await detectPlatforms(baseDir);
+    const detectedMap = new Map(detected.map((d) => [d.id, d]));
+
+    if (detected.length > 0) {
+      p.note(
+        detected.map((d) => `${d.id} → ${d.path}`).join("\n"),
+        "Detected platform directories"
+      );
+    }
+
+    // Prompt for platform selection
+    const defaultPlatform =
+      platformOption ?? (detected.length > 0 ? detected[0].id : "opencode");
+
+    const platformChoice = await p.select({
+      message: "Platform",
+      options: PLATFORM_IDS.map((id) => ({
+        value: id,
+        label: detectedMap.has(id) ? `${id} (detected)` : id,
+        hint: detectedMap.get(id)?.path,
+      })),
+      initialValue: defaultPlatform as PlatformId,
+    });
+
+    if (p.isCancel(platformChoice)) {
+      p.cancel("Cancelled");
+      process.exit(0);
+    }
+
+    selectedPlatform = platformChoice as PlatformId;
+
+    // Determine target directory: use detected path or create new platform dir
+    const detectedInfo = detectedMap.get(selectedPlatform);
+    if (detectedInfo) {
+      targetPlatformDir = join(baseDir, detectedInfo.path);
+    } else {
+      targetPlatformDir = join(baseDir, PLATFORMS[selectedPlatform].projectDir);
+    }
+  }
+
+  // Check if config already exists in target platform dir
+  const configPath = join(targetPlatformDir, PRESET_CONFIG_FILENAME);
   if (!force && (await fileExists(configPath))) {
     const overwrite = await p.confirm({
-      message: `${PRESET_CONFIG_FILENAME} already exists. Overwrite?`,
+      message: `${PRESET_CONFIG_FILENAME} already exists in ${targetPlatformDir}. Overwrite?`,
       initialValue: false,
     });
 
@@ -67,18 +131,7 @@ export async function initInteractive(
     force = true;
   }
 
-  // Detect existing platform config directories
-  const detected = await detectPlatforms(directory);
-  const detectedMap = new Map(detected.map((d) => [d.id, d]));
-
-  if (detected.length > 0) {
-    p.note(
-      detected.map((d) => `${d.id} → ${d.path}`).join("\n"),
-      "Detected platform directories"
-    );
-  }
-
-  // Prompt for values
+  // Prompt for remaining values
   const result = await p.group(
     {
       name: () =>
@@ -108,20 +161,6 @@ export async function initInteractive(
           placeholder: defaultDescription,
           defaultValue: defaultDescription,
           validate: check(descriptionSchema),
-        });
-      },
-
-      platform: () => {
-        const defaultPlatform =
-          platformOption ?? (detected.length > 0 ? detected[0].id : "opencode");
-        return p.select({
-          message: "Platform",
-          options: PLATFORM_IDS.map((id) => ({
-            value: id,
-            label: detectedMap.has(id) ? `${id} (detected)` : id,
-            hint: detectedMap.get(id)?.path,
-          })),
-          initialValue: defaultPlatform as PlatformId,
         });
       },
 
@@ -167,16 +206,12 @@ export async function initInteractive(
     }
   );
 
-  // Get detected path for selected platform
-  const detectedPath = detectedMap.get(result.platform as PlatformId)?.path;
-
   const initOptions: InitOptions = {
-    directory,
+    directory: targetPlatformDir,
     name: result.name,
     title: result.title as string,
     description: result.description as string,
-    platform: result.platform as string,
-    detectedPath,
+    platform: selectedPlatform,
     license: result.license as string,
     force,
   };

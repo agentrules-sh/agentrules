@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
+import { PLATFORMS } from "@agentrules/core";
 import { Command } from "commander";
 import { createRequire } from "module";
-import { basename } from "path";
+import { basename, join } from "path";
 import { login } from "@/commands/auth/login";
 import { logout } from "@/commands/auth/logout";
 import { whoami } from "@/commands/auth/whoami";
@@ -24,6 +25,7 @@ import {
 } from "@/commands/registry/manage";
 import { unpublish } from "@/commands/unpublish";
 import { initAppContext } from "@/lib/context";
+import { getErrorMessage } from "@/lib/errors";
 import { log, ui } from "@/lib/log";
 
 const require = createRequire(import.meta.url);
@@ -59,9 +61,7 @@ program
       });
     } catch (error) {
       // Context init can fail if config doesn't exist yet - that's fine
-      log.debug(
-        `Failed to init context: ${error instanceof Error ? error.message : String(error)}`
-      );
+      log.debug(`Failed to init context: ${getErrorMessage(error)}`);
     }
   })
   .showHelpAfterError();
@@ -238,7 +238,7 @@ program
 
       if (useInteractive) {
         const result = await initInteractive({
-          directory: targetDir,
+          baseDir: targetDir,
           name: options.name ?? defaultName,
           title: options.title,
           description: options.description,
@@ -274,13 +274,20 @@ program
       const platform = options.platform ?? detected[0]?.id ?? "opencode";
       const detectedPath = detected.find((d) => d.id === platform)?.path;
 
+      // Determine target directory: use detected path or create new platform dir
+      const platformDir = detectedPath
+        ? join(targetDir, detectedPath)
+        : join(
+            targetDir,
+            PLATFORMS[platform as keyof typeof PLATFORMS].projectDir
+          );
+
       const result = await initPreset({
-        directory: targetDir,
+        directory: platformDir,
         name: options.name ?? defaultName,
         title: options.title,
         description: options.description,
         platform,
-        detectedPath,
         license: options.license,
         force: options.force,
       });

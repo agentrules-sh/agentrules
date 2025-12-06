@@ -63,7 +63,7 @@ agentrules add agentic-dev-starter --platform opencode --dry-run
 
 ### `agentrules init [directory]`
 
-Initialize a new preset.
+Initialize a preset config in a platform directory. The command guides you through the required fields for publishing.
 
 ```bash
 agentrules init [directory] [options]
@@ -73,7 +73,7 @@ agentrules init [directory] [options]
 
 | Option | Description |
 |--------|-------------|
-| `-n, --name <name>` | Preset name (default: directory name, or `my-preset`) |
+| `-n, --name <name>` | Preset name (default: `my-preset`) |
 | `-t, --title <title>` | Display title |
 | `--description <text>` | Preset description |
 | `-p, --platform <platform>` | Target platform |
@@ -84,30 +84,37 @@ agentrules init [directory] [options]
 **Examples:**
 
 ```bash
-# Create a new preset directory and initialize (interactive prompts)
-agentrules init my-preset
-cd my-preset
-
-# Initialize in current directory
+# Initialize in your existing platform directory
+cd .opencode
 agentrules init
 
-# Set defaults for prompts
-agentrules init my-preset --name awesome-rules --platform opencode
+# Initialize in a specific platform directory
+agentrules init .claude
 
 # Accept all defaults, skip prompts
-agentrules init my-preset --yes
+agentrules init .opencode --yes
+```
+
+After running `init`, your preset structure is:
+
+```
+.opencode/
+├── agentrules.json    # Preset config (created by init)
+├── AGENTS.md          # Your existing config files
+└── commands/
+    └── review.md
 ```
 
 ### `agentrules validate [path]`
 
-Validate a preset configuration.
+Validate a preset configuration before publishing.
 
 ```bash
 # Validate current directory
 agentrules validate
 
 # Validate a specific path
-agentrules validate ./my-preset
+agentrules validate .opencode
 ```
 
 ---

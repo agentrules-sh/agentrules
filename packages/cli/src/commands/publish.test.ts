@@ -28,7 +28,7 @@ const VALID_CONFIG = {
 };
 
 /**
- * Creates a valid preset directory structure with actual files
+ * Creates a standalone preset: config at repo root, files in platform subdir
  */
 async function createValidPreset(
   baseDir: string,
@@ -51,6 +51,31 @@ async function createValidPreset(
   );
 
   return presetDir;
+}
+
+/**
+ * Creates an in-project preset: config inside platform dir, files as siblings
+ */
+async function createInProjectPreset(
+  baseDir: string,
+  slug: string,
+  config = VALID_CONFIG
+) {
+  // Config goes inside the platform directory itself
+  const platformDir = join(baseDir, ".opencode");
+  await mkdir(platformDir, { recursive: true });
+
+  // Files are siblings of the config
+  await writeFile(join(platformDir, "AGENTS.md"), "# Test Agent Rules\n");
+
+  // Write config inside platform dir
+  const finalConfig = { ...config, name: slug };
+  await writeFile(
+    join(platformDir, "agentrules.json"),
+    JSON.stringify(finalConfig)
+  );
+
+  return platformDir;
 }
 
 /**
@@ -279,7 +304,7 @@ describe("publish", () => {
     expect(Array.isArray(bundle.files)).toBeTrue();
     expect(bundle.files.length).toBeGreaterThan(0);
 
-    // Verify file content is included
+    // Verify file content is included (no config/ prefix in new format)
     const agentsFile = bundle.files.find((f) => f.path === "AGENTS.md");
     expect(agentsFile).toBeDefined();
     expect(agentsFile?.contents).toBe("# Test Agent Rules\n");
@@ -385,6 +410,125 @@ describe("publish", () => {
 
       expect(result.success).toBeFalse();
       expect(result.error).toContain("exceeds maximum size");
+    });
+  });
+
+  describe("in-project preset (config inside platform dir)", () => {
+    it("publishes when config is inside platform directory", async () => {
+      await setupLoggedInContext();
+
+      const platformDir = await createInProjectPreset(
+        testDir,
+        "in-project-preset"
+      );
+
+      mockFetch({
+        url: `${DEFAULT_REGISTRY_URL}api/presets`,
+        method: "POST",
+        response: {
+          presetId: "preset-123",
+          versionId: "version-456",
+          slug: "in-project-preset",
+          platform: "opencode",
+          title: "Test Preset",
+          version: TEST_VERSION,
+          isNewPreset: true,
+          bundleUrl: "",
+        },
+      });
+
+      const result = await publish({ path: platformDir });
+
+      expect(result.success).toBeTrue();
+      expect(result.preset?.slug).toBe("in-project-preset");
+    });
+
+    it("reads metadata from .agentrules/ subdirectory", async () => {
+      await setupLoggedInContext();
+
+      const platformDir = await createInProjectPreset(
+        testDir,
+        "metadata-preset"
+      );
+
+      // Add .agentrules/ metadata folder
+      const metadataDir = join(platformDir, ".agentrules");
+      await mkdir(metadataDir, { recursive: true });
+      await writeFile(join(metadataDir, "README.md"), "# Preset README");
+      await writeFile(
+        join(metadataDir, "INSTALL.txt"),
+        "Installation instructions"
+      );
+
+      let sentBody: unknown;
+      mockFetch({
+        url: `${DEFAULT_REGISTRY_URL}api/presets`,
+        method: "POST",
+        response: {
+          presetId: "preset-123",
+          versionId: "version-456",
+          slug: "metadata-preset",
+          platform: "opencode",
+          title: "Test Preset",
+          version: TEST_VERSION,
+          isNewPreset: true,
+          bundleUrl: "",
+        },
+        onCall: (_url, init) => {
+          sentBody = JSON.parse(init?.body as string);
+        },
+      });
+
+      const result = await publish({ path: platformDir });
+
+      expect(result.success).toBeTrue();
+
+      const bundle = sentBody as {
+        readmeContent?: string;
+        installMessage?: string;
+      };
+      expect(bundle.readmeContent).toBe("# Preset README");
+      expect(bundle.installMessage).toBe("Installation instructions");
+    });
+
+    it("excludes config and .agentrules/ from bundle files", async () => {
+      await setupLoggedInContext();
+
+      const platformDir = await createInProjectPreset(testDir, "exclude-test");
+
+      // Add .agentrules/ metadata folder
+      const metadataDir = join(platformDir, ".agentrules");
+      await mkdir(metadataDir, { recursive: true });
+      await writeFile(join(metadataDir, "README.md"), "# README");
+
+      let sentBody: unknown;
+      mockFetch({
+        url: `${DEFAULT_REGISTRY_URL}api/presets`,
+        method: "POST",
+        response: {
+          presetId: "preset-123",
+          versionId: "version-456",
+          slug: "exclude-test",
+          platform: "opencode",
+          title: "Test Preset",
+          version: TEST_VERSION,
+          isNewPreset: true,
+          bundleUrl: "",
+        },
+        onCall: (_url, init) => {
+          sentBody = JSON.parse(init?.body as string);
+        },
+      });
+
+      await publish({ path: platformDir });
+
+      const bundle = sentBody as { files: Array<{ path: string }> };
+      const filePaths = bundle.files.map((f) => f.path);
+
+      // Should include AGENTS.md but not config or metadata
+      expect(filePaths).toContain("AGENTS.md");
+      expect(filePaths).not.toContain("agentrules.json");
+      expect(filePaths.some((p) => p.startsWith(".agentrules/"))).toBeFalse();
     });
   });
 
