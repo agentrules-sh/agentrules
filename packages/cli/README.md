@@ -99,10 +99,42 @@ After running `init`, your preset structure is:
 
 ```
 .opencode/
-├── agentrules.json    # Preset config (created by init)
-├── AGENTS.md          # Your existing config files
-└── commands/
-    └── review.md
+├── agentrules.json       # Preset config (created by init)
+├── AGENTS.md             # Your config files (included in bundle)
+├── commands/
+│   └── review.md
+└── .agentrules/          # Optional metadata folder
+    ├── README.md         # Shown on registry page
+    ├── LICENSE.md        # Full license text
+    └── INSTALL.txt       # Shown after install
+```
+
+### Preset Config Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | URL-safe identifier (lowercase, hyphens) |
+| `title` | Yes | Display name |
+| `description` | Yes | Short description (max 500 chars) |
+| `license` | Yes | SPDX license identifier (e.g., `MIT`) |
+| `platform` | Yes | Target platform: `opencode`, `claude`, `cursor`, `codex` |
+| `version` | No | Major version (default: 1) |
+| `tags` | No | Up to 10 tags for discoverability |
+| `features` | No | Up to 5 key features to highlight |
+| `ignore` | No | Additional patterns to exclude from bundle |
+
+### Auto-Excluded Files
+
+These files are automatically excluded from bundles:
+- `node_modules/`, `.git/`, `.DS_Store`
+- Lock files: `package-lock.json`, `bun.lockb`, `pnpm-lock.yaml`, `*.lock`
+
+Use the `ignore` field for additional exclusions:
+
+```json
+{
+  "ignore": ["*.log", "test-fixtures", "*.tmp"]
+}
 ```
 
 ### `agentrules validate [path]`
@@ -168,13 +200,15 @@ agentrules publish --dry-run
 
 **Versioning:** Presets use `MAJOR.MINOR` versioning. You set the major version, and the registry auto-increments the minor version on each publish.
 
-### `agentrules unpublish <name>`
+### `agentrules unpublish <slug> <platform> <version>`
 
-Remove a preset from the registry. Requires authentication.
+Remove a specific version of a preset from the registry. Requires authentication.
 
 ```bash
-agentrules unpublish my-preset
+agentrules unpublish my-preset opencode 1.0
 ```
+
+**Note:** Unpublished versions cannot be republished with the same version number.
 
 ---
 

@@ -122,11 +122,13 @@ Presets use `agentrules.json` for configuration:
   "$schema": "https://agentrules.directory/schema/agentrules.json",
   "name": "my-preset",
   "title": "My Preset",
+  "version": 1,
   "description": "A helpful preset for...",
   "license": "MIT",
   "tags": ["productivity", "typescript"],
   "features": ["Smart code review", "Auto-formatting"],
-  "platform": "opencode"
+  "platform": "opencode",
+  "ignore": ["*.log", "test-fixtures"]
 }
 ```
 
@@ -134,11 +136,35 @@ Presets use `agentrules.json` for configuration:
 |-------|-------------|
 | `name` | URL-safe identifier (lowercase, hyphens) |
 | `title` | Display name |
+| `version` | Major version (optional, default: 1) |
 | `description` | Short description (max 500 chars) |
 | `license` | SPDX license identifier (e.g., `MIT`) |
 | `tags` | Up to 10 tags for discoverability |
 | `features` | Up to 5 key features to highlight |
 | `platform` | Target platform: `opencode`, `claude`, `cursor`, `codex` |
+| `ignore` | Additional patterns to exclude from bundle (optional) |
+
+### Preset Structure
+
+```
+.opencode/
+├── agentrules.json       # Preset config
+├── AGENTS.md             # Your config files (included in bundle)
+├── commands/
+│   └── review.md
+└── .agentrules/          # Metadata folder (not included in bundle)
+    ├── README.md         # Shown on registry page
+    ├── LICENSE.md        # License text
+    └── INSTALL.txt       # Shown after install
+```
+
+### Auto-Excluded Files
+
+These files are automatically excluded from bundles:
+- `node_modules/`, `.git/`, `.DS_Store`
+- Lock files: `package-lock.json`, `bun.lockb`, `pnpm-lock.yaml`, `*.lock`
+
+Use the `ignore` field for additional patterns (e.g., `["*.log", "tmp"]`).
 
 ## Packages
 
