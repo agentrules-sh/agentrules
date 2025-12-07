@@ -26,7 +26,7 @@ const NAME_PATTERN = /^[a-z0-9-]+$/;
  * Directory name for bundle files in static registry output.
  * Used by `agentrules registry build` to structure output.
  */
-export const STATIC_BUNDLE_DIR = "r";
+export const STATIC_BUNDLE_DIR = "registry";
 
 /**
  * Compute SHA-256 hash using Web Crypto API (works in browser and Node.js 15+)
