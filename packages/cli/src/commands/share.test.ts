@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import type { PlatformId } from "@agentrules/core";
+import { API_ENDPOINTS, type PlatformId } from "@agentrules/core";
 import { mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
@@ -181,20 +181,20 @@ describe("share", () => {
 
       let sentBody: unknown;
       mockFetch({
-        url: `${DEFAULT_REGISTRY_URL}api/rule/${VALID_OPTIONS.slug}`,
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
         method: "GET",
         status: 404,
         response: { error: "Not found" },
       });
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}api/rule/${VALID_OPTIONS.slug}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
           method: "GET",
           status: 404,
           response: { error: "Not found" },
         },
         {
-          url: `${DEFAULT_REGISTRY_URL}api/rule/`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.base}`,
           method: "POST",
           status: 200,
           response: createRuleResponse(),
@@ -234,13 +234,13 @@ describe("share", () => {
     it("creates a new rule successfully", async () => {
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}api/rule/${VALID_OPTIONS.slug}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
           method: "GET",
           status: 404,
           response: { error: "Not found" },
         },
         {
-          url: `${DEFAULT_REGISTRY_URL}api/rule/`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.base}`,
           method: "POST",
           status: 200,
           response: createRuleResponse(),
@@ -261,13 +261,13 @@ describe("share", () => {
       let sentBody: unknown;
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}api/rule/${VALID_OPTIONS.slug}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
           method: "GET",
           status: 404,
           response: { error: "Not found" },
         },
         {
-          url: `${DEFAULT_REGISTRY_URL}api/rule/`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.base}`,
           method: "POST",
           status: 200,
           response: createRuleResponse(),
@@ -306,13 +306,13 @@ describe("share", () => {
       let capturedHeaders: Headers | Record<string, string> | undefined;
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}api/rule/${VALID_OPTIONS.slug}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
           method: "GET",
           status: 404,
           response: { error: "Not found" },
         },
         {
-          url: `${DEFAULT_REGISTRY_URL}api/rule/`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.base}`,
           method: "POST",
           status: 200,
           response: createRuleResponse(),
@@ -343,13 +343,13 @@ describe("share", () => {
     it("updates an existing rule", async () => {
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}api/rule/${VALID_OPTIONS.slug}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
           method: "GET",
           status: 200,
           response: createRuleResponse(),
         },
         {
-          url: `${DEFAULT_REGISTRY_URL}api/rule/${VALID_OPTIONS.slug}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
           method: "PUT",
           status: 200,
           response: createRuleResponse({ title: "Updated Title" }),
@@ -369,13 +369,13 @@ describe("share", () => {
       let sentBody: unknown;
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}api/rule/${VALID_OPTIONS.slug}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
           method: "GET",
           status: 200,
           response: createRuleResponse(),
         },
         {
-          url: `${DEFAULT_REGISTRY_URL}api/rule/${VALID_OPTIONS.slug}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
           method: "PUT",
           status: 200,
           response: createRuleResponse(),
@@ -406,13 +406,13 @@ describe("share", () => {
     it("handles API errors gracefully", async () => {
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}api/rule/${VALID_OPTIONS.slug}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
           method: "GET",
           status: 404,
           response: { error: "Not found" },
         },
         {
-          url: `${DEFAULT_REGISTRY_URL}api/rule/`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.base}`,
           method: "POST",
           status: 409,
           response: { error: "Rule with this slug already exists" },
@@ -428,13 +428,13 @@ describe("share", () => {
     it("handles validation errors from API", async () => {
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}api/rule/${VALID_OPTIONS.slug}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
           method: "GET",
           status: 404,
           response: { error: "Not found" },
         },
         {
-          url: `${DEFAULT_REGISTRY_URL}api/rule/`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.base}`,
           method: "POST",
           status: 400,
           response: {
@@ -472,13 +472,13 @@ describe("share", () => {
       for (const type of ["agent", "command", "tool"]) {
         mockFetchSequence([
           {
-            url: `${DEFAULT_REGISTRY_URL}api/rule/${VALID_OPTIONS.slug}`,
+            url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
             method: "GET",
             status: 404,
             response: { error: "Not found" },
           },
           {
-            url: `${DEFAULT_REGISTRY_URL}api/rule/`,
+            url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.base}`,
             method: "POST",
             status: 200,
             response: createRuleResponse({ type }),
@@ -499,13 +499,13 @@ describe("share", () => {
       for (const type of ["agent", "command", "skill"]) {
         mockFetchSequence([
           {
-            url: `${DEFAULT_REGISTRY_URL}api/rule/${VALID_OPTIONS.slug}`,
+            url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
             method: "GET",
             status: 404,
             response: { error: "Not found" },
           },
           {
-            url: `${DEFAULT_REGISTRY_URL}api/rule/`,
+            url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.base}`,
             method: "POST",
             status: 200,
             response: createRuleResponse({ platform: "claude", type }),
@@ -525,13 +525,13 @@ describe("share", () => {
     it("accepts valid cursor types", async () => {
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}api/rule/${VALID_OPTIONS.slug}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
           method: "GET",
           status: 404,
           response: { error: "Not found" },
         },
         {
-          url: `${DEFAULT_REGISTRY_URL}api/rule/`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.base}`,
           method: "POST",
           status: 200,
           response: createRuleResponse({ platform: "cursor", type: "rule" }),
@@ -550,13 +550,13 @@ describe("share", () => {
     it("accepts valid codex types", async () => {
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}api/rule/${VALID_OPTIONS.slug}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
           method: "GET",
           status: 404,
           response: { error: "Not found" },
         },
         {
-          url: `${DEFAULT_REGISTRY_URL}api/rule/`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.base}`,
           method: "POST",
           status: 200,
           response: createRuleResponse({ platform: "codex", type: "agent" }),

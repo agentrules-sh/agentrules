@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import {
+  API_ENDPOINTS,
   LATEST_VERSION,
   type PlatformId,
   type PresetBundle,
@@ -423,7 +424,11 @@ function mockPresetRequests(
   const steps: MockStep[] = [
     {
       expectUrl: new URL(
-        `api/presets/${fixture.preset.slug}/${fixture.preset.platform}/${version}`,
+        API_ENDPOINTS.presets.get(
+          fixture.preset.slug,
+          fixture.preset.platform,
+          version
+        ),
         baseUrl
       ).toString(),
       body: fixture.preset,

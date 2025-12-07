@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { API_ENDPOINTS } from "@agentrules/core";
 import { mkdir, mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
@@ -136,7 +137,7 @@ describe("publish", () => {
     const presetDir = await createValidPreset(testDir, "my-preset");
 
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}api/presets`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
       method: "POST",
       response: {
         presetId: "preset-123",
@@ -169,7 +170,7 @@ describe("publish", () => {
     const presetDir = await createValidPreset(testDir, "error-preset");
 
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}api/presets`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
       method: "POST",
       status: 409,
       response: {
@@ -205,7 +206,7 @@ describe("publish", () => {
 
     let calledUrl = "";
     mockFetch({
-      url: `${customUrl}api/presets`,
+      url: `${customUrl}${API_ENDPOINTS.presets.base}`,
       method: "POST",
       response: {
         presetId: "preset-123",
@@ -235,7 +236,7 @@ describe("publish", () => {
 
     let capturedHeaders: Headers | undefined;
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}api/presets`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
       method: "POST",
       response: {
         presetId: "preset-123",
@@ -269,7 +270,7 @@ describe("publish", () => {
 
     let sentBody: unknown;
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}api/presets`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
       method: "POST",
       response: {
         presetId: "preset-123",
@@ -319,7 +320,7 @@ describe("publish", () => {
     );
 
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}api/presets`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
       method: "POST",
       status: 400,
       response: {
@@ -347,7 +348,7 @@ describe("publish", () => {
 
       let apiCalled = false;
       mockFetch({
-        url: `${DEFAULT_REGISTRY_URL}api/presets`,
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
         method: "POST",
         response: {},
         onCall: () => {
@@ -423,7 +424,7 @@ describe("publish", () => {
       );
 
       mockFetch({
-        url: `${DEFAULT_REGISTRY_URL}api/presets`,
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
         method: "POST",
         response: {
           presetId: "preset-123",
@@ -462,7 +463,7 @@ describe("publish", () => {
 
       let sentBody: unknown;
       mockFetch({
-        url: `${DEFAULT_REGISTRY_URL}api/presets`,
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
         method: "POST",
         response: {
           presetId: "preset-123",
@@ -503,7 +504,7 @@ describe("publish", () => {
 
       let sentBody: unknown;
       mockFetch({
-        url: `${DEFAULT_REGISTRY_URL}api/presets`,
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
         method: "POST",
         response: {
           presetId: "preset-123",
@@ -561,7 +562,7 @@ describe("publish", () => {
       const presetDir = await createValidPreset(testDir, "normal-size-preset");
 
       mockFetch({
-        url: `${DEFAULT_REGISTRY_URL}api/presets`,
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
         method: "POST",
         response: {
           presetId: "preset-123",

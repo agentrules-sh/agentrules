@@ -95,7 +95,7 @@ export async function buildRegistry(
     await writeFile(join(bundleDir, LATEST_VERSION), bundleJson);
   }
 
-  // Write entries to api/presets/{slug}/{platform}/{version} and api/presets/{slug}/{platform}/latest
+  // Write entries to api/preset/{slug}/{platform}/{version} and api/preset/{slug}/{platform}/latest
   for (const entry of result.entries) {
     const apiPresetDir = join(
       outputDir,

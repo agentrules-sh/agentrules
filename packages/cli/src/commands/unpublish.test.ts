@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { API_ENDPOINTS } from "@agentrules/core";
 import { mkdtemp, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
@@ -92,7 +93,7 @@ describe("unpublish", () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}api/presets/my-preset/opencode/1.0`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("my-preset", "opencode", "1.0")}`,
       method: "DELETE",
       response: {
         slug: "my-preset",
@@ -115,7 +116,7 @@ describe("unpublish", () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}api/presets/my-preset/claude/2.0`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("my-preset", "claude", "2.0")}`,
       method: "DELETE",
       response: {
         slug: "my-preset",
@@ -139,7 +140,7 @@ describe("unpublish", () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}api/presets/my-preset/cursor/3.0`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("my-preset", "cursor", "3.0")}`,
       method: "DELETE",
       response: {
         slug: "my-preset",
@@ -164,7 +165,7 @@ describe("unpublish", () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}api/presets/nonexistent/opencode/1.0`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("nonexistent", "opencode", "1.0")}`,
       method: "DELETE",
       status: 404,
       response: {
@@ -184,7 +185,7 @@ describe("unpublish", () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}api/presets/not-yours/opencode/1.0`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("not-yours", "opencode", "1.0")}`,
       method: "DELETE",
       status: 403,
       response: {
@@ -220,7 +221,7 @@ describe("unpublish", () => {
 
     let calledUrl = "";
     mockFetch({
-      url: `${customUrl}api/presets/custom-preset/opencode/1.0`,
+      url: `${customUrl}${API_ENDPOINTS.presets.unpublish("custom-preset", "opencode", "1.0")}`,
       method: "DELETE",
       response: {
         slug: "custom-preset",
@@ -245,7 +246,7 @@ describe("unpublish", () => {
 
     let capturedHeaders: Headers | Record<string, string> | undefined;
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}api/presets/auth-test/opencode/1.0`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("auth-test", "opencode", "1.0")}`,
       method: "DELETE",
       response: {
         slug: "auth-test",
@@ -275,7 +276,7 @@ describe("unpublish", () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}api/presets/error-preset/opencode/1.0`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("error-preset", "opencode", "1.0")}`,
       method: "DELETE",
       status: 500,
       response: {
@@ -296,7 +297,7 @@ describe("unpublish", () => {
 
     let calledUrl = "";
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}api/presets/my%2Fslug/opencode/1.0`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("my/slug", "opencode", "1.0")}`,
       method: "DELETE",
       response: {
         slug: "my/slug",
