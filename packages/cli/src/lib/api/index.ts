@@ -16,6 +16,11 @@
  * ### Presets (API_ENDPOINTS.presets)
  * - POST   {base} - Publish a preset bundle
  * - DELETE {unpublish(slug, platform, version)} - Unpublish a preset version
+ *
+ * ### Rules (API_ENDPOINTS.rule)
+ * - POST   {base} - Create a new rule
+ * - GET    {base}/{slug} - Get a rule by slug
+ * - PUT    {base}/{slug} - Update a rule
  */
 
 // Re-export API_ENDPOINTS from core for convenience
@@ -42,6 +47,18 @@ export {
   type UnpublishResult,
   unpublishPreset,
 } from "./presets";
+// Rule endpoints
+export {
+  type CreateRuleResult,
+  createRule,
+  type GetRuleResult,
+  getRule,
+  type RuleInput,
+  type RuleResponse,
+  type UpdateRuleResult,
+  updateRule,
+  // Note: ErrorResponse is already exported from "./presets"
+} from "./rule";
 // Session endpoint
 export {
   fetchSession,

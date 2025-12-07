@@ -8,5 +8,7 @@ export * from "./constants";
 export * from "./platform";
 // Preset types and schemas
 export * from "./preset";
+// Rule types and schemas
+export * from "./rule";
 // Utilities
 export * from "./utils";

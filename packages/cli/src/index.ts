@@ -27,6 +27,8 @@ import {
   removeRegistry,
   useRegistry,
 } from "@/commands/registry/manage";
+import { addRule, extractRuleSlug, isRuleReference } from "@/commands/rule/add";
+import { share } from "@/commands/share";
 import { unpublish } from "@/commands/unpublish";
 import { HELP_AGENT_CONTENT } from "@/help-agent";
 import { initAppContext } from "@/lib/context";
@@ -73,41 +75,101 @@ program
   .showHelpAfterError();
 
 // =============================================================================
-// add - Download and install a preset
+// add - Download and install a preset or rule
 // =============================================================================
 
 program
-  .command("add <preset>")
-  .description("Download and install a preset from the registry")
+  .command("add <item>")
+  .description(
+    "Download and install a preset or rule from the registry (use r/<slug> for rules)"
+  )
   .option(
     "-p, --platform <platform>",
     "Target platform (opencode, codex, claude, cursor)"
   )
-  .option("-V, --version <version>", "Install a specific version")
+  .option(
+    "-V, --version <version>",
+    "Install a specific version (presets only)"
+  )
   .option("-r, --registry <alias>", "Use a specific registry alias")
   .option("-g, --global", "Install to global directory")
   .option("--dir <path>", "Install to a custom directory")
   .option("-f, --force", "Overwrite existing files (backs up originals)")
   .option("-y, --yes", "Alias for --force")
   .option("--dry-run", "Preview changes without writing")
-  .option("--skip-conflicts", "Skip conflicting files")
+  .option("--skip-conflicts", "Skip conflicting files (presets only)")
   .option(
     "--no-backup",
     "Don't backup files before overwriting (use with --force)"
   )
   .action(
-    handle(async (preset: string, options) => {
+    handle(async (item: string, options) => {
+      const dryRun = Boolean(options.dryRun);
+
+      // Check if this is a rule reference (r/<slug>)
+      if (isRuleReference(item)) {
+        const slug = extractRuleSlug(item);
+        const spinner = await log.spinner(`Fetching rule "${slug}"...`);
+
+        try {
+          const result = await addRule({
+            slug,
+            global: Boolean(options.global),
+            directory: options.dir,
+            force: Boolean(options.force || options.yes),
+            dryRun,
+          });
+
+          spinner.stop();
+
+          if (result.status === "conflict") {
+            log.error(
+              `File already exists: ${result.targetPath}. Use ${ui.command("--force")} to overwrite.`
+            );
+            process.exitCode = 1;
+            return;
+          }
+
+          if (result.status === "unchanged") {
+            log.info(`Already up to date: ${ui.path(result.targetPath)}`);
+            return;
+          }
+
+          const verb = dryRun ? "Would install" : "Installed";
+          const action =
+            result.status === "overwritten" ? "updated" : "created";
+          log.print(
+            ui.fileStatus(action as "created" | "updated", result.targetPath, {
+              dryRun,
+            })
+          );
+          log.print("");
+          log.success(
+            `${verb} ${ui.bold(result.title)} ${ui.muted(`(${result.platform}/${result.type})`)}`
+          );
+
+          if (dryRun) {
+            log.print(ui.hint("\nDry run complete. No files were written."));
+          }
+        } catch (err) {
+          spinner.stop();
+          throw err;
+        }
+
+        return;
+      }
+
+      // Preset handling
       const platform = options.platform
         ? normalizePlatformInput(options.platform)
         : undefined;
-      const dryRun = Boolean(options.dryRun);
 
       const spinner = await log.spinner("Fetching preset...");
 
       let result: AddPresetResult;
       try {
         result = await addPreset({
-          preset,
+          preset: item,
           platform,
           version: options.version,
           global: Boolean(options.global),
@@ -667,6 +729,55 @@ program
         path,
         version: options.version,
         dryRun: Boolean(options.dryRun),
+      });
+
+      if (!result.success) {
+        process.exitCode = 1;
+      }
+    })
+  );
+
+// =============================================================================
+// share - Share a rule to the registry
+// =============================================================================
+
+program
+  .command("share")
+  .description("Share a rule to the registry")
+  .requiredOption("-s, --slug <slug>", "Rule slug (URL identifier)")
+  .requiredOption(
+    "-p, --platform <platform>",
+    "Target platform (opencode, codex, claude, cursor)"
+  )
+  .requiredOption(
+    "-t, --type <type>",
+    "Rule type (agent, command, tool, skill, rule)"
+  )
+  .requiredOption("--title <title>", "Display title")
+  .requiredOption(
+    "--tags <tags>",
+    "Comma-separated tags (e.g., typescript,react,testing)"
+  )
+  .option("--description <text>", "Optional description")
+  .option("-c, --content <content>", "Rule content (or use --file)")
+  .option("-f, --file <path>", "Read content from file")
+  .action(
+    handle(async (options) => {
+      const platform = normalizePlatformInput(options.platform);
+      const tags = (options.tags as string)
+        .split(",")
+        .map((t: string) => t.trim())
+        .filter(Boolean);
+
+      const result = await share({
+        slug: options.slug,
+        platform,
+        type: options.type,
+        title: options.title,
+        description: options.description,
+        content: options.content,
+        file: options.file,
+        tags,
       });
 
       if (!result.success) {

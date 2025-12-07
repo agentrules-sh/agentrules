@@ -42,4 +42,11 @@ export const API_ENDPOINTS = {
     /** Device token exchange */
     deviceToken: `${API_PATH}/auth/device/token`,
   },
+  /** Rule endpoints */
+  rule: {
+    /** Base path for rule operations */
+    base: `${API_PATH}/rule`,
+    /** Get or update rule by slug */
+    get: (slug: string) => `${API_PATH}/rule/${encodeURIComponent(slug)}`,
+  },
 } as const;
