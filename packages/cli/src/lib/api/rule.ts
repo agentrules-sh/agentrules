@@ -159,3 +159,48 @@ export async function getRule(
     };
   }
 }
+
+export type DeleteRuleResponse = {
+  slug: string;
+};
+
+export type DeleteRuleResult =
+  | { success: true; data: DeleteRuleResponse }
+  | { success: false; error: string };
+
+export async function deleteRule(
+  baseUrl: string,
+  token: string,
+  slug: string
+): Promise<DeleteRuleResult> {
+  const url = `${baseUrl}${API_ENDPOINTS.rule.get(slug)}`;
+
+  log.debug(`DELETE ${url}`);
+
+  try {
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    log.debug(`Response status: ${response.status}`);
+
+    if (!response.ok) {
+      const errorData = (await response.json()) as ErrorResponse;
+      return {
+        success: false,
+        error: errorData.error || `HTTP ${response.status}`,
+      };
+    }
+
+    const data = (await response.json()) as DeleteRuleResponse;
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: `Failed to connect to registry: ${getErrorMessage(error)}`,
+    };
+  }
+}

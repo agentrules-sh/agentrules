@@ -21,6 +21,7 @@
  * - POST   {base} - Create a new rule
  * - GET    {base}/{slug} - Get a rule by slug
  * - PUT    {base}/{slug} - Update a rule
+ * - DELETE {base}/{slug} - Unshare (soft delete) a rule
  */
 
 // Re-export API_ENDPOINTS from core for convenience
@@ -51,6 +52,9 @@ export {
 export {
   type CreateRuleResult,
   createRule,
+  type DeleteRuleResponse,
+  type DeleteRuleResult,
+  deleteRule,
   type GetRuleResult,
   getRule,
   type RuleInput,

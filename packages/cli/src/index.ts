@@ -30,6 +30,7 @@ import {
 import { addRule, extractRuleSlug, isRuleReference } from "@/commands/rule/add";
 import { share } from "@/commands/share";
 import { unpublish } from "@/commands/unpublish";
+import { unshare } from "@/commands/unshare";
 import { HELP_AGENT_CONTENT } from "@/help-agent";
 import { initAppContext } from "@/lib/context";
 import { getErrorMessage } from "@/lib/errors";
@@ -813,6 +814,24 @@ program
         platform,
         version: options.version,
       });
+
+      if (!result.success) {
+        process.exitCode = 1;
+      }
+    })
+  );
+
+// =============================================================================
+// unshare - Remove a rule from the registry
+// =============================================================================
+
+program
+  .command("unshare")
+  .description("Remove a rule from the registry")
+  .argument("<slug>", "Rule slug to unshare")
+  .action(
+    handle(async (slug: string) => {
+      const result = await unshare({ slug });
 
       if (!result.success) {
         process.exitCode = 1;
