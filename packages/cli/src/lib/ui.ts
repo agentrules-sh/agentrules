@@ -461,6 +461,67 @@ export function relativeTime(date: Date | string): string {
   return "just now";
 }
 
+type FileTreeNode = {
+  name: string;
+  size?: number;
+  children: Map<string, FileTreeNode>;
+};
+
+/**
+ * Formats an array of files as a tree structure
+ */
+export function fileTree(files: { path: string; size: number }[]): string {
+  // Build tree structure
+  const root: FileTreeNode = { name: "", children: new Map() };
+
+  for (const file of files) {
+    const parts = file.path.split("/");
+    let current = root;
+
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      const isFile = i === parts.length - 1;
+
+      let child = current.children.get(part);
+      if (!child) {
+        child = {
+          name: part,
+          size: isFile ? file.size : undefined,
+          children: new Map(),
+        };
+        current.children.set(part, child);
+      }
+      current = child;
+    }
+  }
+
+  // Render tree
+  const lines: string[] = [];
+
+  function renderNode(node: FileTreeNode, prefix: string, isLast: boolean) {
+    const connector = isLast ? "└── " : "├── ";
+    const sizeStr =
+      node.size !== undefined ? muted(` (${formatBytes(node.size)})`) : "";
+
+    lines.push(`${prefix}${connector}${node.name}${sizeStr}`);
+
+    const children = Array.from(node.children.values());
+    const newPrefix = prefix + (isLast ? "    " : "│   ");
+
+    children.forEach((child, index) => {
+      renderNode(child, newPrefix, index === children.length - 1);
+    });
+  }
+
+  // Render top-level children
+  const topLevel = Array.from(root.children.values());
+  topLevel.forEach((child, index) => {
+    renderNode(child, "", index === topLevel.length - 1);
+  });
+
+  return lines.join("\n");
+}
+
 // =============================================================================
 // Export
 // =============================================================================
@@ -524,6 +585,7 @@ export const ui = {
   truncate,
   formatBytes,
   relativeTime,
+  fileTree,
 };
 
 export default ui;
