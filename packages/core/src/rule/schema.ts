@@ -59,7 +59,7 @@ export const ruleUpdateInputSchema = z.object({
   title: ruleTitleSchema.optional(),
   description: ruleDescriptionSchema.optional(),
   content: ruleContentSchema.optional(),
-  tags: ruleTagsSchema,
+  tags: ruleTagsSchema.optional(),
 });
 
 export type RuleCreateInput = z.infer<typeof ruleCreateInputSchema>;

@@ -141,6 +141,7 @@ export async function share(options: ShareOptions = {}): Promise<ShareResult> {
         title: options.title,
         description: options.description,
         content,
+        tags: options.tags,
       }
     );
 
