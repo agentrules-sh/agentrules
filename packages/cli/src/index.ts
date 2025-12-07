@@ -28,6 +28,7 @@ import {
   useRegistry,
 } from "@/commands/registry/manage";
 import { unpublish } from "@/commands/unpublish";
+import { HELP_AGENT_CONTENT } from "@/help-agent";
 import { initAppContext } from "@/lib/context";
 import { getErrorMessage } from "@/lib/errors";
 import { log, ui } from "@/lib/log";
@@ -42,6 +43,7 @@ program
   .description("The AI Agent Directory CLI")
   .version(packageJson.version)
   .option("-v, --verbose", "Enable verbose/debug output")
+  .option("--help-agent", "Output instructions for AI coding assistants")
   .configureOutput({
     outputError: (str, write) => write(ui.error(str.trim())),
   })
@@ -706,6 +708,15 @@ program
       }
     })
   );
+
+// =============================================================================
+// --help-agent: Output instructions for AI agents
+// =============================================================================
+
+if (process.argv.includes("--help-agent")) {
+  console.log(HELP_AGENT_CONTENT);
+  process.exit(0);
+}
 
 // =============================================================================
 // Parse and run
