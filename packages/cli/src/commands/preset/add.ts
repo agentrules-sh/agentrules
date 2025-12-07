@@ -214,6 +214,11 @@ function resolveInstallTarget(
   }
 
   if (options.global) {
+    if (!globalDir) {
+      throw new Error(
+        `Platform "${platform}" does not support global installation`
+      );
+    }
     const globalRoot = resolve(expandHome(globalDir));
     return {
       root: globalRoot,

@@ -752,7 +752,7 @@ program
   )
   .requiredOption(
     "-t, --type <type>",
-    "Rule type (agent, command, tool, skill, rule)"
+    "Rule type (instruction, agent, command, tool, skill, rule)"
   )
   .requiredOption("--title <title>", "Display title")
   .requiredOption(

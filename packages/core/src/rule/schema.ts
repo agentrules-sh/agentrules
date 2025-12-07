@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PLATFORM_IDS } from "../platform";
+import { PLATFORM_IDS, PLATFORM_RULE_TYPES } from "../platform";
 
 const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -45,15 +45,42 @@ export const ruleTagsSchema = z
   .min(1, "At least 1 tag is required")
   .max(10, "Maximum 10 tags allowed");
 
-export const ruleCreateInputSchema = z.object({
+/** Common fields shared across all platform-type combinations */
+const ruleCommonFields = {
   slug: ruleSlugSchema,
-  platform: rulePlatformSchema,
-  type: ruleTypeSchema,
   title: ruleTitleSchema,
   description: ruleDescriptionSchema.optional(),
   content: ruleContentSchema,
   tags: ruleTagsSchema,
-});
+};
+
+/**
+ * Discriminated union schema for platform + type combinations.
+ * Each platform has its own set of valid types.
+ */
+export const rulePlatformTypeSchema = z.discriminatedUnion("platform", [
+  z.object({
+    platform: z.literal("opencode"),
+    type: z.enum(PLATFORM_RULE_TYPES.opencode),
+  }),
+  z.object({
+    platform: z.literal("claude"),
+    type: z.enum(PLATFORM_RULE_TYPES.claude),
+  }),
+  z.object({
+    platform: z.literal("cursor"),
+    type: z.enum(PLATFORM_RULE_TYPES.cursor),
+  }),
+  z.object({
+    platform: z.literal("codex"),
+    type: z.enum(PLATFORM_RULE_TYPES.codex),
+  }),
+]);
+
+/** Schema for rule creation with discriminated union for platform+type */
+export const ruleCreateInputSchema = z
+  .object(ruleCommonFields)
+  .and(rulePlatformTypeSchema);
 
 export const ruleUpdateInputSchema = z.object({
   title: ruleTitleSchema.optional(),
@@ -64,3 +91,7 @@ export const ruleUpdateInputSchema = z.object({
 
 export type RuleCreateInput = z.infer<typeof ruleCreateInputSchema>;
 export type RuleUpdateInput = z.infer<typeof ruleUpdateInputSchema>;
+
+/** Re-export platform-rule types for convenience */
+export { getValidRuleTypes, PLATFORM_RULE_TYPES } from "../platform/config";
+export type { PlatformRuleType, RuleTypeForPlatform } from "../platform/types";

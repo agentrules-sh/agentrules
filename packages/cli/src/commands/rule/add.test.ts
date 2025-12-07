@@ -167,7 +167,7 @@ describe("addRule", () => {
   });
 
   it("installs to correct path based on platform and type", async () => {
-    // Test opencode/agent
+    // Test opencode/agent -> .opencode/agent/{name}.md
     mockRuleRequest(
       DEFAULT_BASE_URL,
       createRuleFixture({
@@ -177,9 +177,9 @@ describe("addRule", () => {
       })
     );
     const opcAgent = await addRule({ slug: "test-opc-agent" });
-    expect(opcAgent.targetPath).toContain(".opencode/config/agent");
+    expect(opcAgent.targetPath).toContain(".opencode/agent/test-opc-agent.md");
 
-    // Test opencode/command
+    // Test opencode/command -> .opencode/command/{name}.md
     mockRuleRequest(
       DEFAULT_BASE_URL,
       createRuleFixture({
@@ -189,21 +189,23 @@ describe("addRule", () => {
       })
     );
     const opcCmd = await addRule({ slug: "test-opc-cmd" });
-    expect(opcCmd.targetPath).toContain(".opencode/config/command");
+    expect(opcCmd.targetPath).toContain(".opencode/command/test-opc-cmd.md");
 
-    // Test claude/agent
+    // Test claude/command -> .claude/commands/{name}.md
     mockRuleRequest(
       DEFAULT_BASE_URL,
       createRuleFixture({
-        slug: "test-claude-agent",
+        slug: "test-claude-cmd",
         platform: "claude",
-        type: "agent",
+        type: "command",
       })
     );
-    const claudeAgent = await addRule({ slug: "test-claude-agent" });
-    expect(claudeAgent.targetPath).toContain(".claude/config/agent");
+    const claudeCmd = await addRule({ slug: "test-claude-cmd" });
+    expect(claudeCmd.targetPath).toContain(
+      ".claude/commands/test-claude-cmd.md"
+    );
 
-    // Test cursor/rule
+    // Test cursor/rule -> .cursor/rules/{name}.mdc
     mockRuleRequest(
       DEFAULT_BASE_URL,
       createRuleFixture({
@@ -213,7 +215,23 @@ describe("addRule", () => {
       })
     );
     const cursorRule = await addRule({ slug: "test-cursor-rule" });
-    expect(cursorRule.targetPath).toContain(".cursor/rules");
+    expect(cursorRule.targetPath).toContain(
+      ".cursor/rules/test-cursor-rule.mdc"
+    );
+
+    // Test claude/skill -> .claude/skills/{name}/SKILL.md
+    mockRuleRequest(
+      DEFAULT_BASE_URL,
+      createRuleFixture({
+        slug: "test-claude-skill",
+        platform: "claude",
+        type: "skill",
+      })
+    );
+    const claudeSkill = await addRule({ slug: "test-claude-skill" });
+    expect(claudeSkill.targetPath).toContain(
+      ".claude/skills/test-claude-skill/SKILL.md"
+    );
   });
 
   it("throws error when rule is not found", async () => {

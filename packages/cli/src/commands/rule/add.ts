@@ -6,32 +6,13 @@
  */
 
 import type { PlatformId } from "@agentrules/core";
-import { PLATFORMS } from "@agentrules/core";
+import { getInstallPath } from "@agentrules/core";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { homedir } from "os";
 import { dirname, resolve } from "path";
 import { getRule } from "@/lib/api/rule";
 import { useAppContext } from "@/lib/context";
 import { log } from "@/lib/log";
-
-const PLATFORM_TYPE_PATHS: Record<string, Record<string, string>> = {
-  opencode: {
-    agent: "config/agent",
-    command: "config/command",
-    tool: "config/tool",
-  },
-  claude: {
-    agent: "config/agent",
-    command: "commands",
-    skill: "skills",
-  },
-  cursor: {
-    rule: "rules",
-  },
-  codex: {
-    agent: "",
-  },
-};
 
 export type AddRuleOptions = {
   slug: string;
@@ -66,8 +47,8 @@ export async function addRule(options: AddRuleOptions): Promise<AddRuleResult> {
   const rule = result.data;
   const platform = rule.platform as PlatformId;
 
-  // Determine target path
-  const targetPath = resolveTargetPath(platform, rule.type, options.slug, {
+  // Determine target path (use rule.slug from API for consistency)
+  const targetPath = resolveTargetPath(platform, rule.type, rule.slug, {
     global: options.global,
     directory: options.directory,
   });
@@ -144,30 +125,29 @@ function resolveTargetPath(
   slug: string,
   options: { global?: boolean; directory?: string }
 ): string {
-  const platformConfig = PLATFORMS[platform];
-  const typePaths = PLATFORM_TYPE_PATHS[platform] || {};
-  const typePath = typePaths[type] || "";
+  const location = options.global ? "global" : "project";
+  const pathTemplate = getInstallPath(platform, type, slug, location);
 
-  // Custom directory
+  if (!pathTemplate) {
+    const locationLabel = options.global ? "globally" : "to a project";
+    throw new Error(
+      `Rule type "${type}" cannot be installed ${locationLabel} for platform "${platform}"`
+    );
+  }
+
   if (options.directory) {
-    const customRoot = resolve(expandHome(options.directory));
-    return resolve(customRoot, typePath, `${slug}.md`);
+    // For custom directory, extract filename from resolved path template
+    const resolvedTemplate = pathTemplate.replace("{name}", slug);
+    const filename = resolvedTemplate.split("/").pop() ?? `${slug}.md`;
+    return resolve(expandHome(options.directory), filename);
   }
 
-  // Global
-  if (options.global) {
-    const globalRoot = resolve(expandHome(platformConfig.globalDir));
-    return resolve(globalRoot, typePath, `${slug}.md`);
+  const expanded = expandHome(pathTemplate);
+  if (expanded.startsWith("/")) {
+    return expanded;
   }
 
-  // Project (default)
-  const projectRoot = process.cwd();
-  return resolve(
-    projectRoot,
-    platformConfig.projectDir,
-    typePath,
-    `${slug}.md`
-  );
+  return resolve(process.cwd(), expanded);
 }
 
 async function readExistingFile(pathname: string): Promise<string | null> {

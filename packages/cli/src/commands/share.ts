@@ -6,20 +6,17 @@
  * Requires authentication - run `agentrules login` first.
  */
 
-import { PLATFORM_IDS, type PlatformId } from "@agentrules/core";
+import {
+  getValidRuleTypes,
+  PLATFORM_IDS,
+  type PlatformId,
+} from "@agentrules/core";
 import { readFile } from "fs/promises";
 import { resolve } from "path";
 import { createRule, getRule, updateRule } from "@/lib/api/rule";
 import { useAppContext } from "@/lib/context";
 import { log } from "@/lib/log";
 import { ui } from "@/lib/ui";
-
-const PLATFORM_TYPES: Record<PlatformId, string[]> = {
-  opencode: ["agent", "command", "tool"],
-  claude: ["agent", "command", "skill"],
-  cursor: ["rule"],
-  codex: ["agent"],
-};
 
 export type ShareOptions = {
   slug?: string;
@@ -90,7 +87,7 @@ export async function share(options: ShareOptions = {}): Promise<ShareResult> {
     return { success: false, error };
   }
 
-  const validTypes = PLATFORM_TYPES[options.platform];
+  const validTypes = getValidRuleTypes(options.platform);
   if (!options.type) {
     const error = `Type is required. Use --type <${validTypes.join("|")}>`;
     log.error(error);
@@ -131,6 +128,22 @@ export async function share(options: ShareOptions = {}): Promise<ShareResult> {
   const isUpdate = existingResult.success;
 
   if (isUpdate) {
+    const existingRule = existingResult.data;
+
+    // Warn if platform/type don't match (they're immutable)
+    if (options.platform !== existingRule.platform) {
+      spinner.stop();
+      log.warn(
+        `Platform cannot be changed. Rule is "${existingRule.platform}", ignoring "${options.platform}".`
+      );
+    }
+    if (options.type !== existingRule.type) {
+      spinner.stop();
+      log.warn(
+        `Type cannot be changed. Rule is "${existingRule.type}", ignoring "${options.type}".`
+      );
+    }
+
     spinner.update(`Updating rule "${options.slug}"...`);
 
     const result = await updateRule(

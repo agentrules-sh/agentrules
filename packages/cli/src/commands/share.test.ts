@@ -469,7 +469,7 @@ describe("share", () => {
     });
 
     it("accepts valid opencode types", async () => {
-      for (const type of ["agent", "command", "tool"]) {
+      for (const type of ["instruction", "agent", "command", "tool"]) {
         mockFetchSequence([
           {
             url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
@@ -496,7 +496,7 @@ describe("share", () => {
     });
 
     it("accepts valid claude types", async () => {
-      for (const type of ["agent", "command", "skill"]) {
+      for (const type of ["instruction", "command", "skill"]) {
         mockFetchSequence([
           {
             url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
@@ -548,28 +548,30 @@ describe("share", () => {
     });
 
     it("accepts valid codex types", async () => {
-      mockFetchSequence([
-        {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
-          method: "GET",
-          status: 404,
-          response: { error: "Not found" },
-        },
-        {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.base}`,
-          method: "POST",
-          status: 200,
-          response: createRuleResponse({ platform: "codex", type: "agent" }),
-        },
-      ]);
+      for (const type of ["instruction", "command"]) {
+        mockFetchSequence([
+          {
+            url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
+            method: "GET",
+            status: 404,
+            response: { error: "Not found" },
+          },
+          {
+            url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.base}`,
+            method: "POST",
+            status: 200,
+            response: createRuleResponse({ platform: "codex", type }),
+          },
+        ]);
 
-      const result = await share({
-        ...VALID_OPTIONS,
-        platform: "codex",
-        type: "agent",
-      });
+        const result = await share({
+          ...VALID_OPTIONS,
+          platform: "codex",
+          type,
+        });
 
-      expect(result.success).toBeTrue();
+        expect(result.success).toBeTrue();
+      }
     });
   });
 });
