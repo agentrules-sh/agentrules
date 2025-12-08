@@ -27,9 +27,12 @@ export type BundledFile = {
 /**
  * What clients send to publish a preset.
  * Version is optional major version. Registry assigns full MAJOR.MINOR.
+ *
+ * Note: Clients send `name` (e.g., "my-preset"), and the registry defines the format of the slug.
+ * For example, a namespaced slug could be returned as "username/my-preset"
  */
 export type PresetPublishInput = {
-  slug: string;
+  name: string;
   platform: PlatformId;
   title: string;
   description: string;
@@ -46,9 +49,11 @@ export type PresetPublishInput = {
 
 /**
  * What registries store and return.
- * Includes version (required) - full MAJOR.MINOR format assigned by registry.
+ * Includes full namespaced slug and version assigned by registry.
  */
-export type PresetBundle = Omit<PresetPublishInput, "version"> & {
+export type PresetBundle = Omit<PresetPublishInput, "name" | "version"> & {
+  /** Full namespaced slug (e.g., "username/my-preset") */
+  slug: string;
   /** Full version in MAJOR.MINOR format (e.g., "1.3", "2.1") */
   version: string;
 };
@@ -76,7 +81,7 @@ export type PresetFileInput = {
 };
 
 export type PresetInput = {
-  slug: string;
+  name: string;
   config: PresetConfig;
   files: PresetFileInput[];
   /** Install message from INSTALL.txt file */

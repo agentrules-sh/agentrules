@@ -116,7 +116,7 @@ export async function publish(
   try {
     presetInput = await loadPreset(presetDir);
     log.debug(
-      `Loaded preset "${presetInput.slug}" for platform ${presetInput.config.platform}`
+      `Loaded preset "${presetInput.name}" for platform ${presetInput.config.platform}`
     );
   } catch (error) {
     const message = getErrorMessage(error);
@@ -171,7 +171,7 @@ export async function publish(
     log.print("");
     log.print(ui.header("Publish Preview"));
     log.print(ui.keyValue("Preset", publishInput.title));
-    log.print(ui.keyValue("Slug", publishInput.slug));
+    log.print(ui.keyValue("Name", publishInput.name));
     log.print(ui.keyValue("Platform", publishInput.platform));
     log.print(
       ui.keyValue(
@@ -192,7 +192,7 @@ export async function publish(
     return {
       success: true,
       preview: {
-        slug: publishInput.slug,
+        slug: publishInput.name, // Preview uses name (full slug assigned by registry)
         platform: publishInput.platform,
         title: publishInput.title,
         totalSize: inputSize,

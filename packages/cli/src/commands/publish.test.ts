@@ -291,17 +291,17 @@ describe("publish", () => {
 
     // Verify we sent a bundle directly (not wrapped)
     const bundle = sentBody as {
-      slug: string;
+      name: string; // Client sends name, server builds full slug
       platform: string;
-      version?: string;
+      version?: number;
       files: Array<{ path: string; contents: string }>;
     };
     expect(bundle).toBeDefined();
 
-    // Verify bundle structure (version is NOT sent by client - assigned by registry)
-    expect(bundle.slug).toBe("bundle-test-preset");
+    // Verify bundle structure (version is optional major, full version assigned by registry)
+    expect(bundle.name).toBe("bundle-test-preset");
     expect(bundle.platform).toBe("opencode");
-    expect(bundle.version).toBeUndefined(); // Client doesn't send version
+    expect(bundle.version).toBeUndefined(); // Client doesn't send version by default
     expect(Array.isArray(bundle.files)).toBeTrue();
     expect(bundle.files.length).toBeGreaterThan(0);
 

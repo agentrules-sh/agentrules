@@ -55,22 +55,22 @@ export async function buildPresetPublishInput(
 ): Promise<PresetPublishInput> {
   const { preset: presetInput, version } = options;
 
-  if (!NAME_PATTERN.test(presetInput.slug)) {
+  if (!NAME_PATTERN.test(presetInput.name)) {
     throw new Error(
-      `Invalid slug "${presetInput.slug}". Slugs must be lowercase kebab-case.`
+      `Invalid name "${presetInput.name}". Names must be lowercase kebab-case.`
     );
   }
 
   const presetConfig = validatePresetConfig(
     presetInput.config,
-    presetInput.slug
+    presetInput.name
   );
 
   const platform = presetConfig.platform;
-  ensureKnownPlatform(platform, presetInput.slug);
+  ensureKnownPlatform(platform, presetInput.name);
 
   if (presetInput.files.length === 0) {
-    throw new Error(`Preset ${presetInput.slug} does not include any files.`);
+    throw new Error(`Preset ${presetInput.name} does not include any files.`);
   }
 
   const files = await createBundledFilesFromInputs(presetInput.files);
@@ -84,7 +84,7 @@ export async function buildPresetPublishInput(
   const majorVersion = version ?? presetConfig.version;
 
   return {
-    slug: presetInput.slug,
+    name: presetInput.name,
     platform,
     title: presetConfig.title,
     description: presetConfig.description,
@@ -131,22 +131,22 @@ export async function buildPresetRegistry(
   const bundles: PresetBundle[] = [];
 
   for (const presetInput of options.presets) {
-    if (!NAME_PATTERN.test(presetInput.slug)) {
+    if (!NAME_PATTERN.test(presetInput.name)) {
       throw new Error(
-        `Invalid slug "${presetInput.slug}". Slugs must be lowercase kebab-case.`
+        `Invalid name "${presetInput.name}". Names must be lowercase kebab-case.`
       );
     }
 
     const presetConfig = validatePresetConfig(
       presetInput.config,
-      presetInput.slug
+      presetInput.name
     );
 
     const platform = presetConfig.platform;
-    ensureKnownPlatform(platform, presetInput.slug);
+    ensureKnownPlatform(platform, presetInput.name);
 
     if (presetInput.files.length === 0) {
-      throw new Error(`Preset ${presetInput.slug} does not include any files.`);
+      throw new Error(`Preset ${presetInput.name} does not include any files.`);
     }
 
     const files = await createBundledFilesFromInputs(presetInput.files);
@@ -161,9 +161,12 @@ export async function buildPresetRegistry(
     const majorVersion = presetConfig.version ?? 1;
     const version = `${majorVersion}.0`;
 
+    // For static registries, slug is just the name (no user namespacing)
+    const slug = presetInput.name;
+
     const entry: Preset = {
-      name: encodeItemName(presetInput.slug, platform),
-      slug: presetInput.slug,
+      name: encodeItemName(slug, platform),
+      slug,
       platform,
       title: presetConfig.title,
       version,
@@ -171,14 +174,14 @@ export async function buildPresetRegistry(
       tags: presetConfig.tags ?? [],
       license: presetConfig.license,
       features,
-      bundleUrl: getBundlePath(bundleBase, presetInput.slug, platform, version),
+      bundleUrl: getBundlePath(bundleBase, slug, platform, version),
       fileCount: files.length,
       totalSize,
     };
     entries.push(entry);
 
     const bundle: PresetBundle = {
-      slug: presetInput.slug,
+      slug,
       platform,
       title: presetConfig.title,
       version,

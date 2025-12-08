@@ -64,7 +64,7 @@ export async function validatePreset(
     return { valid: false, configPath, preset: null, errors, warnings };
   }
 
-  log.debug(`Preset slug: ${preset.name}`);
+  log.debug(`Preset name: ${preset.name}`);
 
   // Check platform
   const presetDir = dirname(configPath);

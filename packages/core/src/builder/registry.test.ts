@@ -6,7 +6,7 @@ describe("buildPresetRegistry", () => {
     const result = await buildPresetRegistry({
       presets: [
         {
-          slug: "starter",
+          name: "starter",
           config: {
             name: "starter",
             title: "Fixture",
@@ -49,7 +49,7 @@ describe("buildPresetRegistry", () => {
     const result = await buildPresetRegistry({
       presets: [
         {
-          slug: "versioned",
+          name: "versioned",
           config: {
             name: "versioned",
             title: "Versioned Preset",
@@ -77,7 +77,7 @@ describe("buildPresetRegistry", () => {
       buildPresetRegistry({
         presets: [
           {
-            slug: "bad-preset",
+            name: "bad-preset",
             config: {
               name: "bad-preset",
               title: "Bad",

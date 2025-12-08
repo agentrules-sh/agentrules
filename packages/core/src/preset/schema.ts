@@ -139,9 +139,12 @@ export const bundledFileSchema = z.object({
 /**
  * Schema for what clients send to publish a preset.
  * Version is optional major version. Registry assigns full MAJOR.MINOR.
+ *
+ * Note: Clients send `name` (e.g., "my-preset"), and the registry defines the format of the slug.
+ * For example, a namespaced slug could be returned as "username/my-preset"
  */
 export const presetPublishInputSchema = z.object({
-  slug: z.string().trim().min(1),
+  name: slugSchema, // Preset name (registry builds full slug which can contain slashes)
   platform: platformIdSchema,
   title: titleSchema,
   description: descriptionSchema,
@@ -158,11 +161,13 @@ export const presetPublishInputSchema = z.object({
 
 /**
  * Schema for what registries store and return.
- * Includes version (required) - full MAJOR.MINOR format assigned by registry.
+ * Includes full namespaced slug and version assigned by registry.
  */
 export const presetBundleSchema = presetPublishInputSchema
-  .omit({ version: true })
+  .omit({ name: true, version: true })
   .extend({
+    /** Full namespaced slug (e.g., "username/my-preset") */
+    slug: z.string().trim().min(1),
     /** Full version in MAJOR.MINOR format (e.g., "1.3", "2.1") */
     version: versionSchema,
   });

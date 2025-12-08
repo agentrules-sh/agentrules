@@ -112,7 +112,7 @@ describe("loadPreset", () => {
 
       const preset = await loadPreset(platformDir);
 
-      expect(preset.slug).toBe("test-preset");
+      expect(preset.name).toBe("test-preset");
       expect(preset.files).toHaveLength(1);
       expect(preset.files[0].path).toBe("AGENT_RULES.md");
     });
@@ -185,7 +185,7 @@ describe("loadPreset", () => {
 
       const preset = await loadPreset(presetDir);
 
-      expect(preset.slug).toBe("test-preset");
+      expect(preset.name).toBe("test-preset");
       expect(preset.files).toHaveLength(1);
       expect(preset.files[0].path).toBe("rules.md");
     });

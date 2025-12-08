@@ -102,7 +102,7 @@ export async function loadPreset(presetDir: string): Promise<PresetInput> {
     typeof configObj?.name === "string" ? configObj.name : configPath;
 
   const config = validatePresetConfig(configJson, identifier);
-  const slug = config.name;
+  const name = config.name;
 
   // Determine layout based on whether config is inside a platform directory
   const dirName = basename(presetDir);
@@ -164,7 +164,7 @@ export async function loadPreset(presetDir: string): Promise<PresetInput> {
     );
   }
 
-  return { slug, config, files, installMessage, readmeContent, licenseContent };
+  return { name, config, files, installMessage, readmeContent, licenseContent };
 }
 
 /**
