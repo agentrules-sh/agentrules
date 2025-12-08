@@ -159,7 +159,7 @@ import {
   presetBundleSchema,
   presetPublishInputSchema,
   platformIdSchema,
-  slugSchema,
+  nameSchema,
   titleSchema,
   descriptionSchema,
 } from "@agentrules/core";

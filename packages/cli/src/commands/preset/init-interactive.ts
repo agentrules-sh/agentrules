@@ -3,10 +3,10 @@ import {
   descriptionSchema,
   getPlatformFromDir,
   licenseSchema,
+  nameSchema,
   PLATFORM_IDS,
   type PlatformId,
   PRESET_CONFIG_FILENAME,
-  slugSchema,
   tagsSchema,
   titleSchema,
 } from "@agentrules/core";
@@ -170,10 +170,10 @@ export async function initInteractive(
     {
       name: () =>
         p.text({
-          message: "Preset name (slug)",
+          message: "Preset name",
           placeholder: normalizeName(defaultName),
           defaultValue: normalizeName(defaultName),
-          validate: check(slugSchema),
+          validate: check(nameSchema),
         }),
 
       title: ({ results }) => {

@@ -70,17 +70,17 @@ const installMessageSchema = z
   .max(2000, "Install message must be 2000 characters or less");
 const contentSchema = z.string(); // For readmeContent and licenseContent (no length limit)
 
-// Slug: lowercase alphanumeric with hyphens, no leading/trailing/consecutive hyphens
-const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const SLUG_ERROR =
+// Name: lowercase alphanumeric with hyphens, no leading/trailing/consecutive hyphens
+const NAME_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const NAME_ERROR =
   "Must be lowercase alphanumeric with hyphens (e.g., my-preset)";
 
-export const slugSchema = z
+export const nameSchema = z
   .string()
   .trim()
   .min(1, "Name is required")
   .max(64, "Name must be 64 characters or less")
-  .regex(SLUG_REGEX, SLUG_ERROR);
+  .regex(NAME_REGEX, NAME_ERROR);
 
 // Common SPDX license identifiers (for quick selection)
 // See: https://spdx.org/licenses/
@@ -116,7 +116,7 @@ const ignoreSchema = z
 export const presetConfigSchema = z
   .object({
     $schema: z.string().optional(),
-    name: slugSchema,
+    name: nameSchema,
     title: titleSchema,
     version: majorVersionSchema.optional(), // Major version. Registry assigns minor.
     description: descriptionSchema,
@@ -144,7 +144,7 @@ export const bundledFileSchema = z.object({
  * For example, a namespaced slug could be returned as "username/my-preset"
  */
 export const presetPublishInputSchema = z.object({
-  name: slugSchema, // Preset name (registry builds full slug which can contain slashes)
+  name: nameSchema, // Preset name (registry builds full slug which can contain slashes)
   platform: platformIdSchema,
   title: titleSchema,
   description: descriptionSchema,

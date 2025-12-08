@@ -4,11 +4,11 @@ import {
   COMMON_LICENSES,
   descriptionSchema,
   licenseSchema,
+  nameSchema,
   platformIdSchema,
   presetBundleSchema,
   presetConfigSchema,
   presetSchema,
-  slugSchema,
   titleSchema,
 } from "./schema";
 
@@ -26,46 +26,46 @@ describe("platformIdSchema", () => {
   });
 });
 
-describe("slugSchema", () => {
-  it("accepts valid slugs", () => {
-    expect(slugSchema.parse("my-preset")).toBe("my-preset");
-    expect(slugSchema.parse("preset")).toBe("preset");
-    expect(slugSchema.parse("my-cool-preset")).toBe("my-cool-preset");
-    expect(slugSchema.parse("preset123")).toBe("preset123");
-    expect(slugSchema.parse("123preset")).toBe("123preset");
+describe("nameSchema", () => {
+  it("accepts valid names", () => {
+    expect(nameSchema.parse("my-preset")).toBe("my-preset");
+    expect(nameSchema.parse("preset")).toBe("preset");
+    expect(nameSchema.parse("my-cool-preset")).toBe("my-cool-preset");
+    expect(nameSchema.parse("preset123")).toBe("preset123");
+    expect(nameSchema.parse("123preset")).toBe("123preset");
   });
 
-  it("rejects slugs with leading hyphen", () => {
-    expect(() => slugSchema.parse("-preset")).toThrow();
+  it("rejects names with leading hyphen", () => {
+    expect(() => nameSchema.parse("-preset")).toThrow();
   });
 
-  it("rejects slugs with trailing hyphen", () => {
-    expect(() => slugSchema.parse("preset-")).toThrow();
+  it("rejects names with trailing hyphen", () => {
+    expect(() => nameSchema.parse("preset-")).toThrow();
   });
 
-  it("rejects slugs with consecutive hyphens", () => {
-    expect(() => slugSchema.parse("my--preset")).toThrow();
+  it("rejects names with consecutive hyphens", () => {
+    expect(() => nameSchema.parse("my--preset")).toThrow();
   });
 
-  it("rejects slugs with uppercase", () => {
-    expect(() => slugSchema.parse("MyPreset")).toThrow();
+  it("rejects names with uppercase", () => {
+    expect(() => nameSchema.parse("MyPreset")).toThrow();
   });
 
-  it("rejects slugs with spaces", () => {
-    expect(() => slugSchema.parse("my preset")).toThrow();
+  it("rejects names with spaces", () => {
+    expect(() => nameSchema.parse("my preset")).toThrow();
   });
 
-  it("rejects slugs with special characters", () => {
-    expect(() => slugSchema.parse("my_preset")).toThrow();
-    expect(() => slugSchema.parse("my.preset")).toThrow();
+  it("rejects names with special characters", () => {
+    expect(() => nameSchema.parse("my_preset")).toThrow();
+    expect(() => nameSchema.parse("my.preset")).toThrow();
   });
 
-  it("rejects empty slugs", () => {
-    expect(() => slugSchema.parse("")).toThrow();
+  it("rejects empty names", () => {
+    expect(() => nameSchema.parse("")).toThrow();
   });
 
-  it("rejects slugs over 64 characters", () => {
-    expect(() => slugSchema.parse("a".repeat(65))).toThrow();
+  it("rejects names over 64 characters", () => {
+    expect(() => nameSchema.parse("a".repeat(65))).toThrow();
   });
 });
 
@@ -301,7 +301,7 @@ describe("presetConfigSchema", () => {
     expect(() => presetConfigSchema.parse(configWithoutPlatform)).toThrow();
   });
 
-  it("rejects invalid slug format", () => {
+  it("rejects invalid name format", () => {
     expect(() =>
       presetConfigSchema.parse({ ...validConfig, name: "Invalid Name" })
     ).toThrow();
