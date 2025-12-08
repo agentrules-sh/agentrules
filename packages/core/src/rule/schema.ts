@@ -87,6 +87,7 @@ export const ruleCreateInputSchema = z
   .and(rulePlatformTypeSchema);
 
 export const ruleUpdateInputSchema = z.object({
+  name: ruleNameSchema,
   title: ruleTitleSchema.optional(),
   description: ruleDescriptionSchema.optional(),
   content: ruleContentSchema.optional(),
