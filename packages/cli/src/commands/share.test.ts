@@ -12,7 +12,7 @@ const DEFAULT_REGISTRY_URL = "https://agentrules.directory/";
 const VALID_OPTIONS: Required<Omit<ShareOptions, "file" | "description">> & {
   description?: string;
 } = {
-  slug: "my-test-rule",
+  name: "my-test-rule",
   platform: "opencode" as PlatformId,
   type: "agent",
   title: "My Test Rule",
@@ -23,6 +23,7 @@ const VALID_OPTIONS: Required<Omit<ShareOptions, "file" | "description">> & {
 type RuleResponse = {
   id: string;
   slug: string;
+  name: string;
   platform: string;
   type: string;
   title: string;
@@ -82,13 +83,13 @@ describe("share", () => {
       await setupLoggedInContext();
     });
 
-    it("fails when slug is missing", async () => {
-      const { slug: _, ...options } = VALID_OPTIONS;
+    it("fails when name is missing", async () => {
+      const { name: _, ...options } = VALID_OPTIONS;
 
       const result = await share(options);
 
       expect(result.success).toBeFalse();
-      expect(result.error).toContain("Slug is required");
+      expect(result.error).toContain("Name is required");
     });
 
     it("fails when platform is missing", async () => {
@@ -181,14 +182,14 @@ describe("share", () => {
 
       let sentBody: unknown;
       mockFetch({
-        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
         method: "GET",
         status: 404,
         response: { error: "Not found" },
       });
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
           method: "GET",
           status: 404,
           response: { error: "Not found" },
@@ -234,7 +235,7 @@ describe("share", () => {
     it("creates a new rule successfully", async () => {
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
           method: "GET",
           status: 404,
           response: { error: "Not found" },
@@ -250,7 +251,7 @@ describe("share", () => {
       const result = await share(VALID_OPTIONS);
 
       expect(result.success).toBeTrue();
-      expect(result.rule?.slug).toBe(VALID_OPTIONS.slug);
+      expect(result.rule?.slug).toBe(VALID_OPTIONS.name);
       expect(result.rule?.platform).toBe(VALID_OPTIONS.platform);
       expect(result.rule?.type).toBe(VALID_OPTIONS.type);
       expect(result.rule?.title).toBe(VALID_OPTIONS.title);
@@ -261,7 +262,7 @@ describe("share", () => {
       let sentBody: unknown;
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
           method: "GET",
           status: 404,
           response: { error: "Not found" },
@@ -283,7 +284,7 @@ describe("share", () => {
       });
 
       const body = sentBody as {
-        slug: string;
+        name: string;
         platform: string;
         type: string;
         title: string;
@@ -291,7 +292,7 @@ describe("share", () => {
         content: string;
         tags: string[];
       };
-      expect(body.slug).toBe(VALID_OPTIONS.slug);
+      expect(body.name).toBe(VALID_OPTIONS.name);
       expect(body.platform).toBe(VALID_OPTIONS.platform);
       expect(body.type).toBe(VALID_OPTIONS.type);
       expect(body.title).toBe(VALID_OPTIONS.title);
@@ -306,7 +307,7 @@ describe("share", () => {
       let capturedHeaders: Headers | Record<string, string> | undefined;
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
           method: "GET",
           status: 404,
           response: { error: "Not found" },
@@ -343,13 +344,13 @@ describe("share", () => {
     it("updates an existing rule", async () => {
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
           method: "GET",
           status: 200,
           response: createRuleResponse(),
         },
         {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
           method: "PUT",
           status: 200,
           response: createRuleResponse({ title: "Updated Title" }),
@@ -369,13 +370,13 @@ describe("share", () => {
       let sentBody: unknown;
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
           method: "GET",
           status: 200,
           response: createRuleResponse(),
         },
         {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
           method: "PUT",
           status: 200,
           response: createRuleResponse(),
@@ -392,7 +393,7 @@ describe("share", () => {
       expect(body.title).toBe(VALID_OPTIONS.title);
       expect(body.content).toBe(VALID_OPTIONS.content);
       // Should NOT include slug, platform, type (immutable)
-      expect(body.slug).toBeUndefined();
+      expect(body.name).toBeUndefined();
       expect(body.platform).toBeUndefined();
       expect(body.type).toBeUndefined();
     });
@@ -406,7 +407,7 @@ describe("share", () => {
     it("handles API errors gracefully", async () => {
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
           method: "GET",
           status: 404,
           response: { error: "Not found" },
@@ -428,7 +429,7 @@ describe("share", () => {
     it("handles validation errors from API", async () => {
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
           method: "GET",
           status: 404,
           response: { error: "Not found" },
@@ -440,7 +441,7 @@ describe("share", () => {
           response: {
             error: "Validation failed",
             issues: [
-              { path: "slug", message: "Invalid slug format" },
+              { path: "name", message: "Invalid slug format" },
               { path: "tags", message: "At least 1 tag is required" },
             ],
           },
@@ -472,7 +473,7 @@ describe("share", () => {
       for (const type of ["instruction", "agent", "command", "tool"]) {
         mockFetchSequence([
           {
-            url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
+            url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
             method: "GET",
             status: 404,
             response: { error: "Not found" },
@@ -499,7 +500,7 @@ describe("share", () => {
       for (const type of ["instruction", "command", "skill"]) {
         mockFetchSequence([
           {
-            url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
+            url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
             method: "GET",
             status: 404,
             response: { error: "Not found" },
@@ -525,7 +526,7 @@ describe("share", () => {
     it("accepts valid cursor types", async () => {
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
           method: "GET",
           status: 404,
           response: { error: "Not found" },
@@ -551,7 +552,7 @@ describe("share", () => {
       for (const type of ["instruction", "command"]) {
         mockFetchSequence([
           {
-            url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.slug)}`,
+            url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
             method: "GET",
             status: 404,
             response: { error: "Not found" },
@@ -581,7 +582,8 @@ function createRuleResponse(
 ): RuleResponse {
   return {
     id: "rule-123",
-    slug: VALID_OPTIONS.slug,
+    slug: VALID_OPTIONS.name, // Server returns full slug (could be namespaced)
+    name: VALID_OPTIONS.name,
     platform: VALID_OPTIONS.platform,
     type: VALID_OPTIONS.type,
     title: VALID_OPTIONS.title,

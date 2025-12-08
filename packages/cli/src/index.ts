@@ -745,7 +745,7 @@ program
 program
   .command("share")
   .description("Share a rule to the registry")
-  .requiredOption("-s, --slug <slug>", "Rule slug (URL identifier)")
+  .requiredOption("-n, --name <name>", "Rule name (URL identifier)")
   .requiredOption(
     "-p, --platform <platform>",
     "Target platform (opencode, codex, claude, cursor)"
@@ -771,7 +771,7 @@ program
         .filter(Boolean);
 
       const result = await share({
-        slug: options.slug,
+        name: options.name,
         platform,
         type: options.type,
         title: options.title,

@@ -292,7 +292,7 @@ describe("unpublish", () => {
     expect(result.error).toContain("internal_error");
   });
 
-  it("URL-encodes slug, platform, and version in request", async () => {
+  it("passes namespaced slugs through as path segments", async () => {
     await setupLoggedInContext();
 
     let calledUrl = "";
@@ -317,7 +317,8 @@ describe("unpublish", () => {
     });
 
     expect(result.success).toBeTrue();
-    expect(calledUrl).toContain("my%2Fslug");
+    // Slug is NOT encoded - slashes flow through as path segments
+    expect(calledUrl).toContain("my/slug");
   });
 });
 

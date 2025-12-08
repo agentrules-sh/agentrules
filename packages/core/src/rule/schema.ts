@@ -1,14 +1,18 @@
 import { z } from "zod";
 import { PLATFORM_IDS, PLATFORM_RULE_TYPES } from "../platform";
 
-const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const NAME_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-export const ruleSlugSchema = z
+/**
+ * Schema for the rule name.
+ * This is what users provide when creating a rule.
+ */
+export const ruleNameSchema = z
   .string()
   .trim()
-  .min(1, "Slug is required")
-  .max(64, "Slug must be 64 characters or less")
-  .regex(SLUG_REGEX, "Must be lowercase alphanumeric with hyphens");
+  .min(1, "Name is required")
+  .max(64, "Name must be 64 characters or less")
+  .regex(NAME_REGEX, "Must be lowercase alphanumeric with hyphens");
 
 export const ruleTitleSchema = z
   .string()
@@ -47,7 +51,7 @@ export const ruleTagsSchema = z
 
 /** Common fields shared across all platform-type combinations */
 const ruleCommonFields = {
-  slug: ruleSlugSchema,
+  name: ruleNameSchema,
   title: ruleTitleSchema,
   description: ruleDescriptionSchema.optional(),
   content: ruleContentSchema,

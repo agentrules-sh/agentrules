@@ -9,7 +9,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { log } from "@/lib/log";
 
 export type RuleInput = {
-  slug: string;
+  name: string;
   platform: string;
   type: string;
   title: string;
@@ -88,7 +88,7 @@ export async function updateRule(
   baseUrl: string,
   token: string,
   slug: string,
-  input: Partial<Omit<RuleInput, "slug" | "platform" | "type">>
+  input: Partial<Omit<RuleInput, "name" | "platform" | "type">>
 ): Promise<UpdateRuleResult> {
   const url = `${baseUrl}${API_ENDPOINTS.rule.get(slug)}`;
 

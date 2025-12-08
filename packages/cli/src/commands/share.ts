@@ -19,7 +19,7 @@ import { log } from "@/lib/log";
 import { ui } from "@/lib/ui";
 
 export type ShareOptions = {
-  slug?: string;
+  name?: string;
   platform?: PlatformId;
   type?: string;
   title?: string;
@@ -65,8 +65,8 @@ export async function share(options: ShareOptions = {}): Promise<ShareResult> {
   }
 
   // Validate required fields
-  if (!options.slug) {
-    const error = "Slug is required. Use --slug <slug>";
+  if (!options.name) {
+    const error = "Name is required. Use --name <name>";
     log.error(error);
     return { success: false, error };
   }
@@ -124,7 +124,7 @@ export async function share(options: ShareOptions = {}): Promise<ShareResult> {
   const spinner = await log.spinner("Checking if rule exists...");
 
   // Check if rule already exists
-  const existingResult = await getRule(ctx.registry.url, options.slug);
+  const existingResult = await getRule(ctx.registry.url, options.name);
   const isUpdate = existingResult.success;
 
   if (isUpdate) {
@@ -144,12 +144,12 @@ export async function share(options: ShareOptions = {}): Promise<ShareResult> {
       );
     }
 
-    spinner.update(`Updating rule "${options.slug}"...`);
+    spinner.update(`Updating rule "${options.name}"...`);
 
     const result = await updateRule(
       ctx.registry.url,
       ctx.credentials.token,
-      options.slug,
+      options.name,
       {
         title: options.title,
         description: options.description,
@@ -164,23 +164,23 @@ export async function share(options: ShareOptions = {}): Promise<ShareResult> {
       return { success: false, error: result.error };
     }
 
-    spinner.success(`Updated rule ${ui.code(options.slug)}`);
+    spinner.success(`Updated rule ${ui.code(options.name)}`);
 
-    const ruleUrl = `${ctx.registry.url}r/${options.slug}`;
+    const ruleUrl = `${ctx.registry.url}r/${options.name}`;
     log.print("");
     log.print(ui.keyValue("Now live at", ui.link(ruleUrl)));
     log.print("");
     log.print(
       ui.keyValue(
         "Install command",
-        ui.code(`npx @agentrules/cli add r/${options.slug}`)
+        ui.code(`npx @agentrules/cli add r/${options.name}`)
       )
     );
 
     return {
       success: true,
       rule: {
-        slug: options.slug,
+        slug: result.data.slug,
         platform: result.data.platform,
         type: result.data.type,
         title: result.data.title,
@@ -190,10 +190,10 @@ export async function share(options: ShareOptions = {}): Promise<ShareResult> {
   }
 
   // Create new rule
-  spinner.update(`Creating rule "${options.slug}"...`);
+  spinner.update(`Creating rule "${options.name}"...`);
 
   const result = await createRule(ctx.registry.url, ctx.credentials.token, {
-    slug: options.slug,
+    name: options.name,
     platform: options.platform,
     type: options.type,
     title: options.title,
@@ -213,26 +213,26 @@ export async function share(options: ShareOptions = {}): Promise<ShareResult> {
     return { success: false, error: result.error };
   }
 
-  spinner.success(`Created rule ${ui.code(options.slug)}`);
+  spinner.success(`Created rule ${ui.code(options.name)}`);
 
-  const ruleUrl = `${ctx.registry.url}r/${options.slug}`;
+  const ruleUrl = `${ctx.registry.url}r/${options.name}`;
   log.print("");
   log.print(ui.keyValue("Now live at", ui.link(ruleUrl)));
   log.print("");
   log.print(
     ui.keyValue(
       "Install command",
-      ui.code(`npx @agentrules/cli add r/${options.slug}`)
+      ui.code(`npx @agentrules/cli add r/${options.name}`)
     )
   );
 
   return {
     success: true,
     rule: {
-      slug: options.slug,
-      platform: options.platform,
-      type: options.type,
-      title: options.title,
+      slug: result.data.slug,
+      platform: result.data.platform,
+      type: result.data.type,
+      title: result.data.title,
       isNew: true,
     },
   };

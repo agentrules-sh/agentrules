@@ -20,6 +20,14 @@ export const LATEST_VERSION = "latest";
 
 /**
  * API endpoint paths (relative to registry base URL).
+ *
+ * Note: Path parameters (slug, platform, version) are NOT URI-encoded.
+ * - Slugs may contain slashes (e.g., "username/my-preset") which should flow
+ *   through as path segments for static registry compatibility
+ * - Platform and version are constrained values (enums, validated formats)
+ *   that only contain URL-safe characters
+ *
+ * The client is responsible for validating these values before making requests.
  */
 export const API_ENDPOINTS = {
   /** Preset endpoints */
@@ -28,10 +36,10 @@ export const API_ENDPOINTS = {
     base: `${API_PATH}/preset`,
     /** Get preset by slug, platform, and version (defaults to "latest") */
     get: (slug: string, platform: string, version: string = LATEST_VERSION) =>
-      `${API_PATH}/preset/${encodeURIComponent(slug)}/${encodeURIComponent(platform)}/${encodeURIComponent(version)}`,
+      `${API_PATH}/preset/${slug}/${platform}/${version}`,
     /** Unpublish preset version */
     unpublish: (slug: string, platform: string, version: string) =>
-      `${API_PATH}/preset/${encodeURIComponent(slug)}/${encodeURIComponent(platform)}/${encodeURIComponent(version)}`,
+      `${API_PATH}/preset/${slug}/${platform}/${version}`,
   },
   /** Auth endpoints */
   auth: {
@@ -47,6 +55,6 @@ export const API_ENDPOINTS = {
     /** Base path for rule operations */
     base: `${API_PATH}/rule`,
     /** Get or update rule by slug */
-    get: (slug: string) => `${API_PATH}/rule/${encodeURIComponent(slug)}`,
+    get: (slug: string) => `${API_PATH}/rule/${slug}`,
   },
 } as const;
