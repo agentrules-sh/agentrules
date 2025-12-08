@@ -463,16 +463,47 @@ export function relativeTime(date: Date | string): string {
 
 type FileTreeNode = {
   name: string;
-  size?: number;
+  /** Size of this file (only set for leaf nodes during tree building) */
+  fileSize?: number;
+  /** Total size of this node and all descendants (calculated after tree is built) */
+  totalSize: number;
+  /** Whether this node is a file (leaf) or directory */
+  isFile: boolean;
   children: Map<string, FileTreeNode>;
+};
+
+export type FileTreeOptions = {
+  /** Header title (e.g., "Published files") */
+  header: string;
+  /** Show sizes for individual files (default: false) */
+  showFileSizes?: boolean;
+  /** Show sizes for folders (default: false) */
+  showFolderSizes?: boolean;
 };
 
 /**
  * Formats an array of files as a tree structure
+ *
+ * By default shows folder-level sizes only. Pass `showFileSizes: true` to also show
+ * individual file sizes.
  */
-export function fileTree(files: { path: string; size: number }[]): string {
+export function fileTree(
+  files: { path: string; size: number }[],
+  options: FileTreeOptions
+): string {
+  const {
+    header: headerTitle,
+    showFileSizes = false,
+    showFolderSizes = false,
+  } = options;
+
   // Build tree structure
-  const root: FileTreeNode = { name: "", children: new Map() };
+  const root: FileTreeNode = {
+    name: "",
+    totalSize: 0,
+    isFile: false,
+    children: new Map(),
+  };
 
   for (const file of files) {
     const parts = file.path.split("/");
@@ -486,7 +517,9 @@ export function fileTree(files: { path: string; size: number }[]): string {
       if (!child) {
         child = {
           name: part,
-          size: isFile ? file.size : undefined,
+          fileSize: isFile ? file.size : undefined,
+          totalSize: 0,
+          isFile,
           children: new Map(),
         };
         current.children.set(part, child);
@@ -495,15 +528,42 @@ export function fileTree(files: { path: string; size: number }[]): string {
     }
   }
 
+  // Calculate total sizes for all nodes (post-order traversal)
+  function calculateSizes(node: FileTreeNode): number {
+    if (node.isFile) {
+      node.totalSize = node.fileSize ?? 0;
+    } else {
+      node.totalSize = Array.from(node.children.values()).reduce(
+        (sum, child) => sum + calculateSizes(child),
+        0
+      );
+    }
+    return node.totalSize;
+  }
+  calculateSizes(root);
+
   // Render tree
   const lines: string[] = [];
 
+  // Header with count and total size
+  const countStr = theme.muted(`(${files.length})`);
+  const sizeStr = showFolderSizes
+    ? ` ${theme.info(`(${formatBytes(root.totalSize)} total)`)}`
+    : "";
+  lines.push(`${theme.title(headerTitle)} ${countStr}${sizeStr}`);
+
   function renderNode(node: FileTreeNode, prefix: string, isLast: boolean) {
     const connector = isLast ? "└── " : "├── ";
-    const sizeStr =
-      node.size !== undefined ? muted(` (${formatBytes(node.size)})`) : "";
 
-    lines.push(`${prefix}${connector}${node.name}${sizeStr}`);
+    // Determine if we should show size for this node
+    let nodeSizeStr = "";
+    if (node.isFile && showFileSizes) {
+      nodeSizeStr = theme.info(` (${formatBytes(node.totalSize)})`);
+    } else if (!node.isFile && showFolderSizes) {
+      nodeSizeStr = theme.info(` (${formatBytes(node.totalSize)})`);
+    }
+
+    lines.push(`${prefix}${connector}${node.name}${nodeSizeStr}`);
 
     const children = Array.from(node.children.values());
     const newPrefix = prefix + (isLast ? "    " : "│   ");

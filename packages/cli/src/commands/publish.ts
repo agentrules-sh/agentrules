@@ -184,8 +184,12 @@ export async function publish(
     );
     log.print(ui.keyValue("Size", formatBytes(inputSize)));
     log.print("");
-    log.print(ui.header("Files to publish", fileCount));
-    log.print(ui.fileTree(publishInput.files));
+    log.print(
+      ui.fileTree(publishInput.files, {
+        showFolderSizes: true,
+        header: "Files to publish",
+      })
+    );
     log.print("");
     log.print(ui.hint("Run without --dry-run to publish."));
 
@@ -254,8 +258,12 @@ export async function publish(
 
   // Show published files
   log.print("");
-  log.print(ui.header("Published files", fileCount));
-  log.print(ui.fileTree(publishInput.files));
+  log.print(
+    ui.fileTree(publishInput.files, {
+      showFolderSizes: true,
+      header: "Published files",
+    })
+  );
 
   // Show registry page URL
   const presetName = `${data.slug}.${data.platform}`;
