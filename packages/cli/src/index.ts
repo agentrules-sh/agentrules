@@ -28,9 +28,7 @@ import {
   useRegistry,
 } from "@/commands/registry/manage";
 import { addRule, extractRuleSlug, isRuleReference } from "@/commands/rule/add";
-import { share } from "@/commands/share";
 import { unpublish } from "@/commands/unpublish";
-import { unshare } from "@/commands/unshare";
 import { HELP_AGENT_CONTENT } from "@/help-agent";
 import { initAppContext } from "@/lib/context";
 import { getErrorMessage } from "@/lib/errors";
@@ -125,7 +123,9 @@ program
 
           if (result.status === "conflict") {
             log.error(
-              `File already exists: ${result.targetPath}. Use ${ui.command("--force")} to overwrite.`
+              `File already exists: ${result.targetPath}. Use ${ui.command(
+                "--force"
+              )} to overwrite.`
             );
             process.exitCode = 1;
             return;
@@ -146,7 +146,9 @@ program
           );
           log.print("");
           log.success(
-            `${verb} ${ui.bold(result.title)} ${ui.muted(`(${result.platform}/${result.type})`)}`
+            `${verb} ${ui.bold(result.title)} ${ui.muted(
+              `(${result.platform}/${result.type})`
+            )}`
           );
 
           if (dryRun) {
@@ -197,7 +199,9 @@ program
           result.conflicts.length === 1
             ? "1 file has"
             : `${result.conflicts.length} files have`;
-        const forceHint = `Use ${ui.command("--force")} to overwrite ${ui.muted("(--no-backup to skip backups)")}`;
+        const forceHint = `Use ${ui.command("--force")} to overwrite ${ui.muted(
+          "(--no-backup to skip backups)"
+        )}`;
         log.error(`${count} conflicts. ${forceHint}`);
         log.print("");
 
@@ -364,12 +368,13 @@ program
             const targetDirName = basename(targetDir);
             log.error(
               `No platform directory found in "${targetDirName}". ` +
-                `Specify --platform (${PLATFORM_IDS.join(", ")}) or run from a platform directory.`
+                `Specify --platform (${PLATFORM_IDS.join(
+                  ", "
+                )}) or run from a platform directory.`
             );
           } else {
             log.error(
-              `Multiple platform directories found (${check.platforms.join(", ")}). ` +
-                "Specify --platform to choose one."
+              `Multiple platform directories found (${check.platforms.join(", ")}). Specify --platform to choose one.`
             );
           }
           process.exit(1);
@@ -738,54 +743,72 @@ program
     })
   );
 
-// =============================================================================
-// share - Share a rule to the registry
-// =============================================================================
+// // =============================================================================
+// // share - Share a rule to the registry
+// // =============================================================================
 
-program
-  .command("share")
-  .description("Share a rule to the registry")
-  .requiredOption("-n, --name <name>", "Rule name (URL identifier)")
-  .requiredOption(
-    "-p, --platform <platform>",
-    "Target platform (opencode, codex, claude, cursor)"
-  )
-  .requiredOption(
-    "-t, --type <type>",
-    "Rule type (instruction, agent, command, tool, skill, rule)"
-  )
-  .requiredOption("--title <title>", "Display title")
-  .requiredOption(
-    "--tags <tags>",
-    "Comma-separated tags (e.g., typescript,react,testing)"
-  )
-  .option("--description <text>", "Optional description")
-  .option("-c, --content <content>", "Rule content (or use --file)")
-  .option("-f, --file <path>", "Read content from file")
-  .action(
-    handle(async (options) => {
-      const platform = normalizePlatformInput(options.platform);
-      const tags = (options.tags as string)
-        .split(",")
-        .map((t: string) => t.trim())
-        .filter(Boolean);
+// program
+//   .command("share")
+//   .description("Share a rule to the registry")
+//   .requiredOption("-n, --name <name>", "Rule name (URL identifier)")
+//   .requiredOption(
+//     "-p, --platform <platform>",
+//     "Target platform (opencode, codex, claude, cursor)"
+//   )
+//   .requiredOption(
+//     "-t, --type <type>",
+//     "Rule type (instruction, agent, command, tool, skill, rule)"
+//   )
+//   .requiredOption("--title <title>", "Display title")
+//   .requiredOption(
+//     "--tags <tags>",
+//     "Comma-separated tags (e.g., typescript,react,testing)"
+//   )
+//   .option("--description <text>", "Optional description")
+//   .option("-c, --content <content>", "Rule content (or use --file)")
+//   .option("-f, --file <path>", "Read content from file")
+//   .action(
+//     handle(async (options) => {
+//       const platform = normalizePlatformInput(options.platform);
+//       const tags = (options.tags as string)
+//         .split(",")
+//         .map((t: string) => t.trim())
+//         .filter(Boolean);
 
-      const result = await share({
-        name: options.name,
-        platform,
-        type: options.type,
-        title: options.title,
-        description: options.description,
-        content: options.content,
-        file: options.file,
-        tags,
-      });
+//       const result = await share({
+//         name: options.name,
+//         platform,
+//         type: options.type,
+//         title: options.title,
+//         description: options.description,
+//         content: options.content,
+//         file: options.file,
+//         tags,
+//       });
 
-      if (!result.success) {
-        process.exitCode = 1;
-      }
-    })
-  );
+//       if (!result.success) {
+//         process.exitCode = 1;
+//       }
+//     })
+//   );
+
+// // =============================================================================
+// // unshare - Remove a rule from the registry
+// // =============================================================================
+
+// program
+//   .command("unshare")
+//   .description("Remove a rule from the registry")
+//   .argument("<slug>", "Rule slug to unshare")
+//   .action(
+//     handle(async (slug: string) => {
+//       const result = await unshare({ slug });
+
+//       if (!result.success) {
+//         process.exitCode = 1;
+//       }
+//     })
+//   );
 
 // =============================================================================
 // unpublish - Remove preset version from registry
@@ -814,24 +837,6 @@ program
         platform,
         version: options.version,
       });
-
-      if (!result.success) {
-        process.exitCode = 1;
-      }
-    })
-  );
-
-// =============================================================================
-// unshare - Remove a rule from the registry
-// =============================================================================
-
-program
-  .command("unshare")
-  .description("Remove a rule from the registry")
-  .argument("<slug>", "Rule slug to unshare")
-  .action(
-    handle(async (slug: string) => {
-      const result = await unshare({ slug });
 
       if (!result.success) {
         process.exitCode = 1;
