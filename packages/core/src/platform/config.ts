@@ -26,14 +26,14 @@ export const PLATFORMS = {
     globalDir: "~/.config/opencode",
     types: {
       instruction: {
-        description: "Project instructions (AGENTS.md)",
+        description: "Project instructions",
         format: "markdown",
         extension: "md",
         projectPath: "AGENTS.md",
         globalPath: "~/.config/opencode/AGENTS.md",
       },
       agent: {
-        description: "Specialized AI agent definition",
+        description: "Specialized AI agent",
         format: "markdown",
         extension: "md",
         projectPath: ".opencode/agent/{name}.md",
@@ -47,7 +47,7 @@ export const PLATFORMS = {
         globalPath: "~/.config/opencode/command/{name}.md",
       },
       tool: {
-        description: "Custom tool definition",
+        description: "Custom tool",
         format: "typescript",
         extension: "ts",
         projectPath: ".opencode/tool/{name}.ts",
@@ -61,7 +61,7 @@ export const PLATFORMS = {
     globalDir: "~/.claude",
     types: {
       instruction: {
-        description: "Project instructions (CLAUDE.md)",
+        description: "Project instructions",
         format: "markdown",
         extension: "md",
         projectPath: "CLAUDE.md",
@@ -75,7 +75,7 @@ export const PLATFORMS = {
         globalPath: "~/.claude/commands/{name}.md",
       },
       skill: {
-        description: "Custom skill definition",
+        description: "Custom skill",
         format: "markdown",
         extension: "md",
         projectPath: ".claude/skills/{name}/SKILL.md",
@@ -86,31 +86,45 @@ export const PLATFORMS = {
   cursor: {
     label: "Cursor",
     projectDir: ".cursor",
-    globalDir: null,
+    globalDir: "~/.cursor",
     types: {
+      instruction: {
+        description: "Project instructions",
+        format: "markdown",
+        extension: "md",
+        projectPath: "AGENTS.md",
+        globalPath: null,
+      },
       rule: {
-        description: "Project rule (MDC format)",
+        description: "Custom rule",
         format: "mdc",
         extension: "mdc",
         projectPath: ".cursor/rules/{name}.mdc",
         globalPath: null,
       },
+      command: {
+        description: "Custom slash command",
+        format: "markdown",
+        extension: "md",
+        projectPath: ".cursor/commands/{name}.md",
+        globalPath: "~/.cursor/commands/{name}.md",
+      },
     },
   },
   codex: {
     label: "Codex",
-    projectDir: "",
+    projectDir: ".codex",
     globalDir: "~/.codex",
     types: {
       instruction: {
-        description: "Project instructions (AGENTS.md)",
+        description: "Project instructions",
         format: "markdown",
         extension: "md",
         projectPath: "AGENTS.md",
         globalPath: "~/.codex/AGENTS.md",
       },
       command: {
-        description: "Custom prompt (global only)",
+        description: "Custom prompt",
         format: "markdown",
         extension: "md",
         projectPath: null,
@@ -122,9 +136,9 @@ export const PLATFORMS = {
 
 /** Valid rule types for each platform. Must be kept in sync with PLATFORMS. */
 export const PLATFORM_RULE_TYPES = {
-  opencode: ["instruction", "agent", "command", "tool"],
+  opencode: ["instruction", "command", "agent", "tool"],
   claude: ["instruction", "command", "skill"],
-  cursor: ["rule"],
+  cursor: ["instruction", "command", "rule"],
   codex: ["instruction", "command"],
 } as const satisfies Record<PlatformId, readonly string[]>;
 
