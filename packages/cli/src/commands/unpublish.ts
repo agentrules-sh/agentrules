@@ -2,21 +2,18 @@
  * CLI Unpublish Command
  *
  * Removes a preset version from the AGENT_RULES registry.
+ * Unpublishes the entire version including all platform variants.
  * Requires authentication - run `agentrules login` first.
  */
 
-import type { PlatformId } from "@agentrules/core";
-import { isSupportedPlatform } from "@agentrules/core";
 import { unpublishPreset } from "@/lib/api/presets";
 import { useAppContext } from "@/lib/context";
 import { log } from "@/lib/log";
 import { ui } from "@/lib/ui";
 
 export type UnpublishOptions = {
-  /** Preset identifier (e.g., my-preset.claude@1.0 or my-preset@1.0) */
+  /** Preset identifier (e.g., my-preset@1.0 or username/my-preset@1.0) */
   preset: string;
-  /** Platform override */
-  platform?: PlatformId;
   /** Version override */
   version?: string;
 };
@@ -29,26 +26,24 @@ export type UnpublishResult = {
   /** Unpublished preset info */
   preset?: {
     slug: string;
-    platform: string;
     version: string;
   };
 };
 
 /**
- * Parses preset input to extract slug, platform, and version.
+ * Parses preset input to extract slug and version.
  * Supports formats:
- * - "my-preset.claude@1.0" (platform and version in string)
- * - "my-preset@1.0" (requires explicit platform)
- * - "my-preset.claude" (requires explicit version)
+ * - "my-preset@1.0" (slug and version)
+ * - "username/my-preset@1.0" (namespaced slug and version)
+ * - "my-preset" (requires explicit --version)
  *
- * Explicit --platform and --version flags take precedence.
+ * Explicit --version flag takes precedence.
  */
 function parseUnpublishInput(
   input: string,
-  explicitPlatform?: PlatformId,
   explicitVersion?: string
-): { slug: string; platform?: PlatformId; version?: string } {
-  let normalized = input.toLowerCase().trim();
+): { slug: string; version?: string } {
+  let normalized = input.trim();
 
   // Extract version from @version suffix
   let parsedVersion: string | undefined;
@@ -61,33 +56,18 @@ function parseUnpublishInput(
   // Explicit version flag takes precedence
   const version = explicitVersion ?? parsedVersion;
 
-  // Try to extract platform from suffix (e.g., "my-preset.claude")
-  const parts = normalized.split(".");
-  const maybePlatform = parts.at(-1);
-
-  let slug: string;
-  let platform: PlatformId | undefined;
-
-  if (maybePlatform && isSupportedPlatform(maybePlatform)) {
-    slug = parts.slice(0, -1).join(".");
-    platform = explicitPlatform ?? maybePlatform;
-  } else {
-    slug = normalized;
-    platform = explicitPlatform;
-  }
-
-  return { slug, platform, version };
+  return { slug: normalized, version };
 }
 
 /**
- * Unpublishes a preset version from the registry
+ * Unpublishes a preset version from the registry.
+ * This unpublishes all platform variants for the specified version.
  */
 export async function unpublish(
   options: UnpublishOptions
 ): Promise<UnpublishResult> {
-  const { slug, platform, version } = parseUnpublishInput(
+  const { slug, version } = parseUnpublishInput(
     options.preset,
-    options.platform,
     options.version
   );
 
@@ -99,19 +79,9 @@ export async function unpublish(
     };
   }
 
-  if (!platform) {
-    log.error(
-      "Platform is required. Use --platform or specify as <slug>.<platform>@<version>"
-    );
-    return {
-      success: false,
-      error: "Platform is required",
-    };
-  }
-
   if (!version) {
     log.error(
-      "Version is required. Use --version or specify as <slug>.<platform>@<version>"
+      "Version is required. Use --version or specify as <slug>@<version>"
     );
     return {
       success: false,
@@ -119,7 +89,7 @@ export async function unpublish(
     };
   }
 
-  log.debug(`Unpublishing preset: ${slug}.${platform}@${version}`);
+  log.debug(`Unpublishing preset: ${slug}@${version}`);
 
   const ctx = useAppContext();
 
@@ -133,14 +103,13 @@ export async function unpublish(
   log.debug(`Authenticated, unpublishing from ${ctx.registry.url}`);
 
   const spinner = await log.spinner(
-    `Unpublishing ${ui.code(slug)}.${platform} ${ui.version(version)}...`
+    `Unpublishing ${ui.code(slug)} ${ui.version(version)}...`
   );
 
   const result = await unpublishPreset(
     ctx.registry.url,
     ctx.credentials.token,
     slug,
-    platform,
     version
   );
 
@@ -161,16 +130,17 @@ export async function unpublish(
   const { data } = result;
 
   spinner.success(
-    `Unpublished ${ui.code(data.slug)}.${data.platform} ${ui.version(data.version)}`
+    `Unpublished ${ui.code(data.slug)} ${ui.version(data.version)}`
   );
 
-  log.info(ui.hint("This version can no longer be republished."));
+  log.info(
+    ui.hint("This version and all its platform variants have been removed.")
+  );
 
   return {
     success: true,
     preset: {
       slug: data.slug,
-      platform: data.platform,
       version: data.version,
     },
   };

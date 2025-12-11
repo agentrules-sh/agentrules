@@ -18,35 +18,36 @@ agentrules <command>
 
 ---
 
-## Installing Presets
+## Installing Presets and Rules
 
 ### add
 
-Install a preset from the registry.
+Install a preset or rule from the registry.
 
 ```bash
-agentrules add <preset> [options]
+agentrules add <name> [options]
 ```
 
 **Arguments:**
 
 | Argument | Description |
 |----------|-------------|
-| `preset` | Preset name, optionally with platform suffix and version (e.g., `my-preset`, `my-preset.opencode`, `my-preset@1.0`) |
+| `name` | Preset or rule name, optionally with version (e.g., `my-preset`, `my-preset@1.0`) |
 
 **Options:**
 
 | Option | Description |
 |--------|-------------|
 | `-p, --platform <platform>` | Target platform: `opencode`, `claude`, `cursor`, `codex` |
-| `-V, --version <version>` | Install a specific version (default: latest) |
+| `--version <version>` | Install a specific version (or use `slug@version`) |
 | `-g, --global` | Install to global config directory |
 | `--dir <path>` | Install to a custom directory |
 | `-r, --registry <alias>` | Use a specific registry |
 | `-f, --force` | Overwrite existing files (backs up originals to `.bak`) |
+| `-y, --yes` | Alias for `--force` |
 | `--no-backup` | Don't backup files when using `--force` |
 | `--dry-run` | Preview changes without writing |
-| `--skip-conflicts` | Skip files that already exist |
+| `--skip-conflicts` | Skip files that already exist (presets only) |
 
 **Examples:**
 
@@ -61,12 +62,12 @@ agentrules add agentic-dev-starter -p opencode --global
 agentrules add agentic-dev-starter -p opencode --version 1.0
 
 # Using @ syntax for version
-agentrules add agentic-dev-starter.opencode@1.0
+agentrules add agentic-dev-starter@1.0 -p opencode
 
 # Preview without writing
 agentrules add agentic-dev-starter -p opencode --dry-run
 
-# Force overwrite (backs up existing files to .bak)
+# Force overwrite (backs up existing files)
 agentrules add agentic-dev-starter -p opencode --force
 
 # Force overwrite without backups
@@ -95,7 +96,7 @@ agentrules init [directory] [options]
 
 | Option | Description |
 |--------|-------------|
-| `-n, --name <name>` | Preset name (default: `my-preset`) |
+| `-n, --name <name>` | Preset name |
 | `-t, --title <title>` | Display title |
 | `--description <text>` | Preset description |
 | `-p, --platform <platform>` | Target platform |
@@ -115,9 +116,6 @@ agentrules init .claude
 
 # Non-interactive with options
 agentrules init .opencode --name my-preset --license MIT --yes
-
-# From project root, auto-detect platform directory
-agentrules init --yes
 ```
 
 **Result:**
@@ -167,8 +165,15 @@ agentrules validate .opencode
 Authenticate with the registry. Opens a browser for OAuth.
 
 ```bash
-agentrules login
+agentrules login [options]
 ```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--url <url>` | Registry URL |
+| `--no-browser` | Skip opening browser (for headless environments) |
 
 ### logout
 
@@ -204,7 +209,7 @@ agentrules publish [path] [options]
 
 | Option | Description |
 |--------|-------------|
-| `-v, --version <major>` | Major version to publish (default: 1) |
+| `--version <major>` | Major version to publish (overrides config) |
 | `--dry-run` | Preview without publishing |
 
 **Examples:**
@@ -236,31 +241,118 @@ agentrules unpublish <preset> [options]
 
 | Argument | Description |
 |----------|-------------|
-| `preset` | Preset identifier (e.g., `my-preset`, `my-preset.opencode`, `my-preset.opencode@1.0`) |
+| `preset` | Preset identifier (e.g., `my-preset@1.0`) |
 
 **Options:**
 
 | Option | Description |
 |--------|-------------|
-| `-p, --platform <platform>` | Target platform (if not in preset string) |
-| `-V, --version <version>` | Version to unpublish (if not in preset string) |
+| `--version <version>` | Version to unpublish (or use `preset@version`) |
 
 **Examples:**
 
 ```bash
-# Full format: slug.platform@version
-agentrules unpublish my-preset.opencode@1.0
+# Using @ syntax (recommended)
+agentrules unpublish my-preset@1.0
 
-# With flags
-agentrules unpublish my-preset --platform opencode --version 1.0
-
-# Mixed: version in string, platform as flag
-agentrules unpublish my-preset@1.0 --platform opencode
+# Using --version flag
+agentrules unpublish my-preset --version 1.0
 ```
 
 <Callout type="warn">
 Unpublished versions cannot be republished with the same version number.
 </Callout>
+
+---
+
+## Sharing Rules
+
+### share
+
+Share a single rule (agent, command, instruction, etc.) to the registry. Requires authentication.
+
+```bash
+agentrules share [file] [options]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `file` | Path to file containing rule content (optional) |
+
+**Required Options:**
+
+| Option | Description |
+|--------|-------------|
+| `-n, --name <name>` | Rule name (URL identifier) |
+| `-p, --platform <platform>` | Target platform |
+| `-t, --type <type>` | Rule type (see table below) |
+| `--title <title>` | Display title |
+| `--tags <tags>` | Comma-separated tags |
+
+**Content (one required):**
+
+| Option | Description |
+|--------|-------------|
+| `[file]` | Path to content file |
+| `-c, --content <content>` | Inline content |
+
+**Optional:**
+
+| Option | Description |
+|--------|-------------|
+| `--description <text>` | Short description |
+
+**Rule Types by Platform:**
+
+| Platform | Types |
+|----------|-------|
+| OpenCode | `instruction`, `command`, `agent`, `tool` |
+| Claude | `instruction`, `command`, `skill` |
+| Cursor | `instruction`, `command`, `rule` |
+| Codex | `instruction`, `command` |
+
+**Examples:**
+
+```bash
+# Share from a file
+agentrules share ./my-agent.md \
+  --name my-agent \
+  --platform opencode \
+  --type agent \
+  --title "My Agent" \
+  --tags "typescript,testing"
+
+# Share with inline content
+agentrules share \
+  --name my-agent \
+  --platform opencode \
+  --type agent \
+  --title "My Agent" \
+  --tags "typescript,testing" \
+  --content "You are a helpful coding assistant..."
+```
+
+### unshare
+
+Remove a rule from the registry. Requires authentication.
+
+```bash
+agentrules unshare <slug>
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `slug` | Rule slug to remove |
+
+**Example:**
+
+```bash
+agentrules unshare my-agent
+```
 
 ---
 
@@ -293,7 +385,8 @@ agentrules registry add <alias> <url> [options]
 
 | Option | Description |
 |--------|-------------|
-| `--default` | Set as the default registry |
+| `-f, --force` | Overwrite existing entry |
+| `-d, --default` | Set as the default registry |
 
 **Examples:**
 
@@ -310,8 +403,14 @@ agentrules registry add company https://registry.company.com --default
 Remove a registry.
 
 ```bash
-agentrules registry remove <alias>
+agentrules registry remove <alias> [options]
 ```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `-f, --force` | Allow removing the default registry |
 
 ### registry use
 
@@ -333,7 +432,7 @@ agentrules registry build [options]
 
 | Option | Description |
 |--------|-------------|
-| `-i, --input <path>` | Directory containing preset folders |
+| `-i, --input <path>` | Directory containing preset folders (required) |
 | `-o, --out <path>` | Output directory for registry artifacts |
 | `-b, --bundle-base <url>` | URL prefix for bundle locations |
 | `-c, --compact` | Emit minified JSON |
@@ -378,7 +477,7 @@ You can override the config directory with the `AGENT_RULES_HOME` environment va
 <Accordions>
 <Accordion id="multiple-platforms" title="Can I install the same preset for multiple platforms?">
 
-Each preset is platform-specific. If an author has published versions for multiple platforms, you'll need to install each separately:
+Each preset variant is platform-specific. If an author has published versions for multiple platforms, you'll need to install each separately:
 
 ```bash
 agentrules add my-preset --platform opencode
@@ -408,6 +507,16 @@ Without flags, the CLI shows you which files conflict and their differences. You
 - Use `--force --no-backup` to overwrite without backups
 - Use `--skip-conflicts` to keep existing files
 - Manually resolve conflicts
+
+</Accordion>
+
+<Accordion id="rules-vs-presets" title="What's the difference between presets and rules?">
+
+**Presets** are bundles of multiple configuration files packaged together. Use `publish` to share them.
+
+**Rules** are single files (one agent, command, or instruction). Use `share` to share them.
+
+Both are installed the same way with `add`.
 
 </Accordion>
 </Accordions>

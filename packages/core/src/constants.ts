@@ -21,25 +21,18 @@ export const LATEST_VERSION = "latest";
 /**
  * API endpoint paths (relative to registry base URL).
  *
- * Note: Path parameters (slug, platform, version) are NOT URI-encoded.
- * - Slugs may contain slashes (e.g., "username/my-preset") which should flow
- *   through as path segments for static registry compatibility
- * - Platform and version are constrained values (enums, validated formats)
- *   that only contain URL-safe characters
- *
- * The client is responsible for validating these values before making requests.
+ * Note on slug handling:
+ * - Slugs may contain slashes (e.g., "username/my-preset") which flow through as path segments
+ * - The client is responsible for validating values before making requests
  */
 export const API_ENDPOINTS = {
-  /** Preset endpoints */
+  /** Preset endpoints (for publishing) */
   presets: {
     /** Base path for preset operations */
-    base: `${API_PATH}/preset`,
-    /** Get preset by slug, platform, and version (defaults to "latest") */
-    get: (slug: string, platform: string, version: string = LATEST_VERSION) =>
-      `${API_PATH}/preset/${slug}/${platform}/${version}`,
-    /** Unpublish preset version */
-    unpublish: (slug: string, platform: string, version: string) =>
-      `${API_PATH}/preset/${slug}/${platform}/${version}`,
+    base: `${API_PATH}/presets`,
+    /** Unpublish preset version (unpublishes all platform variants for that version) */
+    unpublish: (slug: string, version: string) =>
+      `${API_PATH}/presets/${slug}/${version}`,
   },
   /** Auth endpoints */
   auth: {
@@ -50,11 +43,20 @@ export const API_ENDPOINTS = {
     /** Device token exchange */
     deviceToken: `${API_PATH}/auth/device/token`,
   },
-  /** Rule endpoints */
-  rule: {
-    /** Base path for rule operations */
-    base: `${API_PATH}/rule`,
-    /** Get or update rule by slug */
-    get: (slug: string) => `${API_PATH}/rule/${slug}`,
+  /** Rule endpoints (for publishing) */
+  rules: {
+    /** Base path for rule operations (POST to create) */
+    base: `${API_PATH}/rules`,
+    /** Rule by slug (PUT to update, DELETE to remove) */
+    bySlug: (slug: string) => `${API_PATH}/rules/${slug}`,
+  },
+  /** Items endpoint - unified content retrieval */
+  items: {
+    /**
+     * Get all versions and variants for a slug.
+     * Version filtering via query param is optional (server may ignore for static registries).
+     * @param slug - Content slug (may contain slashes, e.g., "username/my-preset")
+     */
+    get: (slug: string) => `${API_PATH}/items/${slug}`,
   },
 } as const;

@@ -24,8 +24,7 @@ const VALID_CONFIG = {
   description: "A test preset for publishing",
   license: "MIT",
   tags: ["test", "example"],
-  platform: "opencode",
-  path: ".opencode",
+  platforms: ["opencode"],
 };
 
 /**
@@ -139,16 +138,9 @@ describe("publish", () => {
     mockFetch({
       url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
       method: "POST",
-      response: {
-        presetId: "preset-123",
-        versionId: "version-456",
-        slug: "my-preset",
-        platform: "opencode",
-        title: "Test Preset",
-        version: TEST_VERSION,
-        isNewPreset: true,
+      response: createPublishResponse("my-preset", {
         bundleUrl: `https://cdn.example.com/presets/my-preset/opencode.${TEST_VERSION}.json`,
-      },
+      }),
     });
 
     const result = await publish({
@@ -157,11 +149,12 @@ describe("publish", () => {
 
     expect(result.success).toBeTrue();
     expect(result.preset?.slug).toBe("my-preset");
-    expect(result.preset?.platform).toBe("opencode");
+    expect(result.preset?.variants).toHaveLength(1);
+    expect(result.preset?.variants[0].platform).toBe("opencode");
     expect(result.preset?.title).toBe("Test Preset");
     expect(result.preset?.version).toBe(TEST_VERSION);
     expect(result.preset?.isNewPreset).toBeTrue();
-    expect(result.preset?.bundleUrl).toContain("my-preset");
+    expect(result.preset?.variants[0].bundleUrl).toContain("my-preset");
   });
 
   it("handles API errors gracefully", async () => {
@@ -208,16 +201,7 @@ describe("publish", () => {
     mockFetch({
       url: `${customUrl}${API_ENDPOINTS.presets.base}`,
       method: "POST",
-      response: {
-        presetId: "preset-123",
-        versionId: "version-456",
-        slug: "custom-url-preset",
-        platform: "opencode",
-        title: "Test Preset",
-        version: TEST_VERSION,
-        isNewPreset: true,
-        bundleUrl: "",
-      },
+      response: createPublishResponse("custom-url-preset"),
       onCall: (url) => {
         calledUrl = url;
       },
@@ -238,16 +222,7 @@ describe("publish", () => {
     mockFetch({
       url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
       method: "POST",
-      response: {
-        presetId: "preset-123",
-        versionId: "version-456",
-        slug: "auth-test-preset",
-        platform: "opencode",
-        title: "Test Preset",
-        version: TEST_VERSION,
-        isNewPreset: true,
-        bundleUrl: "",
-      },
+      response: createPublishResponse("auth-test-preset"),
       onCall: (_url, init) => {
         capturedHeaders = init?.headers as Headers | undefined;
       },
@@ -272,16 +247,7 @@ describe("publish", () => {
     mockFetch({
       url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
       method: "POST",
-      response: {
-        presetId: "preset-123",
-        versionId: "version-456",
-        slug: "bundle-test-preset",
-        platform: "opencode",
-        title: "Test Preset",
-        version: TEST_VERSION,
-        isNewPreset: true,
-        bundleUrl: "",
-      },
+      response: createPublishResponse("bundle-test-preset"),
       onCall: (_url, init) => {
         sentBody = JSON.parse(init?.body as string);
       },
@@ -289,26 +255,32 @@ describe("publish", () => {
 
     await publish({ path: presetDir });
 
-    // Verify we sent a bundle directly (not wrapped)
+    // Verify we sent a bundle with variants array
     const bundle = sentBody as {
       name: string; // Client sends name, server builds full slug
-      platform: string;
       version?: number;
-      files: Array<{ path: string; contents: string }>;
+      variants: Array<{
+        platform: string;
+        files: Array<{ path: string; content: string }>;
+      }>;
     };
     expect(bundle).toBeDefined();
 
     // Verify bundle structure (version is optional major, full version assigned by registry)
     expect(bundle.name).toBe("bundle-test-preset");
-    expect(bundle.platform).toBe("opencode");
     expect(bundle.version).toBeUndefined(); // Client doesn't send version by default
-    expect(Array.isArray(bundle.files)).toBeTrue();
-    expect(bundle.files.length).toBeGreaterThan(0);
+    expect(Array.isArray(bundle.variants)).toBeTrue();
+    expect(bundle.variants.length).toBe(1);
+
+    const variant = bundle.variants[0];
+    expect(variant.platform).toBe("opencode");
+    expect(Array.isArray(variant.files)).toBeTrue();
+    expect(variant.files.length).toBeGreaterThan(0);
 
     // Verify file content is included (no config/ prefix in new format)
-    const agentsFile = bundle.files.find((f) => f.path === "AGENTS.md");
+    const agentsFile = variant.files.find((f) => f.path === "AGENTS.md");
     expect(agentsFile).toBeDefined();
-    expect(agentsFile?.contents).toBe("# Test Agent Rules\n");
+    expect(agentsFile?.content).toBe("# Test Agent Rules\n");
   });
 
   it("handles validation errors from API", async () => {
@@ -365,7 +337,7 @@ describe("publish", () => {
       expect(apiCalled).toBeFalse();
       expect(result.preview).toBeDefined();
       expect(result.preview?.slug).toBe("dry-run-preset");
-      expect(result.preview?.platform).toBe("opencode");
+      expect(result.preview?.platforms).toContain("opencode");
       // Version is not in preview - it's assigned by registry on actual publish
       expect(result.preview?.totalSize).toBeGreaterThan(0);
       expect(result.preview?.fileCount).toBeGreaterThan(0);
@@ -410,7 +382,7 @@ describe("publish", () => {
       });
 
       expect(result.success).toBeFalse();
-      expect(result.error).toContain("exceeds maximum size");
+      expect(result.error).toContain("exceed maximum size");
     });
   });
 
@@ -426,16 +398,7 @@ describe("publish", () => {
       mockFetch({
         url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
         method: "POST",
-        response: {
-          presetId: "preset-123",
-          versionId: "version-456",
-          slug: "in-project-preset",
-          platform: "opencode",
-          title: "Test Preset",
-          version: TEST_VERSION,
-          isNewPreset: true,
-          bundleUrl: "",
-        },
+        response: createPublishResponse("in-project-preset"),
       });
 
       const result = await publish({ path: platformDir });
@@ -465,16 +428,7 @@ describe("publish", () => {
       mockFetch({
         url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
         method: "POST",
-        response: {
-          presetId: "preset-123",
-          versionId: "version-456",
-          slug: "metadata-preset",
-          platform: "opencode",
-          title: "Test Preset",
-          version: TEST_VERSION,
-          isNewPreset: true,
-          bundleUrl: "",
-        },
+        response: createPublishResponse("metadata-preset"),
         onCall: (_url, init) => {
           sentBody = JSON.parse(init?.body as string);
         },
@@ -484,12 +438,17 @@ describe("publish", () => {
 
       expect(result.success).toBeTrue();
 
+      // Metadata is now per-variant
       const bundle = sentBody as {
-        readmeContent?: string;
-        installMessage?: string;
+        variants: Array<{
+          readmeContent?: string;
+          installMessage?: string;
+        }>;
       };
-      expect(bundle.readmeContent).toBe("# Preset README");
-      expect(bundle.installMessage).toBe("Installation instructions");
+      expect(bundle.variants[0].readmeContent).toBe("# Preset README");
+      expect(bundle.variants[0].installMessage).toBe(
+        "Installation instructions"
+      );
     });
 
     it("excludes config and .agentrules/ from bundle files", async () => {
@@ -506,16 +465,7 @@ describe("publish", () => {
       mockFetch({
         url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
         method: "POST",
-        response: {
-          presetId: "preset-123",
-          versionId: "version-456",
-          slug: "exclude-test",
-          platform: "opencode",
-          title: "Test Preset",
-          version: TEST_VERSION,
-          isNewPreset: true,
-          bundleUrl: "",
-        },
+        response: createPublishResponse("exclude-test"),
         onCall: (_url, init) => {
           sentBody = JSON.parse(init?.body as string);
         },
@@ -523,8 +473,11 @@ describe("publish", () => {
 
       await publish({ path: platformDir });
 
-      const bundle = sentBody as { files: Array<{ path: string }> };
-      const filePaths = bundle.files.map((f) => f.path);
+      // Files are now inside variants
+      const bundle = sentBody as {
+        variants: Array<{ files: Array<{ path: string }> }>;
+      };
+      const filePaths = bundle.variants[0].files.map((f) => f.path);
 
       // Should include AGENTS.md but not config or metadata
       expect(filePaths).toContain("AGENTS.md");
@@ -534,7 +487,7 @@ describe("publish", () => {
   });
 
   describe("file size validation", () => {
-    it("rejects bundles exceeding maximum size", async () => {
+    it("rejects platform bundles exceeding maximum size", async () => {
       await setupLoggedInContext();
 
       const presetDir = join(testDir, "oversized-preset");
@@ -553,10 +506,10 @@ describe("publish", () => {
       const result = await publish({ path: presetDir });
 
       expect(result.success).toBeFalse();
-      expect(result.error).toContain("exceeds maximum size");
+      expect(result.error).toContain("exceed maximum size");
     });
 
-    it("allows bundles within size limits", async () => {
+    it("allows platform bundles within size limits", async () => {
       await setupLoggedInContext();
 
       const presetDir = await createValidPreset(testDir, "normal-size-preset");
@@ -564,16 +517,7 @@ describe("publish", () => {
       mockFetch({
         url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
         method: "POST",
-        response: {
-          presetId: "preset-123",
-          versionId: "version-456",
-          slug: "normal-size-preset",
-          platform: "opencode",
-          title: "Test Preset",
-          version: TEST_VERSION,
-          isNewPreset: true,
-          bundleUrl: "",
-        },
+        response: createPublishResponse("normal-size-preset"),
       });
 
       const result = await publish({ path: presetDir });
@@ -611,6 +555,26 @@ function mockFetch(options: MockFetchOptions) {
     ((() => Promise.resolve()) as NonNullable<typeof originalFetch.preconnect>);
 
   globalThis.fetch = mockedFetch;
+}
+
+function createPublishResponse(
+  slug: string,
+  overrides: Record<string, unknown> = {}
+) {
+  const bundleUrl =
+    (overrides.bundleUrl as string) ??
+    `https://cdn.example.com/presets/${slug}/opencode.${TEST_VERSION}.json`;
+  return {
+    presetId: "preset-123",
+    versionId: "version-456",
+    slug,
+    title: "Test Preset",
+    version: TEST_VERSION,
+    isNewPreset: true,
+    variants: [{ platform: "opencode", bundleUrl }],
+    url: `https://example.com/presets/${slug}`, // URL structure is registry-defined
+    ...overrides,
+  };
 }
 
 function mockFetchError(message: string) {

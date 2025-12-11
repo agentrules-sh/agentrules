@@ -1,6 +1,5 @@
 import { ZodError } from "zod";
-import type { PlatformId } from "../platform";
-import { type PresetConfig, presetConfigSchema } from "../preset";
+import { presetConfigSchema, type RawPresetConfig } from "../preset";
 
 export function cleanInstallMessage(value: unknown) {
   if (typeof value !== "string") {
@@ -10,14 +9,14 @@ export function cleanInstallMessage(value: unknown) {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
-export function encodeItemName(slug: string, platform: PlatformId) {
-  return `${slug}.${platform}`;
-}
-
+/**
+ * Validate raw preset config from JSON.
+ * Returns the raw config shape (before normalization).
+ */
 export function validatePresetConfig(
   config: unknown,
   slug: string
-): PresetConfig {
+): RawPresetConfig {
   try {
     return presetConfigSchema.parse(config);
   } catch (e) {

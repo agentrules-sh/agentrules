@@ -5,7 +5,7 @@
  * Requires authentication - run `agentrules login` first.
  */
 
-import { deleteRule } from "@/lib/api/rule";
+import { deleteRule } from "@/lib/api/rules";
 import { useAppContext } from "@/lib/context";
 import { log } from "@/lib/log";
 import { ui } from "@/lib/ui";

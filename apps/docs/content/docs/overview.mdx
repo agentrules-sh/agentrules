@@ -3,6 +3,26 @@ title: Get Started
 description: Install presets or publish your own.
 ---
 
+## What is Agent Rules?
+
+Agent Rules is a package manager for AI coding assistant configurations. It lets you:
+
+- **Install** community presets to quickly set up your AI tools
+- **Publish** your own configurations to share with others
+- **Discover** workflows for tools like OpenCode, Claude Code, Cursor, and Codex
+
+### Presets vs Rules
+
+**Presets** are bundles of configuration files — agents, commands, instructions, and tools packaged together. Install a preset to get a complete setup.
+
+**Rules** are single files — one agent, one command, or one instruction. Install a rule when you just need that one piece.
+
+Both are installed the same way:
+
+```bash
+npx @agentrules/cli add <name> --platform <platform>
+```
+
 ## What do you want to do?
 
 <Cards>
@@ -18,19 +38,13 @@ description: Install presets or publish your own.
   />
 </Cards>
 
-## Quick Install
-
-```bash
-npx @agentrules/cli add <preset> --platform <platform>
-```
-
-Browse presets at [agentrules.directory](https://agentrules.directory), find one you like, copy the install command.
-
 ## Supported Platforms
 
-| Platform | Directory |
-|----------|-----------|
-| OpenCode | `.opencode/` |
-| Claude Code | `.claude/` |
-| Cursor | `.cursor/` |
-| Codex | `.codex/` |
+| Platform | ID | Directory |
+|----------|-----|-----------|
+| OpenCode | `opencode` | `.opencode/` |
+| Claude Code | `claude` | `.claude/` |
+| Cursor | `cursor` | `.cursor/` |
+| Codex | `codex` | `.codex/` |
+
+Browse presets at [agentrules.directory](https://agentrules.directory).

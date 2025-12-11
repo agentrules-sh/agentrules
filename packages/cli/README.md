@@ -52,7 +52,7 @@ agentrules add agentic-dev-starter --platform opencode --global
 agentrules add agentic-dev-starter --platform opencode --version 1.0
 
 # Version can also be specified with @ syntax
-agentrules add agentic-dev-starter.opencode@1.0
+agentrules add agentic-dev-starter@1.0 --platform opencode
 
 # Preview what would be installed
 agentrules add agentic-dev-starter --platform opencode --dry-run
@@ -120,7 +120,7 @@ After running `init`, your preset structure is:
 | `license` | Yes | SPDX license identifier (e.g., `MIT`) |
 | `platform` | Yes | Target platform: `opencode`, `claude`, `cursor`, `codex` |
 | `version` | No | Major version (default: 1) |
-| `tags` | No | Up to 10 tags for discoverability |
+| `tags` | Yes | 1-10 tags for discoverability |
 | `features` | No | Up to 5 key features to highlight |
 | `ignore` | No | Additional patterns to exclude from bundle |
 
@@ -219,13 +219,10 @@ agentrules unpublish <preset> [options]
 **Examples:**
 
 ```bash
-# Full format: slug.platform@version
-agentrules unpublish my-preset.opencode@1.0
-
 # With flags
 agentrules unpublish my-preset --platform opencode --version 1.0
 
-# Mixed: version in string, platform as flag
+# Version can be specified with @ syntax
 agentrules unpublish my-preset@1.0 --platform opencode
 ```
 

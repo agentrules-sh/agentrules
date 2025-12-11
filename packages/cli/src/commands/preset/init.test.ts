@@ -30,7 +30,7 @@ describe("initPreset", () => {
     expect(result.preset.title).toBe("My Preset");
     expect(result.preset.version).toBe(1);
     expect(result.preset.license).toBe("MIT"); // Default license
-    expect(result.preset.platform).toBe("opencode"); // Inferred from dir name
+    expect(result.preset.platforms).toEqual(["opencode"]); // Inferred from dir name
 
     const content = await readFile(result.configPath, "utf8");
     const parsed = JSON.parse(content);
@@ -69,7 +69,7 @@ describe("initPreset", () => {
     expect(result.preset.name).toBe("custom-name");
     expect(result.preset.title).toBe("Custom Title");
     expect(result.preset.description).toBe("Custom description");
-    expect(result.preset.platform).toBe("claude");
+    expect(result.preset.platforms).toEqual(["claude"]);
     expect(result.preset.license).toBe("MIT");
   });
 
@@ -132,7 +132,7 @@ describe("initPreset", () => {
     const result = await initPreset({ directory: claudeDir });
 
     // Platform should be inferred from directory name
-    expect(result.preset.platform).toBe("claude");
+    expect(result.preset.platforms).toEqual(["claude"]);
   });
 
   it("does not set createdDir when directory already exists", async () => {

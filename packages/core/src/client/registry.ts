@@ -1,67 +1,9 @@
-import { API_ENDPOINTS, LATEST_VERSION } from "../constants";
-import type { PlatformId } from "../platform";
-import type { Preset, PresetBundle } from "../preset";
+import { API_ENDPOINTS } from "../constants";
+import type { PresetBundle } from "../preset";
+import type { ResolveResponse } from "../resolve";
 
 /**
- * Resolved preset with absolute bundle URL
- */
-export type ResolvedPreset = {
-  preset: Preset;
-  bundleUrl: string;
-};
-
-/**
- * Resolves a preset from the registry via API endpoint.
- * Returns the entry metadata and the absolute bundle URL.
- *
- * @param baseUrl - Registry base URL
- * @param slug - Preset slug
- * @param platform - Target platform
- * @param version - Version to resolve (defaults to "latest")
- */
-export async function resolvePreset(
-  baseUrl: string,
-  slug: string,
-  platform: PlatformId,
-  version: string = LATEST_VERSION
-): Promise<ResolvedPreset> {
-  const apiUrl = new URL(
-    API_ENDPOINTS.presets.get(slug, platform, version),
-    baseUrl
-  );
-
-  const response = await fetch(apiUrl);
-
-  if (!response.ok) {
-    if (response.status === 404) {
-      const versionInfo =
-        version === LATEST_VERSION ? "" : ` version "${version}"`;
-      throw new Error(
-        `Preset "${slug}"${versionInfo} for platform "${platform}" was not found in the registry.`
-      );
-    }
-    throw new Error(
-      `Failed to resolve preset (${response.status} ${response.statusText}).`
-    );
-  }
-
-  try {
-    const preset = (await response.json()) as ResolvedPreset["preset"];
-    // Resolve bundleUrl against registry base (handles both relative and absolute URLs)
-    const resolvedBundleUrl = new URL(preset.bundleUrl, baseUrl).toString();
-    return {
-      preset,
-      bundleUrl: resolvedBundleUrl,
-    };
-  } catch (error) {
-    throw new Error(
-      `Unable to parse preset response: ${(error as Error).message}`
-    );
-  }
-}
-
-/**
- * Fetches a bundle from an absolute URL or resolves it relative to the registry.
+ * Fetches a bundle from an absolute URL.
  */
 export async function fetchBundle(bundleUrl: string): Promise<PresetBundle> {
   const response = await fetch(bundleUrl);
@@ -77,4 +19,74 @@ export async function fetchBundle(bundleUrl: string): Promise<PresetBundle> {
   } catch (error) {
     throw new Error(`Unable to parse bundle JSON: ${(error as Error).message}`);
   }
+}
+
+// =============================================================================
+// Unified Resolution
+// =============================================================================
+
+/**
+ * Resolves a slug to get all versions and platform variants.
+ *
+ * @param baseUrl - Registry base URL
+ * @param slug - Content slug (may contain slashes, e.g., "username/my-preset")
+ * @param version - Optional version filter (server may ignore for static registries)
+ * @returns Resolved data, or null if not found
+ * @throws Error on network/server errors
+ */
+export async function resolveSlug(
+  baseUrl: string,
+  slug: string,
+  version?: string
+): Promise<ResolveResponse | null> {
+  const url = new URL(API_ENDPOINTS.items.get(slug), baseUrl);
+  if (version) {
+    url.searchParams.set("version", version);
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(url);
+  } catch (error) {
+    throw new Error(
+      `Failed to connect to registry: ${(error as Error).message}`
+    );
+  }
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    let errorMessage = `Registry returned ${response.status} ${response.statusText}`;
+    try {
+      const body: unknown = await response.json();
+      if (
+        body &&
+        typeof body === "object" &&
+        "error" in body &&
+        typeof body.error === "string"
+      ) {
+        errorMessage = body.error;
+      }
+    } catch {
+      // Ignore JSON parse errors, use default message
+    }
+    throw new Error(errorMessage);
+  }
+
+  const data = (await response.json()) as ResolveResponse;
+
+  // Resolve relative bundle URLs to absolute URLs
+  if (data.kind === "preset") {
+    for (const ver of data.versions) {
+      for (const variant of ver.variants) {
+        if ("bundleUrl" in variant) {
+          variant.bundleUrl = new URL(variant.bundleUrl, baseUrl).toString();
+        }
+      }
+    }
+  }
+
+  return data;
 }

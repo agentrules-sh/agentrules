@@ -19,9 +19,8 @@ const VALID_CONFIG = {
   title: "Test Preset",
   description: "A test preset",
   license: "MIT",
-  platform: "opencode",
+  platforms: [{ platform: "opencode", path: "files" }],
   tags: ["test"],
-  path: "files",
 };
 
 /**
@@ -98,7 +97,7 @@ describe("buildRegistry", () => {
     });
 
     expect(result.presets).toBe(1);
-    expect(result.entries).toBe(1);
+    expect(result.items).toBe(1);
     expect(result.bundles).toBe(1);
     expect(result.outputDir).toBe(outputDir);
 
@@ -113,15 +112,18 @@ describe("buildRegistry", () => {
     const bundle = JSON.parse(bundleContent);
     expect(bundle.files).toHaveLength(2);
 
-    // Check API entry exists (now versioned)
-    const apiEntryContent = await readFile(
-      join(outputDir, API_ENDPOINTS.presets.get("test-preset", "opencode")),
+    // Check API item file exists (one file per slug with all versions/variants)
+    const apiItemContent = await readFile(
+      join(outputDir, API_ENDPOINTS.items.get("test-preset")),
       "utf8"
     );
-    const apiEntry = JSON.parse(apiEntryContent);
-    expect(apiEntry.slug).toBe("test-preset");
-    // bundleUrl now includes version
-    expect(apiEntry.bundleUrl).toBe(
+    const apiItem = JSON.parse(apiItemContent);
+    expect(apiItem.slug).toBe("test-preset");
+    expect(apiItem.kind).toBe("preset");
+    expect(apiItem.versions).toHaveLength(1);
+    expect(apiItem.versions[0].variants).toHaveLength(1);
+    // bundleUrl is on the variant
+    expect(apiItem.versions[0].variants[0].bundleUrl).toBe(
       `${STATIC_BUNDLE_DIR}/test-preset/opencode/1.0`
     );
 
@@ -136,15 +138,6 @@ describe("buildRegistry", () => {
     );
     expect(registry.items).toHaveLength(1);
     expect(registry.items[0].slug).toBe("test-preset");
-
-    // Check registry.index.json exists with name → entry mapping
-    const indexContent = await readFile(
-      join(outputDir, "registry.index.json"),
-      "utf8"
-    );
-    const index = JSON.parse(indexContent);
-    expect(index["test-preset.opencode"]).toBeDefined();
-    expect(index["test-preset.opencode"].slug).toBe("test-preset");
   });
 
   it("validates without writing when --validate-only", async () => {
@@ -211,7 +204,7 @@ describe("buildRegistry", () => {
     });
 
     const content = await readFile(
-      join(outputDir, API_ENDPOINTS.presets.get("test-preset", "opencode")),
+      join(outputDir, API_ENDPOINTS.items.get("test-preset")),
       "utf8"
     );
     expect(content).not.toContain("\n  ");
@@ -229,12 +222,12 @@ describe("buildRegistry", () => {
     });
 
     const content = await readFile(
-      join(outputDir, API_ENDPOINTS.presets.get("test-preset", "opencode")),
+      join(outputDir, API_ENDPOINTS.items.get("test-preset")),
       "utf8"
     );
-    const entry = JSON.parse(content);
+    const item = JSON.parse(content);
     // bundleBase + STATIC_BUNDLE_DIR + slug/platform/version
-    expect(entry.bundleUrl).toBe(
+    expect(item.versions[0].variants[0].bundleUrl).toBe(
       `my-registry/${STATIC_BUNDLE_DIR}/test-preset/opencode/1.0`
     );
   });
@@ -251,12 +244,12 @@ describe("buildRegistry", () => {
     });
 
     const content = await readFile(
-      join(outputDir, API_ENDPOINTS.presets.get("test-preset", "opencode")),
+      join(outputDir, API_ENDPOINTS.items.get("test-preset")),
       "utf8"
     );
-    const entry = JSON.parse(content);
+    const item = JSON.parse(content);
     // bundleBase + STATIC_BUNDLE_DIR + slug/platform/version
-    expect(entry.bundleUrl).toBe(
+    expect(item.versions[0].variants[0].bundleUrl).toBe(
       `https://cdn.example.com/bundles/${STATIC_BUNDLE_DIR}/test-preset/opencode/1.0`
     );
   });
@@ -283,7 +276,7 @@ describe("buildRegistry", () => {
     });
 
     expect(result.presets).toBe(2);
-    expect(result.entries).toBe(2);
+    expect(result.items).toBe(2);
 
     // Verify registry.json contains all presets
     const registryContent = await readFile(
@@ -292,15 +285,6 @@ describe("buildRegistry", () => {
     );
     const registry = JSON.parse(registryContent);
     expect(registry.items).toHaveLength(2);
-
-    // Verify registry.index.json contains all presets
-    const indexContent = await readFile(
-      join(outputDir, "registry.index.json"),
-      "utf8"
-    );
-    const index = JSON.parse(indexContent);
-    expect(index["preset-a.opencode"]).toBeDefined();
-    expect(index["preset-b.opencode"]).toBeDefined();
   });
 
   describe("README.md support", () => {

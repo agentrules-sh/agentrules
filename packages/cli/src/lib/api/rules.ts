@@ -1,7 +1,7 @@
 /**
  * Registry API - Rule Endpoints
  *
- * Create, update, and fetch rules from the registry.
+ * Publish and delete rules from the registry.
  */
 
 import { API_ENDPOINTS } from "@agentrules/core";
@@ -28,7 +28,10 @@ export type RuleResponse = {
   content: string;
   tags: string[];
   authorId: string;
-  publishedAt: string;
+  /** Whether this was a new rule (true) or an update (false) */
+  isNew: boolean;
+  /** URL to the rule page on the registry */
+  url: string;
 };
 
 export type ErrorResponse = {
@@ -36,16 +39,20 @@ export type ErrorResponse = {
   issues?: Array<{ path: string; message: string }>;
 };
 
-export type CreateRuleResult =
+export type PublishRuleResult =
   | { success: true; data: RuleResponse }
   | { success: false; error: string; issues?: ErrorResponse["issues"] };
 
-export async function createRule(
+/**
+ * Publish a rule (create or update).
+ * The registry handles create vs update automatically.
+ */
+export async function publishRule(
   baseUrl: string,
   token: string,
   input: RuleInput
-): Promise<CreateRuleResult> {
-  const url = `${baseUrl}${API_ENDPOINTS.rule.base}`;
+): Promise<PublishRuleResult> {
+  const url = `${baseUrl}${API_ENDPOINTS.rules.base}`;
 
   log.debug(`POST ${url}`);
 
@@ -80,86 +87,6 @@ export async function createRule(
   }
 }
 
-export type UpdateRuleResult =
-  | { success: true; data: RuleResponse }
-  | { success: false; error: string; issues?: ErrorResponse["issues"] };
-
-export async function updateRule(
-  baseUrl: string,
-  token: string,
-  slug: string,
-  input: Partial<Omit<RuleInput, "name" | "platform" | "type">>
-): Promise<UpdateRuleResult> {
-  const url = `${baseUrl}${API_ENDPOINTS.rule.get(slug)}`;
-
-  log.debug(`PUT ${url}`);
-
-  try {
-    const response = await fetch(url, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(input),
-    });
-
-    log.debug(`Response status: ${response.status}`);
-
-    if (!response.ok) {
-      const errorData = (await response.json()) as ErrorResponse;
-      return {
-        success: false,
-        error: errorData.error || `HTTP ${response.status}`,
-        issues: errorData.issues,
-      };
-    }
-
-    const data = (await response.json()) as RuleResponse;
-    return { success: true, data };
-  } catch (error) {
-    return {
-      success: false,
-      error: `Failed to connect to registry: ${getErrorMessage(error)}`,
-    };
-  }
-}
-
-export type GetRuleResult =
-  | { success: true; data: RuleResponse }
-  | { success: false; error: string };
-
-export async function getRule(
-  baseUrl: string,
-  slug: string
-): Promise<GetRuleResult> {
-  const url = `${baseUrl}${API_ENDPOINTS.rule.get(slug)}`;
-
-  log.debug(`GET ${url}`);
-
-  try {
-    const response = await fetch(url);
-
-    log.debug(`Response status: ${response.status}`);
-
-    if (!response.ok) {
-      const errorData = (await response.json()) as ErrorResponse;
-      return {
-        success: false,
-        error: errorData.error || `HTTP ${response.status}`,
-      };
-    }
-
-    const data = (await response.json()) as RuleResponse;
-    return { success: true, data };
-  } catch (error) {
-    return {
-      success: false,
-      error: `Failed to connect to registry: ${getErrorMessage(error)}`,
-    };
-  }
-}
-
 export type DeleteRuleResponse = {
   slug: string;
 };
@@ -173,7 +100,7 @@ export async function deleteRule(
   token: string,
   slug: string
 ): Promise<DeleteRuleResult> {
-  const url = `${baseUrl}${API_ENDPOINTS.rule.get(slug)}`;
+  const url = `${baseUrl}${API_ENDPOINTS.rules.bySlug(slug)}`;
 
   log.debug(`DELETE ${url}`);
 

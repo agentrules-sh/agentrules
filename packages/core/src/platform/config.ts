@@ -138,8 +138,8 @@ export const PLATFORMS = {
 export const PLATFORM_RULE_TYPES = {
   opencode: ["instruction", "command", "agent", "tool"],
   claude: ["instruction", "command", "skill"],
-  cursor: ["instruction", "command", "rule"],
   codex: ["instruction", "command"],
+  cursor: ["instruction", "command", "rule"],
 } as const satisfies Record<PlatformId, readonly string[]>;
 
 /** Get valid rule types for a specific platform */

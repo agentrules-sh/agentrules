@@ -1,0 +1,94 @@
+---
+title: Sharing Rules
+description: Share individual agents, commands, and instructions.
+---
+
+Rules are single configuration files — one agent, one command, or one instruction. Unlike presets (which bundle multiple files), rules let you share just one piece of your workflow.
+
+To share a bundle of files, see [Publishing Presets](/publishing) instead.
+
+## Sharing a Rule
+
+Use the `share` command to publish a single file:
+
+```bash
+npx @agentrules/cli share ./my-agent.md \
+  --name my-agent \
+  --platform opencode \
+  --type agent \
+  --title "My Agent" \
+  --tags "typescript,testing"
+```
+
+Or provide the content directly:
+
+```bash
+npx @agentrules/cli share \
+  --name my-agent \
+  --platform opencode \
+  --type agent \
+  --title "My Agent" \
+  --tags "typescript,testing" \
+  --content "You are a helpful coding assistant..."
+```
+
+## Required Options
+
+| Option | Description |
+|--------|-------------|
+| `--name` | URL-safe identifier (lowercase, hyphens) |
+| `--platform` | Target platform: `opencode`, `claude`, `cursor`, `codex` |
+| `--type` | Rule type (see below) |
+| `--title` | Display name |
+| `--tags` | Comma-separated tags for discoverability |
+| `[file]` or `--content` | The rule content (file path or inline) |
+
+## Optional
+
+| Option | Description |
+|--------|-------------|
+| `--description` | Short description of what this rule does |
+
+## Rule Types by Platform
+
+Each platform supports different rule types:
+
+| Platform | Rule Types |
+|----------|------------|
+| OpenCode | `instruction`, `command`, `agent`, `tool` |
+| Claude | `instruction`, `command`, `skill` |
+| Cursor | `instruction`, `command`, `rule` |
+| Codex | `instruction`, `command` |
+
+## Installing Rules
+
+Rules are installed the same way as presets:
+
+```bash
+npx @agentrules/cli add my-agent --platform opencode
+```
+
+The CLI automatically installs the file to the correct location for that platform and rule type.
+
+## Updating a Rule
+
+Run `share` again with the same name — it updates the existing rule:
+
+```bash
+npx @agentrules/cli share ./my-agent.md \
+  --name my-agent \
+  --platform opencode \
+  --type agent \
+  --title "My Agent (Updated)" \
+  --tags "typescript,testing,new-tag"
+```
+
+## Removing a Rule
+
+Use `unshare` to remove a rule from the registry:
+
+```bash
+npx @agentrules/cli unshare my-agent
+```
+
+This removes the rule so it can no longer be installed by others.

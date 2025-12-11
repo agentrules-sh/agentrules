@@ -75,7 +75,7 @@ describe("unshare", () => {
       await setupLoggedInContext();
 
       mockFetch({
-        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get("my-rule")}`,
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.bySlug("my-rule")}`,
         method: "DELETE",
         response: { slug: "my-rule" },
       });
@@ -91,7 +91,7 @@ describe("unshare", () => {
 
       let capturedUrl = "";
       mockFetch({
-        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get("my-rule")}`,
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.bySlug("my-rule")}`,
         method: "DELETE",
         response: { slug: "my-rule" },
         onCall: (url) => {
@@ -109,7 +109,7 @@ describe("unshare", () => {
 
       let capturedHeaders: Headers | Record<string, string> | undefined;
       mockFetch({
-        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get("auth-test")}`,
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.bySlug("auth-test")}`,
         method: "DELETE",
         response: { slug: "auth-test" },
         onCall: (_url, init) => {
@@ -135,7 +135,7 @@ describe("unshare", () => {
       await setupLoggedInContext();
 
       mockFetch({
-        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get("nonexistent")}`,
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.bySlug("nonexistent")}`,
         method: "DELETE",
         status: 404,
         response: { error: "Rule not found" },
@@ -151,7 +151,7 @@ describe("unshare", () => {
       await setupLoggedInContext();
 
       mockFetch({
-        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get("not-mine")}`,
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.bySlug("not-mine")}`,
         method: "DELETE",
         status: 403,
         response: { error: "You can only unpublish your own rules" },
@@ -178,7 +178,7 @@ describe("unshare", () => {
       await setupLoggedInContext();
 
       mockFetch({
-        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get("error-rule")}`,
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.bySlug("error-rule")}`,
         method: "DELETE",
         status: 500,
         response: { error: "Internal server error" },

@@ -56,22 +56,11 @@ describe("unpublish", () => {
     expect(result.error).toContain("slug is required");
   });
 
-  it("fails when platform is not specified", async () => {
-    await setupLoggedInContext();
-
-    const result = await unpublish({
-      preset: "my-preset@1.0",
-    });
-
-    expect(result.success).toBeFalse();
-    expect(result.error).toContain("Platform is required");
-  });
-
   it("fails when version is not specified", async () => {
     await setupLoggedInContext();
 
     const result = await unpublish({
-      preset: "my-preset.opencode",
+      preset: "my-preset",
     });
 
     expect(result.success).toBeFalse();
@@ -82,82 +71,74 @@ describe("unpublish", () => {
     await setupLoggedOutContext();
 
     const result = await unpublish({
-      preset: "my-preset.opencode@1.0",
+      preset: "my-preset@1.0",
     });
 
     expect(result.success).toBeFalse();
     expect(result.error).toContain("Not logged in");
   });
 
-  it("unpublishes a preset using full format (slug.platform@version)", async () => {
+  it("unpublishes a preset using full format (slug@version)", async () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("my-preset", "opencode", "1.0")}`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("my-preset", "1.0")}`,
       method: "DELETE",
       response: {
         slug: "my-preset",
-        platform: "opencode",
         version: "1.0",
       },
     });
 
     const result = await unpublish({
-      preset: "my-preset.opencode@1.0",
+      preset: "my-preset@1.0",
     });
 
     expect(result.success).toBeTrue();
     expect(result.preset?.slug).toBe("my-preset");
-    expect(result.preset?.platform).toBe("opencode");
     expect(result.preset?.version).toBe("1.0");
   });
 
-  it("unpublishes using --platform and --version flags", async () => {
+  it("unpublishes using --version flag", async () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("my-preset", "claude", "2.0")}`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("my-preset", "2.0")}`,
       method: "DELETE",
       response: {
         slug: "my-preset",
-        platform: "claude",
         version: "2.0",
       },
     });
 
     const result = await unpublish({
       preset: "my-preset",
-      platform: "claude",
       version: "2.0",
     });
 
     expect(result.success).toBeTrue();
-    expect(result.preset?.platform).toBe("claude");
     expect(result.preset?.version).toBe("2.0");
   });
 
-  it("flags override values in preset string", async () => {
+  it("--version flag overrides version in preset string", async () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("my-preset", "cursor", "3.0")}`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("my-preset", "3.0")}`,
       method: "DELETE",
       response: {
         slug: "my-preset",
-        platform: "cursor",
         version: "3.0",
       },
     });
 
-    // preset string has claude@1.0, but flags override to cursor@3.0
+    // preset string has @1.0, but flag overrides to 3.0
     const result = await unpublish({
-      preset: "my-preset.claude@1.0",
-      platform: "cursor",
+      preset: "my-preset@1.0",
       version: "3.0",
     });
 
     expect(result.success).toBeTrue();
-    expect(result.preset?.platform).toBe("cursor");
     expect(result.preset?.version).toBe("3.0");
   });
 
@@ -165,40 +146,40 @@ describe("unpublish", () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("nonexistent", "opencode", "1.0")}`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("nonexistent", "1.0")}`,
       method: "DELETE",
       status: 404,
       response: {
-        error: "not_found",
+        error: "Preset not found",
       },
     });
 
     const result = await unpublish({
-      preset: "nonexistent.opencode@1.0",
+      preset: "nonexistent@1.0",
     });
 
     expect(result.success).toBeFalse();
-    expect(result.error).toContain("not_found");
+    expect(result.error).toContain("not found");
   });
 
   it("handles 403 errors for unauthorized unpublish", async () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("not-yours", "opencode", "1.0")}`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("not-yours", "1.0")}`,
       method: "DELETE",
       status: 403,
       response: {
-        error: "forbidden",
+        error: "You do not have permission to unpublish this preset",
       },
     });
 
     const result = await unpublish({
-      preset: "not-yours.opencode@1.0",
+      preset: "not-yours@1.0",
     });
 
     expect(result.success).toBeFalse();
-    expect(result.error).toContain("forbidden");
+    expect(result.error).toContain("permission");
   });
 
   it("handles network errors", async () => {
@@ -207,7 +188,7 @@ describe("unpublish", () => {
     mockFetchError("Connection refused");
 
     const result = await unpublish({
-      preset: "my-preset.opencode@1.0",
+      preset: "my-preset@1.0",
     });
 
     expect(result.success).toBeFalse();
@@ -221,11 +202,10 @@ describe("unpublish", () => {
 
     let calledUrl = "";
     mockFetch({
-      url: `${customUrl}${API_ENDPOINTS.presets.unpublish("custom-preset", "opencode", "1.0")}`,
+      url: `${customUrl}${API_ENDPOINTS.presets.unpublish("custom-preset", "1.0")}`,
       method: "DELETE",
       response: {
         slug: "custom-preset",
-        platform: "opencode",
         version: "1.0",
       },
       onCall: (url) => {
@@ -234,7 +214,7 @@ describe("unpublish", () => {
     });
 
     const result = await unpublish({
-      preset: "custom-preset.opencode@1.0",
+      preset: "custom-preset@1.0",
     });
 
     expect(result.success).toBeTrue();
@@ -246,11 +226,10 @@ describe("unpublish", () => {
 
     let capturedHeaders: Headers | Record<string, string> | undefined;
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("auth-test", "opencode", "1.0")}`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("auth-test", "1.0")}`,
       method: "DELETE",
       response: {
         slug: "auth-test",
-        platform: "opencode",
         version: "1.0",
       },
       onCall: (_url, init) => {
@@ -262,7 +241,7 @@ describe("unpublish", () => {
     });
 
     await unpublish({
-      preset: "auth-test.opencode@1.0",
+      preset: "auth-test@1.0",
     });
 
     const authHeader =
@@ -276,20 +255,20 @@ describe("unpublish", () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("error-preset", "opencode", "1.0")}`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("error-preset", "1.0")}`,
       method: "DELETE",
       status: 500,
       response: {
-        error: "internal_error",
+        error: "Internal server error",
       },
     });
 
     const result = await unpublish({
-      preset: "error-preset.opencode@1.0",
+      preset: "error-preset@1.0",
     });
 
     expect(result.success).toBeFalse();
-    expect(result.error).toContain("internal_error");
+    expect(result.error).toContain("Internal server error");
   });
 
   it("passes namespaced slugs through as path segments", async () => {
@@ -297,11 +276,10 @@ describe("unpublish", () => {
 
     let calledUrl = "";
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("my/slug", "opencode", "1.0")}`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("username/my-preset", "1.0")}`,
       method: "DELETE",
       response: {
-        slug: "my/slug",
-        platform: "opencode",
+        slug: "username/my-preset",
         version: "1.0",
       },
       onCall: (url) => {
@@ -309,16 +287,13 @@ describe("unpublish", () => {
       },
     });
 
-    // Use flags for this since my/slug.opencode would parse weirdly
     const result = await unpublish({
-      preset: "my/slug",
-      platform: "opencode",
-      version: "1.0",
+      preset: "username/my-preset@1.0",
     });
 
     expect(result.success).toBeTrue();
     // Slug is NOT encoded - slashes flow through as path segments
-    expect(calledUrl).toContain("my/slug");
+    expect(calledUrl).toContain("username/my-preset");
   });
 });
 

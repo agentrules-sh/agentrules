@@ -3,18 +3,13 @@ title: Options
 description: Version pinning, global installs, conflicts, and more.
 ---
 
-## Platform Shorthand
+## Platform Flag
 
-The `--platform` flag can be shortened to `-p`:
+Use the `--platform` (or `-p`) flag to specify the target platform:
 
 ```bash
+npx @agentrules/cli add my-preset --platform opencode
 npx @agentrules/cli add my-preset -p opencode
-```
-
-Or specify the platform in the preset name using dot notation:
-
-```bash
-npx @agentrules/cli add my-preset.opencode
 ```
 
 ## Installing a Specific Version
@@ -26,7 +21,7 @@ Presets use `MAJOR.MINOR` versioning. By default, the latest version is installe
 npx @agentrules/cli add my-preset -p opencode --version 1.0
 
 # Or use @ syntax
-npx @agentrules/cli add my-preset.opencode@1.0
+npx @agentrules/cli add my-preset@1.0 -p opencode
 ```
 
 ## Global vs Project Install
@@ -34,10 +29,10 @@ npx @agentrules/cli add my-preset.opencode@1.0
 By default, presets install to your current project directory.
 
 ```bash
-# Project install (default) → .opencode/
+# Project install (default) - writes to .opencode/
 npx @agentrules/cli add my-preset -p opencode
 
-# Global install → ~/.config/opencode
+# Global install - writes to ~/.config/opencode
 npx @agentrules/cli add my-preset -p opencode --global
 ```
 
@@ -104,6 +99,7 @@ npx @agentrules/cli registry use company
 | `--dir` | Install to a custom directory |
 | `-r, --registry` | Use a specific registry |
 | `-f, --force` | Overwrite existing files (backs up to `.bak`) |
+| `-y, --yes` | Alias for `--force` |
 | `--no-backup` | Don't backup when using `--force` |
 | `--dry-run` | Preview without writing |
-| `--skip-conflicts` | Skip files that already exist |
+| `--skip-conflicts` | Skip files that already exist (presets only) |

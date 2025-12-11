@@ -1,4 +1,3 @@
-import { LATEST_VERSION } from "../constants";
 import {
   isSupportedPlatform,
   PLATFORM_IDS,
@@ -6,19 +5,15 @@ import {
 } from "../platform";
 import type {
   BundledFile,
-  Preset,
   PresetBundle,
   PresetFileInput,
-  PresetIndex,
   PresetInput,
   PresetPublishInput,
+  PublishVariantInput,
 } from "../preset";
+import type { PresetVariant, ResolvedPreset } from "../resolve";
 import { toPosixPath } from "../utils/encoding";
-import {
-  cleanInstallMessage,
-  encodeItemName,
-  validatePresetConfig,
-} from "./utils";
+import { cleanInstallMessage, validatePresetConfig } from "./utils";
 
 const NAME_PATTERN = /^[a-z0-9-]+$/;
 
@@ -38,9 +33,10 @@ async function sha256(data: Uint8Array): Promise<string> {
 }
 
 /**
- * Options for building a PresetPublishInput (for CLI publish command).
+ * Options for building a PresetPublishInput.
  */
 export type BuildPresetPublishInputOptions = {
+  /** Preset input (single or multi-platform) */
   preset: PresetInput;
   /** Major version. Defaults to 1 if not specified. */
   version?: number;
@@ -48,53 +44,85 @@ export type BuildPresetPublishInputOptions = {
 
 /**
  * Builds a PresetPublishInput from preset input.
- * Used by CLI to prepare data for publishing to a registry.
+ *
+ * PresetInput always has platformFiles array (unified format).
  */
 export async function buildPresetPublishInput(
   options: BuildPresetPublishInputOptions
 ): Promise<PresetPublishInput> {
-  const { preset: presetInput, version } = options;
+  const { preset, version } = options;
 
-  if (!NAME_PATTERN.test(presetInput.name)) {
+  if (!NAME_PATTERN.test(preset.name)) {
     throw new Error(
-      `Invalid name "${presetInput.name}". Names must be lowercase kebab-case.`
+      `Invalid name "${preset.name}". Names must be lowercase kebab-case.`
     );
   }
 
-  const presetConfig = validatePresetConfig(
-    presetInput.config,
-    presetInput.name
-  );
-
-  const platform = presetConfig.platform;
-  ensureKnownPlatform(platform, presetInput.name);
-
-  if (presetInput.files.length === 0) {
-    throw new Error(`Preset ${presetInput.name} does not include any files.`);
-  }
-
-  const files = await createBundledFilesFromInputs(presetInput.files);
-  const installMessage = cleanInstallMessage(presetInput.installMessage);
-  const features = presetConfig.features ?? [];
-
-  const readmeContent = presetInput.readmeContent?.trim() || undefined;
-  const licenseContent = presetInput.licenseContent?.trim() || undefined;
+  const config = validatePresetConfig(preset.config, preset.name);
 
   // Use CLI version if provided, otherwise fall back to config version
-  const majorVersion = version ?? presetConfig.version;
+  const majorVersion = version ?? config.version;
+
+  // Validate platforms
+  const platforms = preset.config.platforms;
+  if (platforms.length === 0) {
+    throw new Error(
+      `Preset ${preset.name} must specify at least one platform.`
+    );
+  }
+
+  for (const entry of platforms) {
+    ensureKnownPlatform(entry.platform, preset.name);
+  }
+
+  // Build variants from platformFiles
+  const variants: PublishVariantInput[] = [];
+
+  for (const entry of platforms) {
+    const platformData = preset.platformFiles.find(
+      (pf) => pf.platform === entry.platform
+    );
+
+    if (!platformData) {
+      throw new Error(
+        `Preset ${preset.name} is missing files for platform "${entry.platform}".`
+      );
+    }
+
+    if (platformData.files.length === 0) {
+      throw new Error(
+        `Preset ${preset.name} has no files for platform "${entry.platform}".`
+      );
+    }
+
+    const files = await createBundledFilesFromInputs(platformData.files);
+
+    // Use platform-specific metadata, fall back to shared
+    variants.push({
+      platform: entry.platform,
+      files,
+      readmeContent:
+        platformData.readmeContent?.trim() ||
+        preset.readmeContent?.trim() ||
+        undefined,
+      licenseContent:
+        platformData.licenseContent?.trim() ||
+        preset.licenseContent?.trim() ||
+        undefined,
+      installMessage:
+        cleanInstallMessage(platformData.installMessage) ||
+        cleanInstallMessage(preset.installMessage),
+    });
+  }
 
   return {
-    name: presetInput.name,
-    platform,
-    title: presetConfig.title,
-    description: presetConfig.description,
-    tags: presetConfig.tags ?? [],
-    license: presetConfig.license,
-    licenseContent,
-    readmeContent,
-    features,
-    installMessage,
-    files,
+    name: preset.name,
+    title: config.title,
+    description: config.description,
+    tags: config.tags ?? [],
+    license: config.license,
+    features: config.features ?? [],
+    variants,
     ...(majorVersion !== undefined && { version: majorVersion }),
   };
 }
@@ -103,147 +131,152 @@ export async function buildPresetPublishInput(
  * Options for building a static registry.
  */
 export type BuildPresetRegistryOptions = {
+  /** Presets to include (single or multi-platform) */
   presets: PresetInput[];
   /**
    * Optional base path or URL prefix for bundle locations.
-   * Format: {bundleBase}/{STATIC_BUNDLE_DIR}/{slug}/{platform}
+   * Format: {bundleBase}/{STATIC_BUNDLE_DIR}/{slug}/{platform}/{version}
    * Default: no prefix (bundleUrl starts with STATIC_BUNDLE_DIR)
    */
   bundleBase?: string;
 };
 
 export type BuildPresetRegistryResult = {
-  entries: Preset[];
-  index: PresetIndex;
+  /** Resolved presets in the unified format (one per slug with all versions/variants) */
+  items: ResolvedPreset[];
+  /** Bundles for each platform variant (used to write individual bundle files) */
   bundles: PresetBundle[];
 };
 
 /**
- * Builds a static registry with entries, index, and bundles.
- * Used for building static registry files (e.g., community-presets).
- * Each preset uses its version from config (default: major 1, minor 0).
+ * Builds a static registry with items and bundles.
+ *
+ * Uses the same model as dynamic publishing:
+ * - Each PresetInput (single or multi-platform) becomes one item
+ * - Each platform variant becomes one bundle
  */
 export async function buildPresetRegistry(
   options: BuildPresetRegistryOptions
 ): Promise<BuildPresetRegistryResult> {
   const bundleBase = normalizeBundleBase(options.bundleBase);
-  const entries: Preset[] = [];
+  const items: ResolvedPreset[] = [];
   const bundles: PresetBundle[] = [];
 
   for (const presetInput of options.presets) {
-    if (!NAME_PATTERN.test(presetInput.name)) {
-      throw new Error(
-        `Invalid name "${presetInput.name}". Names must be lowercase kebab-case.`
-      );
-    }
-
-    const presetConfig = validatePresetConfig(
-      presetInput.config,
-      presetInput.name
-    );
-
-    const platform = presetConfig.platform;
-    ensureKnownPlatform(platform, presetInput.name);
-
-    if (presetInput.files.length === 0) {
-      throw new Error(`Preset ${presetInput.name} does not include any files.`);
-    }
-
-    const files = await createBundledFilesFromInputs(presetInput.files);
-    const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-    const installMessage = cleanInstallMessage(presetInput.installMessage);
-    const features = presetConfig.features ?? [];
-
-    const readmeContent = presetInput.readmeContent?.trim() || undefined;
-    const licenseContent = presetInput.licenseContent?.trim() || undefined;
-
-    // Use version from config (default: 1), append .0 for minor (static builds don't track minor)
-    const majorVersion = presetConfig.version ?? 1;
-    const version = `${majorVersion}.0`;
+    // Use shared buildPresetPublishInput to process the preset
+    const publishInput = await buildPresetPublishInput({ preset: presetInput });
 
     // For static registries, slug is just the name (no user namespacing)
-    const slug = presetInput.name;
+    const slug = publishInput.name;
 
-    const entry: Preset = {
-      name: encodeItemName(slug, platform),
-      slug,
-      platform,
-      title: presetConfig.title,
-      version,
-      description: presetConfig.description,
-      tags: presetConfig.tags ?? [],
-      license: presetConfig.license,
-      features,
-      bundleUrl: getBundlePath(bundleBase, slug, platform, version),
-      fileCount: files.length,
-      totalSize,
-    };
-    entries.push(entry);
+    // Version from config (default: 1), append .0 for minor
+    const version = `${publishInput.version ?? 1}.0`;
 
-    const bundle: PresetBundle = {
+    // Build variants with bundleUrls
+    const presetVariants: PresetVariant[] = publishInput.variants.map((v) => ({
+      platform: v.platform,
+      bundleUrl: getBundlePath(bundleBase, slug, v.platform, version),
+      fileCount: v.files.length,
+      totalSize: v.files.reduce((sum, f) => sum + f.content.length, 0),
+    }));
+
+    // Sort variants by platform for consistency
+    presetVariants.sort((a, b) => a.platform.localeCompare(b.platform));
+
+    // Create ResolvedPreset (one version with all variants)
+    const item: ResolvedPreset = {
+      kind: "preset",
       slug,
-      platform,
-      title: presetConfig.title,
-      version,
-      description: presetConfig.description,
-      tags: presetConfig.tags ?? [],
-      license: presetConfig.license,
-      licenseContent,
-      readmeContent,
-      features,
-      installMessage,
-      files,
+      name: publishInput.title,
+      title: publishInput.title,
+      description: publishInput.description,
+      tags: publishInput.tags,
+      license: publishInput.license,
+      features: publishInput.features ?? [],
+      versions: [
+        {
+          version,
+          isLatest: true,
+          variants: presetVariants,
+        },
+      ],
     };
-    bundles.push(bundle);
+
+    items.push(item);
+
+    // Create bundles for each platform variant
+    for (const variant of publishInput.variants) {
+      const bundle: PresetBundle = {
+        name: publishInput.name,
+        slug,
+        platform: variant.platform,
+        title: publishInput.title,
+        version,
+        description: publishInput.description,
+        tags: publishInput.tags,
+        license: publishInput.license,
+        features: publishInput.features,
+        files: variant.files,
+        readmeContent: variant.readmeContent,
+        licenseContent: variant.licenseContent,
+        installMessage: variant.installMessage,
+      };
+      bundles.push(bundle);
+    }
   }
 
-  sortBySlugAndPlatform(entries);
-  sortBySlugAndPlatform(bundles);
+  // Sort items by slug
+  items.sort((a, b) => a.slug.localeCompare(b.slug));
 
-  const index = entries.reduce<PresetIndex>((acc, entry) => {
-    acc[entry.name] = entry;
-    return acc;
-  }, {});
+  // Sort bundles by slug and platform
+  bundles.sort((a, b) => {
+    if (a.slug === b.slug) {
+      return a.platform.localeCompare(b.platform);
+    }
+    return a.slug.localeCompare(b.slug);
+  });
 
-  return { entries, index, bundles };
+  return { items, bundles };
 }
+
+// =============================================================================
+// Internal Helpers
+// =============================================================================
 
 async function createBundledFilesFromInputs(
   files: PresetFileInput[]
 ): Promise<BundledFile[]> {
   const results = await Promise.all(
     files.map(async (file) => {
-      const payload = normalizeFilePayload(file.contents);
-      const contents = encodeFilePayload(payload, file.path);
+      const payload = normalizeFilePayload(file.content);
+      const content = encodeFilePayload(payload, file.path);
       const checksum = await sha256(payload);
       return {
         path: toPosixPath(file.path),
         size: payload.length,
         checksum,
-        contents,
+        content,
       } satisfies BundledFile;
     })
   );
   return results.sort((a, b) => a.path.localeCompare(b.path));
 }
 
-function normalizeFilePayload(
-  contents: PresetFileInput["contents"]
-): Uint8Array {
-  if (typeof contents === "string") {
-    return new TextEncoder().encode(contents);
+function normalizeFilePayload(content: PresetFileInput["content"]): Uint8Array {
+  if (typeof content === "string") {
+    return new TextEncoder().encode(content);
   }
-  if (contents instanceof ArrayBuffer) {
-    return new Uint8Array(contents);
+  if (content instanceof ArrayBuffer) {
+    return new Uint8Array(content);
   }
-  if (ArrayBuffer.isView(contents)) {
+  if (ArrayBuffer.isView(content)) {
     return new Uint8Array(
-      contents.buffer,
-      contents.byteOffset,
-      contents.byteLength
+      content.buffer,
+      content.byteOffset,
+      content.byteLength
     );
   }
-  return new Uint8Array(contents as ArrayBuffer);
+  return new Uint8Array(content as ArrayBuffer);
 }
 
 function encodeFilePayload(data: Uint8Array, filePath: string): string {
@@ -257,24 +290,16 @@ function encodeFilePayload(data: Uint8Array, filePath: string): string {
   }
 }
 
-/**
- * Normalize bundle base by removing trailing slashes.
- * Returns empty string if base is undefined/empty (use default relative path).
- */
 function normalizeBundleBase(base: string | undefined): string {
   if (!base) return "";
   return base.replace(/\/+$/, "");
 }
 
-/**
- * Returns the bundle URL/path for a preset.
- * Format: {base}/{STATIC_BUNDLE_DIR}/{slug}/{platform}/{version}
- */
 function getBundlePath(
   base: string,
   slug: string,
   platform: PlatformId,
-  version: string = LATEST_VERSION
+  version: string
 ) {
   const prefix = base ? `${base}/` : "";
   return `${prefix}${STATIC_BUNDLE_DIR}/${slug}/${platform}/${version}`;
@@ -288,15 +313,4 @@ function ensureKnownPlatform(platform: string, slug: string) {
       )}`
     );
   }
-}
-
-function sortBySlugAndPlatform<
-  T extends { slug: string; platform: PlatformId },
->(items: T[]) {
-  items.sort((a, b) => {
-    if (a.slug === b.slug) {
-      return a.platform.localeCompare(b.platform);
-    }
-    return a.slug.localeCompare(b.slug);
-  });
 }

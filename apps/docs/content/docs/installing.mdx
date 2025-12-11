@@ -1,12 +1,12 @@
 ---
 title: Quick Start
-description: One command to install a preset.
+description: One command to install a preset or rule.
 ---
 
-Install any preset with a single command:
+Install any preset or rule with a single command:
 
 ```bash
-npx @agentrules/cli add <preset-name> --platform <platform>
+npx @agentrules/cli add <name> --platform <platform>
 ```
 
 For example:
@@ -19,7 +19,7 @@ That's it. Files are copied to your project's platform directory (`.opencode/`, 
 
 ## Finding Presets
 
-Browse [agentrules.directory](https://agentrules.directory) to discover presets. Each preset page shows:
+Browse [agentrules.directory](https://agentrules.directory) to discover presets and rules. Each page shows:
 
 - What files are included
 - A ready-to-copy install command
@@ -27,12 +27,12 @@ Browse [agentrules.directory](https://agentrules.directory) to discover presets.
 
 ## Supported Platforms
 
-| Platform | Directory |
-|----------|-----------|
-| OpenCode | `.opencode/` |
-| Claude Code | `.claude/` |
-| Cursor | `.cursor/` |
-| Codex | `.codex/` |
+| Platform | ID | Directory |
+|----------|-----|-----------|
+| OpenCode | `opencode` | `.opencode/` |
+| Claude Code | `claude` | `.claude/` |
+| Cursor | `cursor` | `.cursor/` |
+| Codex | `codex` | `.codex/` |
 
 ## Next Steps
 

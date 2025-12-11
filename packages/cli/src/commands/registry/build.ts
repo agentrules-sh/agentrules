@@ -22,7 +22,7 @@ export type BuildOptions = {
 
 export type BuildResult = {
   presets: number;
-  entries: number;
+  items: number;
   bundles: number;
   outputDir: string | null;
   validateOnly: boolean;
@@ -64,7 +64,7 @@ export async function buildRegistry(
   if (validateOnly || !outputDir) {
     return {
       presets: presets.length,
-      entries: result.entries.length,
+      items: result.items.length,
       bundles: result.bundles.length,
       outputDir: null,
       validateOnly,
@@ -95,43 +95,30 @@ export async function buildRegistry(
     await writeFile(join(bundleDir, LATEST_VERSION), bundleJson);
   }
 
-  // Write entries to api/preset/{slug}/{platform}/{version} and api/preset/{slug}/{platform}/latest
-  for (const entry of result.entries) {
-    const apiPresetDir = join(
-      outputDir,
-      API_ENDPOINTS.presets.base,
-      entry.slug,
-      entry.platform
-    );
-    await mkdir(apiPresetDir, { recursive: true });
+  // Write items to api/items/{slug} (one file per slug with all versions/variants)
+  for (const item of result.items) {
+    const itemJson = JSON.stringify(item, null, indent);
 
-    const entryJson = JSON.stringify(entry, null, indent);
-
-    // Write versioned entry
-    await writeFile(join(apiPresetDir, entry.version), entryJson);
-
-    // Write latest entry (copy of current version)
-    await writeFile(join(apiPresetDir, LATEST_VERSION), entryJson);
+    // Write item file
+    const itemPath = join(outputDir, API_ENDPOINTS.items.get(item.slug));
+    await mkdir(join(itemPath, ".."), { recursive: true });
+    await writeFile(itemPath, itemJson);
   }
 
-  // Write registry.json (array of all entries wrapped in schema-compliant format)
+  // Write registry.json (array of all items wrapped in schema-compliant format)
   const registryJson = JSON.stringify(
     {
       $schema: "https://agentrules.directory/schema/registry.json",
-      items: result.entries,
+      items: result.items,
     },
     null,
     indent
   );
   await writeFile(join(outputDir, "registry.json"), registryJson);
 
-  // Write registry.index.json (name → entry lookup)
-  const indexJson = JSON.stringify(result.index, null, indent);
-  await writeFile(join(outputDir, "registry.index.json"), indexJson);
-
   return {
     presets: presets.length,
-    entries: result.entries.length,
+    items: result.items.length,
     bundles: result.bundles.length,
     outputDir,
     validateOnly: false,

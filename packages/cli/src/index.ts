@@ -4,14 +4,10 @@ import { PLATFORM_IDS } from "@agentrules/core";
 import { Command } from "commander";
 import { createRequire } from "module";
 import { basename } from "path";
+import { type AddResult, add, normalizePlatformInput } from "@/commands/add";
 import { login } from "@/commands/auth/login";
 import { logout } from "@/commands/auth/logout";
 import { whoami } from "@/commands/auth/whoami";
-import {
-  type AddPresetResult,
-  addPreset,
-  normalizePlatformInput,
-} from "@/commands/preset/add";
 import {
   initPreset,
   requiresPlatformFlag,
@@ -27,8 +23,9 @@ import {
   removeRegistry,
   useRegistry,
 } from "@/commands/registry/manage";
-import { addRule, extractRuleSlug, isRuleReference } from "@/commands/rule/add";
+import { share } from "@/commands/share";
 import { unpublish } from "@/commands/unpublish";
+import { unshare } from "@/commands/unshare";
 import { HELP_AGENT_CONTENT } from "@/help-agent";
 import { initAppContext } from "@/lib/context";
 import { getErrorMessage } from "@/lib/errors";
@@ -79,16 +76,14 @@ program
 
 program
   .command("add <item>")
-  .description(
-    "Download and install a preset or rule from the registry (use r/<slug> for rules)"
-  )
+  .description("Download and install a preset or rule from the registry")
   .option(
     "-p, --platform <platform>",
     "Target platform (opencode, codex, claude, cursor)"
   )
   .option(
-    "-V, --version <version>",
-    "Install a specific version (presets only)"
+    "--version <version>",
+    "Install a specific version (or use slug@version)"
   )
   .option("-r, --registry <alias>", "Use a specific registry alias")
   .option("-g, --global", "Install to global directory")
@@ -104,75 +99,16 @@ program
   .action(
     handle(async (item: string, options) => {
       const dryRun = Boolean(options.dryRun);
-
-      // Check if this is a rule reference (r/<slug>)
-      if (isRuleReference(item)) {
-        const slug = extractRuleSlug(item);
-        const spinner = await log.spinner(`Fetching rule "${slug}"...`);
-
-        try {
-          const result = await addRule({
-            slug,
-            global: Boolean(options.global),
-            directory: options.dir,
-            force: Boolean(options.force || options.yes),
-            dryRun,
-          });
-
-          spinner.stop();
-
-          if (result.status === "conflict") {
-            log.error(
-              `File already exists: ${result.targetPath}. Use ${ui.command(
-                "--force"
-              )} to overwrite.`
-            );
-            process.exitCode = 1;
-            return;
-          }
-
-          if (result.status === "unchanged") {
-            log.info(`Already up to date: ${ui.path(result.targetPath)}`);
-            return;
-          }
-
-          const verb = dryRun ? "Would install" : "Installed";
-          const action =
-            result.status === "overwritten" ? "updated" : "created";
-          log.print(
-            ui.fileStatus(action as "created" | "updated", result.targetPath, {
-              dryRun,
-            })
-          );
-          log.print("");
-          log.success(
-            `${verb} ${ui.bold(result.title)} ${ui.muted(
-              `(${result.platform}/${result.type})`
-            )}`
-          );
-
-          if (dryRun) {
-            log.print(ui.hint("\nDry run complete. No files were written."));
-          }
-        } catch (err) {
-          spinner.stop();
-          throw err;
-        }
-
-        return;
-      }
-
-      // Preset handling
       const platform = options.platform
         ? normalizePlatformInput(options.platform)
         : undefined;
 
-      const spinner = await log.spinner("Fetching preset...");
+      const spinner = await log.spinner("Resolving...");
 
-      let result: AddPresetResult;
+      let result: AddResult;
       try {
-        result = await addPreset({
-          preset: item,
+        result = await add({
+          slug: item,
           platform,
           version: options.version,
           global: Boolean(options.global),
@@ -189,23 +125,23 @@ program
 
       spinner.stop();
 
-      // Check for blocking conflicts (not skipped, not dry-run)
+      // Unified handling for both presets and rules
+      const conflicts = result.files.filter((f) => f.status === "conflict");
       const hasBlockingConflicts =
-        result.conflicts.length > 0 && !options.skipConflicts && !dryRun;
+        conflicts.length > 0 && !options.skipConflicts && !dryRun;
 
       if (hasBlockingConflicts) {
-        // Show conflict error with colored diff
         const count =
-          result.conflicts.length === 1
+          conflicts.length === 1
             ? "1 file has"
-            : `${result.conflicts.length} files have`;
+            : `${conflicts.length} files have`;
         const forceHint = `Use ${ui.command("--force")} to overwrite ${ui.muted(
           "(--no-backup to skip backups)"
         )}`;
         log.error(`${count} conflicts. ${forceHint}`);
         log.print("");
 
-        for (const conflict of result.conflicts.slice(0, 3)) {
+        for (const conflict of conflicts.slice(0, 3)) {
           log.print(`  ${ui.muted("•")} ${conflict.path}`);
           if (conflict.diff) {
             log.print(
@@ -217,13 +153,10 @@ program
           }
         }
 
-        if (result.conflicts.length > 3) {
-          log.print(
-            `\n  ${ui.muted(`...and ${result.conflicts.length - 3} more`)}`
-          );
+        if (conflicts.length > 3) {
+          log.print(`\n  ${ui.muted(`...and ${conflicts.length - 3} more`)}`);
         }
 
-        // Repeat hint at bottom so it doesn't get buried in diff output
         log.print("");
         log.print(forceHint);
 
@@ -231,7 +164,14 @@ program
         return;
       }
 
-      // Show backup operations first
+      // All files unchanged?
+      const allUnchanged = result.files.every((f) => f.status === "unchanged");
+      if (allUnchanged) {
+        log.info("Already up to date.");
+        return;
+      }
+
+      // Show backup operations
       if (result.backups.length > 0) {
         log.print("");
         for (const backup of result.backups) {
@@ -265,28 +205,32 @@ program
       // Summary
       log.print("");
       const verb = dryRun ? "Would install" : "Installed";
+      const kindLabel =
+        result.kind === "rule"
+          ? `(${result.variant.platform}/${result.variant.type})`
+          : `for ${result.variant.platform}`;
       log.success(
-        `${verb} ${ui.bold(result.preset.title)} ${ui.muted(
-          `for ${result.preset.platform}`
-        )}`
+        `${verb} ${ui.bold(result.resolved.title)} ${ui.muted(kindLabel)}`
       );
 
-      // Conflicts warning (when skipped)
-      if (result.conflicts.length > 0 && options.skipConflicts) {
+      // Skipped conflicts warning
+      const skippedConflicts = result.files.filter(
+        (f) => f.status === "skipped"
+      );
+      if (skippedConflicts.length > 0) {
         log.warn(
-          `${result.conflicts.length} conflicting file${
-            result.conflicts.length === 1 ? "" : "s"
+          `${skippedConflicts.length} conflicting file${
+            skippedConflicts.length === 1 ? "" : "s"
           } skipped`
         );
       }
 
-      // Dry run notice
       if (dryRun) {
         log.print(ui.hint("\nDry run complete. No files were written."));
       }
 
-      // Install message from preset
-      if (result.bundle.installMessage) {
+      // Install message (presets only)
+      if (result.kind === "preset" && result.bundle.installMessage) {
         log.print(`\n${result.bundle.installMessage}`);
       }
     })
@@ -374,7 +318,9 @@ program
             );
           } else {
             log.error(
-              `Multiple platform directories found (${check.platforms.join(", ")}). Specify --platform to choose one.`
+              `Multiple platform directories found (${check.platforms.join(
+                ", "
+              )}). Specify --platform to choose one.`
             );
           }
           process.exit(1);
@@ -423,11 +369,12 @@ program
 
       if (result.valid && result.preset) {
         const p = result.preset;
+        const platforms = p.platforms.map((entry) => entry.platform).join(", ");
 
         log.success(p.title);
         log.print(ui.keyValue("Description", p.description));
         log.print(ui.keyValue("License", p.license));
-        log.print(ui.keyValue("Platform", p.platform));
+        log.print(ui.keyValue("Platforms", platforms));
         if (p.tags?.length) log.print(ui.keyValue("Tags", p.tags.join(", ")));
       } else if (!result.valid) {
         log.error(`Invalid: ${ui.path(result.configPath)}`);
@@ -514,7 +461,7 @@ registry
         log.success(
           `Validated ${result.presets} preset${
             result.presets === 1 ? "" : "s"
-          } ${ui.muted(`→ ${result.entries} entries`)}`
+          } ${ui.muted(`→ ${result.items} items`)}`
         );
         return;
       }
@@ -522,8 +469,8 @@ registry
       if (!result.outputDir) {
         log.info(
           `Found ${result.presets} preset${result.presets === 1 ? "" : "s"} → ${
-            result.entries
-          } entries`
+            result.items
+          } items`
         );
         log.print(ui.hint(`Use ${ui.command("--out <path>")} to write files`));
         return;
@@ -532,7 +479,7 @@ registry
       log.success(
         `Built ${result.presets} preset${
           result.presets === 1 ? "" : "s"
-        } ${ui.muted(`→ ${result.entries} entries, ${result.bundles} bundles`)}`
+        } ${ui.muted(`→ ${result.items} items, ${result.bundles} bundles`)}`
       );
       log.print(ui.keyValue("Output", ui.path(result.outputDir)));
     })
@@ -727,7 +674,11 @@ program
   .command("publish")
   .description("Publish a preset to the registry")
   .argument("[path]", "Path to agentrules.json or directory containing it")
-  .option("-V, --version <major>", "Major version", Number.parseInt)
+  .option(
+    "--version <major>",
+    "Major version (overrides config)",
+    Number.parseInt
+  )
   .option("--dry-run", "Preview what would be published without publishing")
   .action(
     handle(async (path: string | undefined, options) => {
@@ -743,72 +694,72 @@ program
     })
   );
 
-// // =============================================================================
-// // share - Share a rule to the registry
-// // =============================================================================
+// =============================================================================
+// share - Share a rule to the registry
+// =============================================================================
 
-// program
-//   .command("share")
-//   .description("Share a rule to the registry")
-//   .requiredOption("-n, --name <name>", "Rule name (URL identifier)")
-//   .requiredOption(
-//     "-p, --platform <platform>",
-//     "Target platform (opencode, codex, claude, cursor)"
-//   )
-//   .requiredOption(
-//     "-t, --type <type>",
-//     "Rule type (instruction, agent, command, tool, skill, rule)"
-//   )
-//   .requiredOption("--title <title>", "Display title")
-//   .requiredOption(
-//     "--tags <tags>",
-//     "Comma-separated tags (e.g., typescript,react,testing)"
-//   )
-//   .option("--description <text>", "Optional description")
-//   .option("-c, --content <content>", "Rule content (or use --file)")
-//   .option("-f, --file <path>", "Read content from file")
-//   .action(
-//     handle(async (options) => {
-//       const platform = normalizePlatformInput(options.platform);
-//       const tags = (options.tags as string)
-//         .split(",")
-//         .map((t: string) => t.trim())
-//         .filter(Boolean);
+program
+  .command("share")
+  .description("Share a rule to the registry")
+  .argument("[file]", "Path to file containing rule content")
+  .requiredOption("-n, --name <name>", "Rule name (URL identifier)")
+  .requiredOption(
+    "-p, --platform <platform>",
+    "Target platform (opencode, codex, claude, cursor)"
+  )
+  .requiredOption(
+    "-t, --type <type>",
+    "Rule type (instruction, agent, command, tool, skill, rule)"
+  )
+  .requiredOption("--title <title>", "Display title")
+  .requiredOption(
+    "--tags <tags>",
+    "Comma-separated tags (e.g., typescript,react,testing)"
+  )
+  .option("--description <text>", "Optional description")
+  .option("-c, --content <content>", "Rule content (or provide file path)")
+  .action(
+    handle(async (file: string | undefined, options) => {
+      const platform = normalizePlatformInput(options.platform);
+      const tags = (options.tags as string)
+        .split(",")
+        .map((t: string) => t.trim())
+        .filter(Boolean);
 
-//       const result = await share({
-//         name: options.name,
-//         platform,
-//         type: options.type,
-//         title: options.title,
-//         description: options.description,
-//         content: options.content,
-//         file: options.file,
-//         tags,
-//       });
+      const result = await share({
+        name: options.name,
+        platform,
+        type: options.type,
+        title: options.title,
+        description: options.description,
+        content: options.content,
+        file,
+        tags,
+      });
 
-//       if (!result.success) {
-//         process.exitCode = 1;
-//       }
-//     })
-//   );
+      if (!result.success) {
+        process.exitCode = 1;
+      }
+    })
+  );
 
-// // =============================================================================
-// // unshare - Remove a rule from the registry
-// // =============================================================================
+// =============================================================================
+// unshare - Remove a rule from the registry
+// =============================================================================
 
-// program
-//   .command("unshare")
-//   .description("Remove a rule from the registry")
-//   .argument("<slug>", "Rule slug to unshare")
-//   .action(
-//     handle(async (slug: string) => {
-//       const result = await unshare({ slug });
+program
+  .command("unshare")
+  .description("Remove a rule from the registry")
+  .argument("<slug>", "Rule slug to unshare")
+  .action(
+    handle(async (slug: string) => {
+      const result = await unshare({ slug });
 
-//       if (!result.success) {
-//         process.exitCode = 1;
-//       }
-//     })
-//   );
+      if (!result.success) {
+        process.exitCode = 1;
+      }
+    })
+  );
 
 // =============================================================================
 // unpublish - Remove preset version from registry
@@ -816,25 +767,15 @@ program
 
 program
   .command("unpublish")
-  .description("Remove a preset version from the registry")
-  .argument(
-    "<preset>",
-    "Preset to unpublish (e.g., my-preset.claude@1.0 or my-preset@1.0)"
+  .description(
+    "Remove a preset version from the registry (removes all platform variants)"
   )
-  .option(
-    "-p, --platform <platform>",
-    "Target platform (opencode, codex, claude, cursor)"
-  )
-  .option("-V, --version <version>", "Version to unpublish")
+  .argument("<preset>", "Preset to unpublish (e.g., my-preset@1.0.0)")
+  .option("--version <version>", "Version to unpublish (or use preset@version)")
   .action(
     handle(async (preset: string, options) => {
-      const platform = options.platform
-        ? normalizePlatformInput(options.platform)
-        : undefined;
-
       const result = await unpublish({
         preset,
-        platform,
         version: options.version,
       });
 

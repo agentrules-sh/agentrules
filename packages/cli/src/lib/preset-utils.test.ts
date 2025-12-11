@@ -16,7 +16,7 @@ const VALID_CONFIG = {
   title: "Test Preset",
   description: "A test preset",
   license: "MIT",
-  platform: "opencode",
+  platforms: ["opencode"],
   tags: ["test"],
 };
 
@@ -100,6 +100,10 @@ describe("loadPreset", () => {
     await rm(testDir, { recursive: true, force: true });
   });
 
+  // Helper to get files from first platform (for single-platform presets)
+  const getFiles = (preset: Awaited<ReturnType<typeof loadPreset>>) =>
+    preset.platformFiles[0].files;
+
   describe("in-project preset (config inside platform dir)", () => {
     it("loads preset from platform directory", async () => {
       const platformDir = join(testDir, ".opencode");
@@ -113,8 +117,8 @@ describe("loadPreset", () => {
       const preset = await loadPreset(platformDir);
 
       expect(preset.name).toBe("test-preset");
-      expect(preset.files).toHaveLength(1);
-      expect(preset.files[0].path).toBe("AGENT_RULES.md");
+      expect(getFiles(preset)).toHaveLength(1);
+      expect(getFiles(preset)[0].path).toBe("AGENT_RULES.md");
     });
 
     it("excludes config file from bundle", async () => {
@@ -128,7 +132,7 @@ describe("loadPreset", () => {
 
       const preset = await loadPreset(platformDir);
 
-      const paths = preset.files.map((f) => f.path);
+      const paths = getFiles(preset).map((f) => f.path);
       expect(paths).not.toContain("agentrules.json");
       expect(paths).toContain("rules.md");
     });
@@ -146,7 +150,7 @@ describe("loadPreset", () => {
 
       const preset = await loadPreset(platformDir);
 
-      const paths = preset.files.map((f) => f.path);
+      const paths = getFiles(preset).map((f) => f.path);
       expect(paths).toContain("rules.md");
       expect(paths.some((p) => p.startsWith(".agentrules/"))).toBeFalse();
     });
@@ -186,8 +190,8 @@ describe("loadPreset", () => {
       const preset = await loadPreset(presetDir);
 
       expect(preset.name).toBe("test-preset");
-      expect(preset.files).toHaveLength(1);
-      expect(preset.files[0].path).toBe("rules.md");
+      expect(getFiles(preset)).toHaveLength(1);
+      expect(getFiles(preset)[0].path).toBe("rules.md");
     });
 
     it("throws when files directory is missing", async () => {
@@ -234,7 +238,7 @@ describe("loadPreset", () => {
 
       const preset = await loadPreset(platformDir);
 
-      const paths = preset.files.map((f) => f.path);
+      const paths = getFiles(preset).map((f) => f.path);
       expect(paths).toContain("rules.md");
       expect(paths.some((p) => p.includes("node_modules"))).toBeFalse();
     });
@@ -248,7 +252,7 @@ describe("loadPreset", () => {
 
       const preset = await loadPreset(platformDir);
 
-      const paths = preset.files.map((f) => f.path);
+      const paths = getFiles(preset).map((f) => f.path);
       expect(paths).toContain("rules.md");
       expect(paths.some((p) => p.startsWith(".git"))).toBeFalse();
     });
@@ -262,7 +266,7 @@ describe("loadPreset", () => {
 
       const preset = await loadPreset(platformDir);
 
-      const paths = preset.files.map((f) => f.path);
+      const paths = getFiles(preset).map((f) => f.path);
       expect(paths).toContain("rules.md");
       expect(paths.some((p) => p.includes(".DS_Store"))).toBeFalse();
     });
@@ -278,7 +282,7 @@ describe("loadPreset", () => {
 
       const preset = await loadPreset(platformDir);
 
-      const paths = preset.files.map((f) => f.path);
+      const paths = getFiles(preset).map((f) => f.path);
       expect(paths).toContain("rules.md");
       expect(paths).not.toContain("package-lock.json");
       expect(paths).not.toContain("yarn.lock");
@@ -294,7 +298,7 @@ describe("loadPreset", () => {
 
       const preset = await loadPreset(platformDir);
 
-      const paths = preset.files.map((f) => f.path);
+      const paths = getFiles(preset).map((f) => f.path);
       expect(paths).toContain("rules.md");
       expect(paths).toContain("data.json");
       expect(paths).not.toContain("test.log");
@@ -309,7 +313,7 @@ describe("loadPreset", () => {
 
       const preset = await loadPreset(platformDir);
 
-      const paths = preset.files.map((f) => f.path);
+      const paths = getFiles(preset).map((f) => f.path);
       expect(paths).toContain("rules.md");
       expect(paths.some((p) => p.includes("node_modules"))).toBeFalse();
       expect(paths).not.toContain("temp.tmp");
@@ -324,7 +328,7 @@ describe("loadPreset", () => {
 
       const preset = await loadPreset(platformDir);
 
-      const paths = preset.files.map((f) => f.path);
+      const paths = getFiles(preset).map((f) => f.path);
       expect(paths).toContain("rules.md");
       expect(paths).toContain("subdir/nested/file.md");
       expect(paths.some((p) => p.includes(".DS_Store"))).toBeFalse();
@@ -338,7 +342,7 @@ describe("loadPreset", () => {
 
       const preset = await loadPreset(platformDir);
 
-      const paths = preset.files.map((f) => f.path);
+      const paths = getFiles(preset).map((f) => f.path);
       expect(paths).toContain("rules.md");
       expect(paths).toContain("public.key");
       expect(paths).not.toContain("secret.key");
@@ -373,6 +377,114 @@ describe("loadPreset", () => {
       // No other files
 
       await expect(loadPreset(platformDir)).rejects.toThrow(/No files found/);
+    });
+  });
+
+  describe("agentrulesDir option", () => {
+    it("reads metadata from custom directory", async () => {
+      const presetDir = join(testDir, "my-preset");
+      const filesDir = join(presetDir, ".opencode");
+      const metadataDir = join(presetDir, "meta");
+      await mkdir(filesDir, { recursive: true });
+      await mkdir(metadataDir, { recursive: true });
+
+      await writeFile(
+        join(presetDir, "agentrules.json"),
+        JSON.stringify({ ...VALID_CONFIG, agentrulesDir: "meta" })
+      );
+      await writeFile(join(filesDir, "rules.md"), "# Rules");
+      await writeFile(join(metadataDir, "README.md"), "# Custom README");
+      await writeFile(join(metadataDir, "INSTALL.txt"), "Custom install");
+
+      const preset = await loadPreset(presetDir);
+
+      expect(preset.readmeContent).toBe("# Custom README");
+      expect(preset.installMessage).toBe("Custom install");
+    });
+
+    it("reads metadata from root when agentrulesDir is '.'", async () => {
+      const presetDir = join(testDir, "my-preset");
+      const filesDir = join(presetDir, ".opencode");
+      await mkdir(filesDir, { recursive: true });
+
+      await writeFile(
+        join(presetDir, "agentrules.json"),
+        JSON.stringify({ ...VALID_CONFIG, agentrulesDir: "." })
+      );
+      await writeFile(join(filesDir, "rules.md"), "# Rules");
+      await writeFile(join(presetDir, "README.md"), "# Root README");
+      await writeFile(join(presetDir, "LICENSE.md"), "MIT License");
+      await writeFile(join(presetDir, "INSTALL.txt"), "Root install");
+
+      const preset = await loadPreset(presetDir);
+
+      expect(preset.readmeContent).toBe("# Root README");
+      expect(preset.licenseContent).toBe("MIT License");
+      expect(preset.installMessage).toBe("Root install");
+    });
+
+    it("excludes metadata files from bundle when agentrulesDir is '.'", async () => {
+      const platformDir = join(testDir, ".opencode");
+      await mkdir(platformDir, { recursive: true });
+
+      await writeFile(
+        join(platformDir, "agentrules.json"),
+        JSON.stringify({ ...VALID_CONFIG, agentrulesDir: "." })
+      );
+      await writeFile(join(platformDir, "rules.md"), "# Rules");
+      await writeFile(join(platformDir, "README.md"), "# README");
+      await writeFile(join(platformDir, "LICENSE.md"), "MIT");
+      await writeFile(join(platformDir, "INSTALL.txt"), "Install");
+
+      const preset = await loadPreset(platformDir);
+
+      const paths = getFiles(preset).map((f) => f.path);
+      expect(paths).toContain("rules.md");
+      expect(paths).not.toContain("README.md");
+      expect(paths).not.toContain("LICENSE.md");
+      expect(paths).not.toContain("INSTALL.txt");
+    });
+
+    it("excludes custom metadata directory from bundle", async () => {
+      const presetDir = join(testDir, "my-preset");
+      const filesDir = join(presetDir, ".opencode");
+      const metadataDir = join(presetDir, "docs");
+      await mkdir(filesDir, { recursive: true });
+      await mkdir(metadataDir, { recursive: true });
+
+      await writeFile(
+        join(presetDir, "agentrules.json"),
+        JSON.stringify({ ...VALID_CONFIG, agentrulesDir: "docs" })
+      );
+      await writeFile(join(filesDir, "rules.md"), "# Rules");
+      await writeFile(join(metadataDir, "README.md"), "# README");
+
+      const preset = await loadPreset(presetDir);
+
+      const paths = getFiles(preset).map((f) => f.path);
+      expect(paths).toContain("rules.md");
+      expect(paths.some((p) => p.startsWith("docs/"))).toBeFalse();
+    });
+
+    it("defaults to .agentrules when agentrulesDir not specified", async () => {
+      const presetDir = join(testDir, "my-preset");
+      const filesDir = join(presetDir, ".opencode");
+      const metadataDir = join(presetDir, ".agentrules");
+      await mkdir(filesDir, { recursive: true });
+      await mkdir(metadataDir, { recursive: true });
+
+      await writeFile(
+        join(presetDir, "agentrules.json"),
+        JSON.stringify(VALID_CONFIG) // no agentrulesDir
+      );
+      await writeFile(join(filesDir, "rules.md"), "# Rules");
+      await writeFile(join(metadataDir, "README.md"), "# Default README");
+      // Also put a README at root - should be ignored
+      await writeFile(join(presetDir, "README.md"), "# Root README");
+
+      const preset = await loadPreset(presetDir);
+
+      expect(preset.readmeContent).toBe("# Default README");
     });
   });
 });

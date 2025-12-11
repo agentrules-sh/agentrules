@@ -19,8 +19,8 @@ import { log } from "@/lib/log";
 import { loadPreset, resolveConfigPath } from "@/lib/preset-utils";
 import { ui } from "@/lib/ui";
 
-/** Maximum size per bundle in bytes (1MB) */
-const MAX_BUNDLE_SIZE_BYTES = 1 * 1024 * 1024;
+/** Maximum size per variant/platform bundle in bytes (1MB) */
+const MAX_VARIANT_SIZE_BYTES = 1 * 1024 * 1024;
 
 /**
  * Formats bytes as human-readable string
@@ -48,16 +48,19 @@ export type PublishResult = {
   /** Published preset info if successful */
   preset?: {
     slug: string;
-    platform: string;
     title: string;
     version: string;
     isNewPreset: boolean;
-    bundleUrl: string;
+    /** All published platform variants */
+    variants: Array<{ platform: string; bundleUrl: string }>;
+    /** URL to the preset page on the registry */
+    url: string;
   };
   /** Dry run preview info */
   preview?: {
     slug: string;
-    platform: string;
+    /** Platforms included in preview */
+    platforms: string[];
     title: string;
     totalSize: number;
     fileCount: number;
@@ -115,8 +118,11 @@ export async function publish(
   let presetInput: PresetInput;
   try {
     presetInput = await loadPreset(presetDir);
+    const platforms = presetInput.config.platforms
+      .map((p) => p.platform)
+      .join(", ");
     log.debug(
-      `Loaded preset "${presetInput.name}" for platform ${presetInput.config.platform}`
+      `Loaded preset "${presetInput.name}" for platforms: ${platforms}`
     );
   } catch (error) {
     const message = getErrorMessage(error);
@@ -126,7 +132,7 @@ export async function publish(
   }
 
   // Build publish input (version is assigned by registry)
-  spinner.update("Building bundle...");
+  spinner.update("Building platform bundles...");
 
   let publishInput: PresetPublishInput;
 
@@ -135,35 +141,49 @@ export async function publish(
       preset: presetInput,
       version,
     });
-    log.debug(`Built publish input for ${publishInput.platform}`);
+    const platforms = publishInput.variants.map((v) => v.platform).join(", ");
+    log.debug(`Built publish input for platforms: ${platforms}`);
   } catch (error) {
     const message = getErrorMessage(error);
-    spinner.fail("Failed to build bundle");
+    spinner.fail("Failed to build platform bundles");
     log.error(message);
     return { success: false, error: message };
   }
 
-  // Calculate size for validation and display
-  const inputJson = JSON.stringify(publishInput);
-  const inputSize = Buffer.byteLength(inputJson, "utf8");
-  const fileCount = publishInput.files.length;
+  // Calculate sizes for validation and display
+  const totalFileCount = publishInput.variants.reduce(
+    (sum, v) => sum + v.files.length,
+    0
+  );
+  const platformList = publishInput.variants.map((v) => v.platform).join(", ");
+
+  // Validate each variant's size individually
+  let totalSize = 0;
+  for (const variant of publishInput.variants) {
+    const variantJson = JSON.stringify(variant);
+    const variantSize = Buffer.byteLength(variantJson, "utf8");
+    totalSize += variantSize;
+
+    log.debug(
+      `Variant ${variant.platform}: ${formatBytes(variantSize)}, ${variant.files.length} files`
+    );
+
+    if (variantSize > MAX_VARIANT_SIZE_BYTES) {
+      const errorMessage = `Files for "${variant.platform}" exceed maximum size (${formatBytes(
+        variantSize
+      )} > ${formatBytes(MAX_VARIANT_SIZE_BYTES)})`;
+      spinner.fail("Platform bundle too large");
+      log.error(errorMessage);
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+  }
 
   log.debug(
-    `Publish input size: ${formatBytes(inputSize)}, files: ${fileCount}`
+    `Total publish size: ${formatBytes(totalSize)}, files: ${totalFileCount}, platforms: ${platformList}`
   );
-
-  // Validate input size
-  if (inputSize > MAX_BUNDLE_SIZE_BYTES) {
-    const errorMessage = `Bundle exceeds maximum size (${formatBytes(
-      inputSize
-    )} > ${formatBytes(MAX_BUNDLE_SIZE_BYTES)})`;
-    spinner.fail("Bundle too large");
-    log.error(errorMessage);
-    return {
-      success: false,
-      error: errorMessage,
-    };
-  }
 
   // Dry run: show preview and exit
   if (dryRun) {
@@ -172,7 +192,7 @@ export async function publish(
     log.print(ui.header("Publish Preview"));
     log.print(ui.keyValue("Preset", publishInput.title));
     log.print(ui.keyValue("Name", publishInput.name));
-    log.print(ui.keyValue("Platform", publishInput.platform));
+    log.print(ui.keyValue("Platforms", platformList));
     log.print(
       ui.keyValue(
         "Version",
@@ -180,35 +200,41 @@ export async function publish(
       )
     );
     log.print(
-      ui.keyValue("Files", `${fileCount} file${fileCount === 1 ? "" : "s"}`)
+      ui.keyValue(
+        "Files",
+        `${totalFileCount} file${totalFileCount === 1 ? "" : "s"}`
+      )
     );
-    log.print(ui.keyValue("Size", formatBytes(inputSize)));
+    log.print(ui.keyValue("Size", formatBytes(totalSize)));
     log.print("");
-    log.print(
-      ui.fileTree(publishInput.files, {
-        showFolderSizes: true,
-        header: "Files to publish",
-      })
-    );
-    log.print("");
+
+    // Show files for each platform variant
+    for (const variant of publishInput.variants) {
+      log.print(
+        ui.fileTree(variant.files, {
+          showFolderSizes: true,
+          header: `Files for ${variant.platform}`,
+        })
+      );
+      log.print("");
+    }
+
     log.print(ui.hint("Run without --dry-run to publish."));
 
     return {
       success: true,
       preview: {
         slug: publishInput.name, // Preview uses name (full slug assigned by registry)
-        platform: publishInput.platform,
+        platforms: publishInput.variants.map((v) => v.platform),
         title: publishInput.title,
-        totalSize: inputSize,
-        fileCount,
+        totalSize,
+        fileCount: totalFileCount,
       },
     };
   }
 
   // Publish to the API
-  spinner.update(
-    `Publishing ${publishInput.title} (${publishInput.platform})...`
-  );
+  spinner.update(`Publishing ${publishInput.title} (${platformList})...`);
 
   // At this point we know credentials exist (checked earlier, and dry-run exits before here)
   if (!ctx.credentials) {
@@ -250,36 +276,36 @@ export async function publish(
 
   const { data } = result;
   const action = data.isNewPreset ? "Published new preset" : "Published";
+  const platforms = data.variants.map((v) => v.platform).join(", ");
   spinner.success(
-    `${action} ${ui.code(data.slug)} ${ui.version(data.version)} (${
-      data.platform
-    })`
+    `${action} ${ui.code(data.slug)} ${ui.version(data.version)} (${platforms})`
   );
 
-  // Show published files
+  // Show published files for each platform
   log.print("");
-  log.print(
-    ui.fileTree(publishInput.files, {
-      showFolderSizes: true,
-      header: "Published files",
-    })
-  );
+  for (const variant of publishInput.variants) {
+    log.print(
+      ui.fileTree(variant.files, {
+        showFolderSizes: true,
+        header: `Published files for ${variant.platform}`,
+      })
+    );
+    log.print("");
+  }
 
   // Show registry page URL
-  const presetName = `${data.slug}.${data.platform}`;
-  const presetRegistryUrl = `${ctx.registry.url}preset/${presetName}`;
   log.info("");
-  log.info(ui.keyValue("Now live at", ui.link(presetRegistryUrl)));
+  log.info(ui.keyValue("Now live at", ui.link(data.url)));
 
   return {
     success: true,
     preset: {
       slug: data.slug,
-      platform: data.platform,
       title: data.title,
       version: data.version,
       isNewPreset: data.isNewPreset,
-      bundleUrl: data.bundleUrl,
+      variants: data.variants,
+      url: data.url,
     },
   };
 }

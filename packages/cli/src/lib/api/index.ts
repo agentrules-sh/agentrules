@@ -15,13 +15,12 @@
  *
  * ### Presets (API_ENDPOINTS.presets)
  * - POST   {base} - Publish a preset bundle
- * - DELETE {unpublish(slug, platform, version)} - Unpublish a preset version
+ * - DELETE {unpublish(slug, version)} - Unpublish a preset version
  *
- * ### Rules (API_ENDPOINTS.rule)
- * - POST   {base} - Create a new rule
- * - GET    {base}/{slug} - Get a rule by slug
- * - PUT    {base}/{slug} - Update a rule
- * - DELETE {base}/{slug} - Unshare (soft delete) a rule
+ * ### Rules (API_ENDPOINTS.rules)
+ * - POST   {base} - Publish a rule (create or update)
+ * - DELETE {bySlug(slug)} - Unshare (delete) a rule
+ * Note: GET is handled by the unified items endpoint (API_ENDPOINTS.items)
  */
 
 // Re-export API_ENDPOINTS from core for convenience
@@ -50,19 +49,14 @@ export {
 } from "./presets";
 // Rule endpoints
 export {
-  type CreateRuleResult,
-  createRule,
   type DeleteRuleResponse,
   type DeleteRuleResult,
   deleteRule,
-  type GetRuleResult,
-  getRule,
+  type PublishRuleResult,
+  publishRule,
   type RuleInput,
   type RuleResponse,
-  type UpdateRuleResult,
-  updateRule,
-  // Note: ErrorResponse is already exported from "./presets"
-} from "./rule";
+} from "./rules";
 // Session endpoint
 export {
   fetchSession,

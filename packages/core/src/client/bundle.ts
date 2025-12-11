@@ -2,7 +2,7 @@ import type { BundledFile } from "../preset";
 import { decodeUtf8, encodeUtf8, toUint8Array } from "../utils/encoding";
 
 export function decodeBundledFile(file: BundledFile): Uint8Array {
-  return encodeUtf8(file.contents);
+  return encodeUtf8(file.content);
 }
 
 export async function verifyBundledFileChecksum(

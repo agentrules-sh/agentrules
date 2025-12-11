@@ -55,7 +55,7 @@ const result = await buildPresetRegistry({
         description: "A helpful preset",
         tags: ["starter"],
         license: "MIT",
-        platform: "opencode",
+        platforms: ["opencode", "claude"], // or use `platform: "opencode"` for single platform
         path: "files",
       },
       files: [

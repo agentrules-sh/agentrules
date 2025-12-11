@@ -13,8 +13,7 @@ const VALID_CONFIG = {
   description: "A test preset",
   license: "MIT",
   tags: ["test"],
-  platform: "opencode",
-  path: "files",
+  platforms: [{ platform: "opencode", path: "files" }],
 };
 
 describe("validatePreset", () => {
@@ -101,8 +100,7 @@ describe("validatePreset", () => {
       title: "No Tags",
       description: "Missing tags",
       license: "MIT",
-      platform: "opencode",
-      path: "files",
+      platforms: [{ platform: "opencode", path: "files" }],
     };
     await writeFile(
       join(presetDir, "agentrules.json"),
@@ -124,8 +122,7 @@ describe("validatePreset", () => {
       name: "no-license",
       title: "No License",
       description: "Missing license",
-      platform: "opencode",
-      path: "files",
+      platforms: [{ platform: "opencode", path: "files" }],
     };
     await writeFile(
       join(presetDir, "agentrules.json"),
@@ -162,7 +159,7 @@ describe("validatePreset", () => {
       description: "A test preset",
       license: "MIT",
       tags: ["test"],
-      platform: "opencode",
+      platforms: ["opencode"],
       // No path field needed - files are siblings
     };
 
@@ -186,7 +183,7 @@ describe("validatePreset", () => {
       await mkdir(platformDir, { recursive: true });
       await writeFile(
         join(platformDir, "agentrules.json"),
-        JSON.stringify({ ...IN_PROJECT_CONFIG, platform: "claude" })
+        JSON.stringify({ ...IN_PROJECT_CONFIG, platforms: ["claude"] })
       );
 
       const result = await validatePreset({ path: platformDir });

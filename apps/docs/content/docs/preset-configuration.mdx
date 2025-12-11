@@ -1,5 +1,5 @@
 ---
-title: Configuration
+title: Preset Configuration
 description: Config fields, metadata files, versioning, and more.
 ---
 
@@ -13,27 +13,55 @@ The `agentrules.json` file created by `init` supports these fields:
 | `title` | Yes | Display name shown in the registry |
 | `description` | Yes | Short description (max 500 characters) |
 | `license` | Yes | SPDX license identifier (e.g., `MIT`, `Apache-2.0`) |
-| `platform` | Yes | Target platform: `opencode`, `claude`, `cursor`, `codex` |
-| `tags` | Yes | 1-10 tags for discoverability |
+| `platforms` | Yes | Array of target platforms: `opencode`, `claude`, `cursor`, `codex` |
 | `version` | No | Major version (default: 1) |
-| `features` | No | Up to 5 key features to highlight |
+| `tags` | Yes | 1-10 tags for discoverability (lowercase with hyphens) |
+| `features` | No | Up to 10 key features to highlight |
 | `ignore` | No | Glob patterns to exclude from bundle |
+| `agentrulesDir` | No | Directory for metadata files (default: `.agentrules`) |
 
 Example:
 
-```json
+```json title="agentrules.json"
 {
   "$schema": "https://agentrules.directory/schema/agentrules.json",
   "name": "my-preset",
   "title": "My Awesome Preset",
   "description": "A helpful preset for TypeScript projects",
   "license": "MIT",
-  "platform": "opencode",
+  "platforms": ["opencode"],
   "tags": ["typescript", "testing", "tdd"],
   "features": [
     "Code review agent",
     "Test generation commands",
     "PR description generator"
+  ]
+}
+```
+
+### Multi-Platform Presets
+
+If your preset works for multiple platforms, list them all:
+
+```json title="agentrules.json"
+{
+  "$schema": "https://agentrules.directory/schema/agentrules.json",
+  "name": "my-preset",
+  "title": "My Awesome Preset",
+  "description": "A helpful preset",
+  "license": "MIT",
+  "platforms": ["opencode", "claude"],
+  "tags": ["typescript", "react"]
+}
+```
+
+You can also specify custom paths for each platform:
+
+```json title="agentrules.json"
+{
+  "platforms": [
+    "opencode",
+    { "platform": "claude", "path": ".claude-config" }
   ]
 }
 ```
@@ -47,12 +75,40 @@ Add a `.agentrules/` subfolder for registry metadata:
 ├── agentrules.json
 ├── AGENTS.md
 └── .agentrules/
-    ├── README.md      ← Displayed on your preset's registry page
-    ├── LICENSE.md     ← Full license text
-    └── INSTALL.txt    ← Message shown after install
+    ├── README.md      <- Displayed on your preset's registry page
+    ├── LICENSE.md     <- Full license text
+    └── INSTALL.txt    <- Message shown after install
 ```
 
 These files are **not** copied when users install — they're only for the registry.
+
+### Using Root for Metadata
+
+If your repo is dedicated to the preset (not a mixed project), you can put metadata at the root so GitHub displays your README:
+
+```json title="agentrules.json"
+{
+  "name": "my-preset",
+  "title": "My Preset",
+  "description": "A helpful preset",
+  "license": "MIT",
+  "platforms": ["opencode"],
+  "tags": ["typescript"],
+  "agentrulesDir": "."
+}
+```
+
+```
+my-preset-repo/
+├── agentrules.json
+├── README.md          <- GitHub shows this, also used by registry
+├── LICENSE.md         <- GitHub recognizes this
+├── INSTALL.txt        <- Shown after install
+└── .opencode/
+    └── AGENTS.md
+```
+
+The default `.agentrules/` is better for repos where you already have a project README.
 
 ## Ignoring Files
 
@@ -89,9 +145,8 @@ npx @agentrules/cli publish .opencode --version 2
 Users can install specific versions:
 
 ```bash
-npx @agentrules/cli add my-preset.opencode@1.0  # Specific version
-npx @agentrules/cli add my-preset.opencode@2    # Latest of major 2
-npx @agentrules/cli add my-preset.opencode      # Latest overall
+npx @agentrules/cli add my-preset@1.0 -p opencode  # Specific version
+npx @agentrules/cli add my-preset -p opencode      # Latest overall
 ```
 
 ## Unpublishing
@@ -99,26 +154,12 @@ npx @agentrules/cli add my-preset.opencode      # Latest overall
 Remove a specific version from the registry:
 
 ```bash
-npx @agentrules/cli unpublish my-preset.opencode@1.0
+npx @agentrules/cli unpublish my-preset@1.0
 ```
 
 <Callout type="warn">
 Unpublished versions cannot be republished with the same version number.
 </Callout>
-
-## Platform-Specific Presets
-
-Each platform has different features and config formats. If you want to support multiple platforms, publish separate presets:
-
-```bash
-# Publish for OpenCode
-npx @agentrules/cli init .opencode
-npx @agentrules/cli publish .opencode
-
-# Publish for Claude
-npx @agentrules/cli init .claude
-npx @agentrules/cli publish .claude
-```
 
 ## Authentication
 

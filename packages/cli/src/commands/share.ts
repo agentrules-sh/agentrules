@@ -13,7 +13,7 @@ import {
 } from "@agentrules/core";
 import { readFile } from "fs/promises";
 import { resolve } from "path";
-import { createRule, getRule, updateRule } from "@/lib/api/rule";
+import { publishRule } from "@/lib/api/rules";
 import { useAppContext } from "@/lib/context";
 import { log } from "@/lib/log";
 import { ui } from "@/lib/ui";
@@ -109,8 +109,7 @@ export async function share(options: ShareOptions = {}): Promise<ShareResult> {
   }
 
   if (!content) {
-    const error =
-      "Content is required. Use --content <content> or --file <path>";
+    const error = "Content is required. Provide a file path or use --content";
     log.error(error);
     return { success: false, error };
   }
@@ -121,78 +120,10 @@ export async function share(options: ShareOptions = {}): Promise<ShareResult> {
     return { success: false, error };
   }
 
-  const spinner = await log.spinner("Checking if rule exists...");
+  const spinner = await log.spinner(`Publishing rule "${options.name}"...`);
 
-  // Check if rule already exists
-  const existingResult = await getRule(ctx.registry.url, options.name);
-  const isUpdate = existingResult.success;
-
-  if (isUpdate) {
-    const existingRule = existingResult.data;
-
-    // Warn if platform/type don't match (they're immutable)
-    if (options.platform !== existingRule.platform) {
-      spinner.stop();
-      log.warn(
-        `Platform cannot be changed. Rule is "${existingRule.platform}", ignoring "${options.platform}".`
-      );
-    }
-    if (options.type !== existingRule.type) {
-      spinner.stop();
-      log.warn(
-        `Type cannot be changed. Rule is "${existingRule.type}", ignoring "${options.type}".`
-      );
-    }
-
-    spinner.update(`Updating rule "${options.name}"...`);
-
-    const result = await updateRule(
-      ctx.registry.url,
-      ctx.credentials.token,
-      options.name,
-      {
-        title: options.title,
-        description: options.description,
-        content,
-        tags: options.tags,
-      }
-    );
-
-    if (!result.success) {
-      spinner.fail("Update failed");
-      log.error(result.error);
-      return { success: false, error: result.error };
-    }
-
-    spinner.success(`Updated rule ${ui.code(options.name)}`);
-
-    const ruleUrl = `${ctx.registry.url}r/${options.name}`;
-    log.print("");
-    log.print(ui.keyValue("Now live at", ui.link(ruleUrl)));
-    log.print("");
-    log.print(
-      ui.keyValue(
-        "Install command",
-        ui.code(`npx @agentrules/cli add r/${options.name}`)
-      )
-    );
-
-    return {
-      success: true,
-      rule: {
-        slug: result.data.slug,
-        platform: result.data.platform,
-        type: result.data.type,
-        title: result.data.title,
-        isNew: false,
-      },
-    };
-  }
-
-  // Create new rule
-  spinner.update(`Creating rule "${options.name}"...`);
-
-  const result = await createRule(ctx.registry.url, ctx.credentials.token, {
+  // Publish rule (create or update - registry decides)
+  const result = await publishRule(ctx.registry.url, ctx.credentials.token, {
     name: options.name,
     platform: options.platform,
     type: options.type,
@@ -203,7 +134,7 @@ export async function share(options: ShareOptions = {}): Promise<ShareResult> {
   });
 
   if (!result.success) {
-    spinner.fail("Create failed");
+    spinner.fail("Publish failed");
     log.error(result.error);
     if (result.issues) {
       for (const issue of result.issues) {
@@ -213,16 +144,16 @@ export async function share(options: ShareOptions = {}): Promise<ShareResult> {
     return { success: false, error: result.error };
   }
 
-  spinner.success(`Created rule ${ui.code(options.name)}`);
+  const action = result.data.isNew ? "Created" : "Updated";
+  spinner.success(`${action} rule ${ui.code(result.data.slug)}`);
 
-  const ruleUrl = `${ctx.registry.url}r/${options.name}`;
   log.print("");
-  log.print(ui.keyValue("Now live at", ui.link(ruleUrl)));
+  log.print(ui.keyValue("Now live at", ui.link(result.data.url)));
   log.print("");
   log.print(
     ui.keyValue(
       "Install command",
-      ui.code(`npx @agentrules/cli add r/${options.name}`)
+      ui.code(`npx @agentrules/cli add ${result.data.slug}`)
     )
   );
 
@@ -233,7 +164,7 @@ export async function share(options: ShareOptions = {}): Promise<ShareResult> {
       platform: result.data.platform,
       type: result.data.type,
       title: result.data.title,
-      isNew: true,
+      isNew: result.data.isNew,
     },
   };
 }

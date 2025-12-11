@@ -1,14 +1,12 @@
 import { describe, expect, it } from "bun:test";
-import { STATIC_BUNDLE_DIR } from "../builder/registry";
 import {
   COMMON_LICENSES,
-  descriptionSchema,
   licenseSchema,
   nameSchema,
   platformIdSchema,
   presetBundleSchema,
   presetConfigSchema,
-  presetSchema,
+  requiredDescriptionSchema,
   titleSchema,
 } from "./schema";
 
@@ -85,18 +83,22 @@ describe("titleSchema", () => {
   });
 });
 
-describe("descriptionSchema", () => {
+describe("requiredDescriptionSchema", () => {
   it("accepts valid descriptions", () => {
-    expect(descriptionSchema.parse("A description")).toBe("A description");
-    expect(descriptionSchema.parse("a".repeat(500))).toBe("a".repeat(500));
+    expect(requiredDescriptionSchema.parse("A description")).toBe(
+      "A description"
+    );
+    expect(requiredDescriptionSchema.parse("a".repeat(500))).toBe(
+      "a".repeat(500)
+    );
   });
 
   it("rejects empty descriptions", () => {
-    expect(() => descriptionSchema.parse("")).toThrow();
+    expect(() => requiredDescriptionSchema.parse("")).toThrow();
   });
 
   it("rejects descriptions over 500 characters", () => {
-    expect(() => descriptionSchema.parse("a".repeat(501))).toThrow();
+    expect(() => requiredDescriptionSchema.parse("a".repeat(501))).toThrow();
   });
 });
 
@@ -134,7 +136,7 @@ describe("tags validation", () => {
     title: "Test Preset",
     description: "A test preset",
     license: "MIT",
-    platform: "opencode",
+    platforms: ["opencode"],
     tags: ["test"],
   };
 
@@ -253,16 +255,14 @@ describe("presetConfigSchema", () => {
     title: "Test Preset",
     description: "A test preset",
     license: "MIT",
-    platform: "opencode",
+    platforms: ["opencode"],
     tags: ["test"],
-    path: ".opencode",
   };
 
   it("accepts valid preset config without version", () => {
     const result = presetConfigSchema.parse(validConfig);
     expect(result.name).toBe("test-preset");
-    expect(result.platform).toBe("opencode");
-    expect(result.path).toBe(".opencode");
+    expect(result.platforms).toEqual(["opencode"]);
     expect(result.version).toBeUndefined();
   });
 
@@ -285,10 +285,25 @@ describe("presetConfigSchema", () => {
     expect(result.license).toBe("MIT");
   });
 
-  it("accepts config without path (defaults to platform projectDir)", () => {
-    const { path: _path, ...configWithoutPath } = validConfig;
-    const result = presetConfigSchema.parse(configWithoutPath);
-    expect(result.path).toBeUndefined();
+  it("accepts platforms with custom paths", () => {
+    const result = presetConfigSchema.parse({
+      ...validConfig,
+      platforms: [{ platform: "opencode", path: "rules" }],
+    });
+    expect(result.platforms).toEqual([{ platform: "opencode", path: "rules" }]);
+  });
+
+  it("accepts mixed platform entries (string and object)", () => {
+    const result = presetConfigSchema.parse({
+      ...validConfig,
+      platforms: ["opencode", { platform: "claude", path: "my-claude" }],
+    });
+    expect(result.platforms).toHaveLength(2);
+    expect(result.platforms[0]).toBe("opencode");
+    expect(result.platforms[1]).toEqual({
+      platform: "claude",
+      path: "my-claude",
+    });
   });
 
   it("rejects config without license", () => {
@@ -296,9 +311,15 @@ describe("presetConfigSchema", () => {
     expect(() => presetConfigSchema.parse(configWithoutLicense)).toThrow();
   });
 
-  it("rejects config without platform", () => {
-    const { platform: _platform, ...configWithoutPlatform } = validConfig;
-    expect(() => presetConfigSchema.parse(configWithoutPlatform)).toThrow();
+  it("rejects config without platforms", () => {
+    const { platforms: _platforms, ...configWithoutPlatforms } = validConfig;
+    expect(() => presetConfigSchema.parse(configWithoutPlatforms)).toThrow();
+  });
+
+  it("rejects empty platforms array", () => {
+    expect(() =>
+      presetConfigSchema.parse({ ...validConfig, platforms: [] })
+    ).toThrow();
   });
 
   it("rejects invalid name format", () => {
@@ -322,9 +343,9 @@ describe("presetConfigSchema", () => {
     ).toThrow(); // decimal not accepted
   });
 
-  it("rejects invalid platform", () => {
+  it("rejects invalid platform in array", () => {
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, platform: "invalid" })
+      presetConfigSchema.parse({ ...validConfig, platforms: ["invalid"] })
     ).toThrow();
   });
 
@@ -359,34 +380,48 @@ describe("presetConfigSchema", () => {
 });
 
 describe("presetBundleSchema", () => {
-  const validBundle = {
-    slug: "test-preset",
-    platform: "opencode",
-    title: "Test Preset",
-    version: "1.0",
-    description: "A test preset",
-    license: "MIT",
-    tags: ["test"],
+  const validVariant = {
+    platform: "opencode" as const,
     files: [
       {
         path: "AGENT_RULES.md",
         size: 10,
         checksum: "a".repeat(64),
-        contents: "# Rules\n",
+        content: "# Rules\n",
       },
     ],
+  };
+
+  const validBundle = {
+    slug: "test-preset",
+    title: "Test Preset",
+    version: "1.0",
+    description: "A test preset",
+    license: "MIT",
+    tags: ["test"],
+    variants: [validVariant],
   };
 
   it("accepts valid bundle", () => {
     const result = presetBundleSchema.parse(validBundle);
     expect(result.slug).toBe("test-preset");
     expect(result.version).toBe("1.0");
-    expect(result.files).toHaveLength(1);
+    expect(result.variants).toHaveLength(1);
+    expect(result.variants[0].files).toHaveLength(1);
   });
 
-  it("rejects empty files array", () => {
+  it("rejects empty variants array", () => {
     expect(() =>
-      presetBundleSchema.parse({ ...validBundle, files: [] })
+      presetBundleSchema.parse({ ...validBundle, variants: [] })
+    ).toThrow();
+  });
+
+  it("rejects empty files array in variant", () => {
+    expect(() =>
+      presetBundleSchema.parse({
+        ...validBundle,
+        variants: [{ ...validVariant, files: [] }],
+      })
     ).toThrow();
   });
 
@@ -394,37 +429,13 @@ describe("presetBundleSchema", () => {
     expect(() =>
       presetBundleSchema.parse({
         ...validBundle,
-        files: [{ ...validBundle.files[0], checksum: "short" }],
+        variants: [
+          {
+            ...validVariant,
+            files: [{ ...validVariant.files[0], checksum: "short" }],
+          },
+        ],
       })
-    ).toThrow();
-  });
-});
-
-describe("presetSchema", () => {
-  const validPreset = {
-    name: "test-preset.opencode",
-    slug: "test-preset",
-    platform: "opencode",
-    title: "Test Preset",
-    version: "1.0",
-    description: "A test preset",
-    license: "MIT",
-    tags: ["test"],
-    bundleUrl: `${STATIC_BUNDLE_DIR}/test-preset/opencode`,
-    fileCount: 1,
-    totalSize: 100,
-  };
-
-  it("accepts valid preset", () => {
-    const result = presetSchema.parse(validPreset);
-    expect(result.name).toBe("test-preset.opencode");
-    expect(result.version).toBe("1.0");
-    expect(result.bundleUrl).toBe(`${STATIC_BUNDLE_DIR}/test-preset/opencode`);
-  });
-
-  it("rejects negative fileCount", () => {
-    expect(() =>
-      presetSchema.parse({ ...validPreset, fileCount: -1 })
     ).toThrow();
   });
 });

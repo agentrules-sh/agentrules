@@ -31,7 +31,8 @@ type RuleResponse = {
   content: string;
   tags: string[];
   authorId: string;
-  publishedAt: string;
+  isNew: boolean;
+  url: string;
 };
 
 const originalFetch = globalThis.fetch;
@@ -181,23 +182,11 @@ describe("share", () => {
       await writeFile(filePath, fileContent);
 
       let sentBody: unknown;
-      mockFetch({
-        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
-        method: "GET",
-        status: 404,
-        response: { error: "Not found" },
-      });
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
-          method: "GET",
-          status: 404,
-          response: { error: "Not found" },
-        },
-        {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.base}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
           method: "POST",
-          status: 200,
+          status: 201,
           response: createRuleResponse(),
           onCall: (_url, init) => {
             sentBody = JSON.parse(init?.body as string);
@@ -232,19 +221,13 @@ describe("share", () => {
       await setupLoggedInContext();
     });
 
-    it("creates a new rule successfully", async () => {
+    it("publishes a new rule successfully", async () => {
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
-          method: "GET",
-          status: 404,
-          response: { error: "Not found" },
-        },
-        {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.base}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
           method: "POST",
-          status: 200,
-          response: createRuleResponse(),
+          status: 201,
+          response: createRuleResponse({ isNew: true }),
         },
       ]);
 
@@ -262,15 +245,9 @@ describe("share", () => {
       let sentBody: unknown;
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
-          method: "GET",
-          status: 404,
-          response: { error: "Not found" },
-        },
-        {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.base}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
           method: "POST",
-          status: 200,
+          status: 201,
           response: createRuleResponse(),
           onCall: (_url, init) => {
             sentBody = JSON.parse(init?.body as string);
@@ -307,13 +284,7 @@ describe("share", () => {
       let capturedHeaders: Headers | Record<string, string> | undefined;
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
-          method: "GET",
-          status: 404,
-          response: { error: "Not found" },
-        },
-        {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.base}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
           method: "POST",
           status: 200,
           response: createRuleResponse(),
@@ -341,19 +312,16 @@ describe("share", () => {
       await setupLoggedInContext();
     });
 
-    it("updates an existing rule", async () => {
+    it("updates an existing rule via publish", async () => {
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
-          method: "GET",
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
+          method: "POST",
           status: 200,
-          response: createRuleResponse(),
-        },
-        {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
-          method: "PUT",
-          status: 200,
-          response: createRuleResponse({ title: "Updated Title" }),
+          response: createRuleResponse({
+            isNew: false,
+            title: "Updated Title",
+          }),
         },
       ]);
 
@@ -366,20 +334,14 @@ describe("share", () => {
       expect(result.rule?.isNew).toBeFalse();
     });
 
-    it("sends only updatable fields when updating", async () => {
+    it("sends full payload when publishing (registry handles create vs update)", async () => {
       let sentBody: unknown;
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
-          method: "GET",
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
+          method: "POST",
           status: 200,
-          response: createRuleResponse(),
-        },
-        {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
-          method: "PUT",
-          status: 200,
-          response: createRuleResponse(),
+          response: createRuleResponse({ isNew: false }),
           onCall: (_url, init) => {
             sentBody = JSON.parse(init?.body as string);
           },
@@ -389,13 +351,12 @@ describe("share", () => {
       await share(VALID_OPTIONS);
 
       const body = sentBody as Record<string, unknown>;
-      // Update should only include title, description, content
+      // Publish always sends full payload - registry decides create vs update
+      expect(body.name).toBe(VALID_OPTIONS.name);
+      expect(body.platform).toBe(VALID_OPTIONS.platform);
+      expect(body.type).toBe(VALID_OPTIONS.type);
       expect(body.title).toBe(VALID_OPTIONS.title);
       expect(body.content).toBe(VALID_OPTIONS.content);
-      // Should NOT include slug, platform, type (immutable)
-      expect(body.name).toBeUndefined();
-      expect(body.platform).toBeUndefined();
-      expect(body.type).toBeUndefined();
     });
   });
 
@@ -407,13 +368,7 @@ describe("share", () => {
     it("handles API errors gracefully", async () => {
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
-          method: "GET",
-          status: 404,
-          response: { error: "Not found" },
-        },
-        {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.base}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
           method: "POST",
           status: 409,
           response: { error: "Rule with this slug already exists" },
@@ -429,13 +384,7 @@ describe("share", () => {
     it("handles validation errors from API", async () => {
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
-          method: "GET",
-          status: 404,
-          response: { error: "Not found" },
-        },
-        {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.base}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
           method: "POST",
           status: 400,
           response: {
@@ -473,13 +422,7 @@ describe("share", () => {
       for (const type of ["instruction", "agent", "command", "tool"]) {
         mockFetchSequence([
           {
-            url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
-            method: "GET",
-            status: 404,
-            response: { error: "Not found" },
-          },
-          {
-            url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.base}`,
+            url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
             method: "POST",
             status: 200,
             response: createRuleResponse({ type }),
@@ -500,13 +443,7 @@ describe("share", () => {
       for (const type of ["instruction", "command", "skill"]) {
         mockFetchSequence([
           {
-            url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
-            method: "GET",
-            status: 404,
-            response: { error: "Not found" },
-          },
-          {
-            url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.base}`,
+            url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
             method: "POST",
             status: 200,
             response: createRuleResponse({ platform: "claude", type }),
@@ -526,13 +463,7 @@ describe("share", () => {
     it("accepts valid cursor types", async () => {
       mockFetchSequence([
         {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
-          method: "GET",
-          status: 404,
-          response: { error: "Not found" },
-        },
-        {
-          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.base}`,
+          url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
           method: "POST",
           status: 200,
           response: createRuleResponse({ platform: "cursor", type: "rule" }),
@@ -552,13 +483,7 @@ describe("share", () => {
       for (const type of ["instruction", "command"]) {
         mockFetchSequence([
           {
-            url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.get(VALID_OPTIONS.name)}`,
-            method: "GET",
-            status: 404,
-            response: { error: "Not found" },
-          },
-          {
-            url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rule.base}`,
+            url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
             method: "POST",
             status: 200,
             response: createRuleResponse({ platform: "codex", type }),
@@ -580,9 +505,10 @@ describe("share", () => {
 function createRuleResponse(
   overrides: Partial<RuleResponse> = {}
 ): RuleResponse {
+  const slug = overrides.slug ?? VALID_OPTIONS.name;
   return {
     id: "rule-123",
-    slug: VALID_OPTIONS.name, // Server returns full slug (could be namespaced)
+    slug, // Server returns full slug (could be namespaced)
     name: VALID_OPTIONS.name,
     platform: VALID_OPTIONS.platform,
     type: VALID_OPTIONS.type,
@@ -591,7 +517,8 @@ function createRuleResponse(
     content: VALID_OPTIONS.content,
     tags: VALID_OPTIONS.tags,
     authorId: "user-123",
-    publishedAt: new Date().toISOString(),
+    isNew: true, // Default to new rule
+    url: `https://example.com/rules/${slug}`, // URL structure is registry-defined
     ...overrides,
   };
 }
@@ -603,28 +530,6 @@ type MockFetchOptions = {
   response: unknown;
   onCall?: (url: string, init?: RequestInit) => void;
 };
-
-function mockFetch(options: MockFetchOptions) {
-  const mockedFetch = (async (
-    input: Parameters<typeof fetch>[0],
-    init?: Parameters<typeof fetch>[1]
-  ) => {
-    const url = String(input);
-    if (url === options.url) {
-      options.onCall?.(url, init);
-      return new Response(JSON.stringify(options.response), {
-        status: options.status ?? 200,
-      });
-    }
-    throw new Error(`Unexpected fetch URL: ${url}`);
-  }) as typeof fetch;
-
-  mockedFetch.preconnect =
-    originalFetch.preconnect?.bind(originalFetch) ??
-    ((() => Promise.resolve()) as NonNullable<typeof originalFetch.preconnect>);
-
-  globalThis.fetch = mockedFetch;
-}
 
 function mockFetchSequence(sequence: MockFetchOptions[]) {
   let callIndex = 0;

@@ -1,9 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import {
-  cleanInstallMessage,
-  encodeItemName,
-  validatePresetConfig,
-} from "./utils";
+import { cleanInstallMessage, validatePresetConfig } from "./utils";
 
 // Version is now optional in source preset config
 const MINIMAL_PRESET = {
@@ -11,9 +7,8 @@ const MINIMAL_PRESET = {
   title: "Starter",
   description: "Desc",
   license: "MIT",
-  platform: "opencode" as const,
+  platforms: ["opencode" as const],
   tags: ["test"],
-  path: ".opencode",
 };
 
 describe("cleanInstallMessage", () => {
@@ -21,12 +16,6 @@ describe("cleanInstallMessage", () => {
     expect(cleanInstallMessage("  notes  ")).toBe("notes");
     expect(cleanInstallMessage("   ")).toBeUndefined();
     expect(cleanInstallMessage(undefined)).toBeUndefined();
-  });
-});
-
-describe("encodeItemName", () => {
-  it("composes slug and platform", () => {
-    expect(encodeItemName("starter", "opencode")).toBe("starter.opencode");
   });
 });
 
@@ -43,34 +32,53 @@ describe("validatePresetConfig", () => {
   });
 
   it("throws for missing required data", () => {
-    // Missing fields report as "Invalid input: expected string, received undefined"
     expect(() => validatePresetConfig({}, "oops")).toThrow(
-      /name.*expected string/i
+      /Invalid preset config for oops/i
     );
     expect(() => validatePresetConfig({ name: "oops" }, "oops")).toThrow(
-      /title.*expected string/i
+      /Invalid preset config for oops/i
     );
   });
 
   it("throws for unknown platform", () => {
     const withUnknownPlatform = {
       ...MINIMAL_PRESET,
-      platform: "windsurf",
+      platforms: ["windsurf"],
     };
     expect(() => validatePresetConfig(withUnknownPlatform, "starter")).toThrow(
-      /platform.*Invalid option/i
+      /Invalid preset config for starter/i
     );
   });
 
-  it("throws for missing platform", () => {
-    const withoutPlatform = {
+  it("throws for missing platforms", () => {
+    const withoutPlatforms = {
       name: "starter",
       title: "Starter",
       description: "Desc",
       license: "MIT",
+      tags: ["test"],
     };
-    expect(() => validatePresetConfig(withoutPlatform, "starter")).toThrow(
-      /platform.*Invalid option/i
+    expect(() => validatePresetConfig(withoutPlatforms, "starter")).toThrow(
+      /Invalid preset config for starter/i
     );
+  });
+
+  it("accepts platforms with custom paths", () => {
+    const withPath = {
+      ...MINIMAL_PRESET,
+      platforms: [{ platform: "opencode" as const, path: "rules" }],
+    };
+    expect(validatePresetConfig(withPath, "starter")).toEqual(withPath);
+  });
+
+  it("accepts mixed platform entries", () => {
+    const mixed = {
+      ...MINIMAL_PRESET,
+      platforms: [
+        "opencode" as const,
+        { platform: "claude" as const, path: "my-claude" },
+      ],
+    };
+    expect(validatePresetConfig(mixed, "starter")).toEqual(mixed);
   });
 });

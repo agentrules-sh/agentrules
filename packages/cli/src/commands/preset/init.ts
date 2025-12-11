@@ -6,7 +6,7 @@ import {
   type PlatformId,
   PRESET_CONFIG_FILENAME,
   PRESET_SCHEMA_URL,
-  type PresetConfig,
+  type RawPresetConfig,
 } from "@agentrules/core";
 import { mkdir, writeFile } from "fs/promises";
 import { basename, join } from "path";
@@ -28,7 +28,7 @@ export type InitOptions = {
 
 export type InitResult = {
   configPath: string;
-  preset: PresetConfig;
+  preset: RawPresetConfig;
   createdDir?: string;
 };
 
@@ -214,7 +214,7 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
     );
   }
 
-  const preset: PresetConfig = {
+  const preset: RawPresetConfig = {
     $schema: PRESET_SCHEMA_URL,
     name,
     title,
@@ -222,7 +222,7 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
     description,
     tags: options.tags ?? [],
     license,
-    platform,
+    platforms: [platform],
   };
 
   // Create platform directory if needed

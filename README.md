@@ -122,27 +122,27 @@ Presets use `agentrules.json` for configuration:
   "$schema": "https://agentrules.directory/schema/agentrules.json",
   "name": "my-preset",
   "title": "My Preset",
-  "version": 1,
   "description": "A helpful preset for...",
   "license": "MIT",
+  "platforms": ["opencode"],
   "tags": ["productivity", "typescript"],
+  "version": 1,
   "features": ["Smart code review", "Auto-formatting"],
-  "platform": "opencode",
   "ignore": ["*.log", "test-fixtures"]
 }
 ```
 
-| Field | Description |
-|-------|-------------|
-| `name` | URL-safe identifier (lowercase, hyphens) |
-| `title` | Display name |
-| `version` | Major version (optional, default: 1) |
-| `description` | Short description (max 500 chars) |
-| `license` | SPDX license identifier (e.g., `MIT`) |
-| `tags` | Up to 10 tags for discoverability |
-| `features` | Up to 5 key features to highlight |
-| `platform` | Target platform: `opencode`, `claude`, `cursor`, `codex` |
-| `ignore` | Additional patterns to exclude from bundle (optional) |
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | URL-safe identifier (lowercase, hyphens) |
+| `title` | Yes | Display name |
+| `description` | Yes | Short description (max 500 chars) |
+| `license` | Yes | SPDX license identifier (e.g., `MIT`) |
+| `platforms` | Yes | Array of target platforms: `opencode`, `claude`, `cursor`, `codex` |
+| `tags` | Yes | 1-10 tags for discoverability |
+| `version` | No | Major version (default: 1) |
+| `features` | No | Up to 5 key features to highlight |
+| `ignore` | No | Additional patterns to exclude from bundle |
 
 ### Preset Structure
 

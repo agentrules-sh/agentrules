@@ -1,29 +1,26 @@
 import { z } from "zod";
 import { PLATFORM_IDS, PLATFORM_RULE_TYPES } from "../platform";
-
-const NAME_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+import {
+  descriptionSchema,
+  nameSchema,
+  tagSchema,
+  tagsSchema,
+  titleSchema,
+} from "../schemas";
 
 /**
- * Schema for the rule name.
- * This is what users provide when creating a rule.
+ * Rule-specific schema aliases.
+ * All use shared schemas for consistency with presets:
+ * - name: max 64 chars, lowercase kebab-case
+ * - title: max 80 chars
+ * - description: max 500 chars (optional for rules)
+ * - tags: max 35 chars each, 1-10 required, platform names blocked
  */
-export const ruleNameSchema = z
-  .string()
-  .trim()
-  .min(1, "Name is required")
-  .max(64, "Name must be 64 characters or less")
-  .regex(NAME_REGEX, "Must be lowercase alphanumeric with hyphens");
-
-export const ruleTitleSchema = z
-  .string()
-  .trim()
-  .min(1, "Title is required")
-  .max(80, "Title must be 80 characters or less");
-
-export const ruleDescriptionSchema = z
-  .string()
-  .trim()
-  .max(500, "Description must be 500 characters or less");
+export const ruleNameSchema = nameSchema;
+export const ruleTitleSchema = titleSchema;
+export const ruleDescriptionSchema = descriptionSchema;
+export const ruleTagSchema = tagSchema;
+export const ruleTagsSchema = tagsSchema;
 
 export const rulePlatformSchema = z.enum(PLATFORM_IDS);
 
@@ -33,21 +30,6 @@ export const ruleContentSchema = z
   .string()
   .min(1, "Content is required")
   .max(100_000, "Content must be 100KB or less");
-
-export const ruleTagSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .max(32)
-  .regex(
-    /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-    "Tags must be lowercase alphanumeric with single hyphens between words"
-  );
-
-export const ruleTagsSchema = z
-  .array(ruleTagSchema)
-  .min(1, "At least 1 tag is required")
-  .max(10, "Maximum 10 tags allowed");
 
 /** Common fields shared across all platform-type combinations */
 const ruleCommonFields = {
@@ -86,16 +68,7 @@ export const ruleCreateInputSchema = z
   .object(ruleCommonFields)
   .and(rulePlatformTypeSchema);
 
-export const ruleUpdateInputSchema = z.object({
-  name: ruleNameSchema,
-  title: ruleTitleSchema.optional(),
-  description: ruleDescriptionSchema.optional(),
-  content: ruleContentSchema.optional(),
-  tags: ruleTagsSchema.optional(),
-});
-
 export type RuleCreateInput = z.infer<typeof ruleCreateInputSchema>;
-export type RuleUpdateInput = z.infer<typeof ruleUpdateInputSchema>;
 
 /** Re-export platform-rule types for convenience */
 export { getValidRuleTypes, PLATFORM_RULE_TYPES } from "../platform/config";

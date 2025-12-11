@@ -1,7 +1,9 @@
 ---
-title: Quick Start
+title: Publishing Presets
 description: Share your agentic workflow with the community.
 ---
+
+Presets are bundles of configuration files. To share a single file (one agent, command, or instruction), see [Sharing Rules](/sharing-rules) instead.
 
 ## Why Publish?
 
@@ -17,10 +19,10 @@ Already have configurations in `.opencode/`, `.claude/`, or another platform dir
 ### 1. Initialize
 
 ```bash
-npx @agentrules/cli init
+npx @agentrules/cli init .opencode
 ```
 
-Run this inside your platform directory. It creates `agentrules.json` with your preset's metadata (name, description, license).
+Run this in (or pass the path to) your platform directory. It creates `agentrules.json` with your preset's metadata.
 
 ### 2. Login
 
@@ -33,7 +35,7 @@ Opens a browser for authentication.
 ### 3. Publish
 
 ```bash
-npx @agentrules/cli publish
+npx @agentrules/cli publish .opencode
 ```
 
 Your preset is now live.
@@ -44,11 +46,11 @@ Everything in your platform directory becomes your preset:
 
 ```
 .opencode/
-├── agentrules.json    ← Config (not included in preset)
-├── AGENTS.md          ← Included
-├── commands/          ← Included
+├── agentrules.json    <- Config (not included in preset)
+├── AGENTS.md          <- Included
+├── commands/          <- Included
 │   └── review.md
-└── .agentrules/       ← Metadata for registry (not included)
+└── .agentrules/       <- Metadata for registry (not included)
     └── README.md
 ```
 
@@ -57,7 +59,7 @@ Everything in your platform directory becomes your preset:
 Made changes? Just publish again:
 
 ```bash
-npx @agentrules/cli publish
+npx @agentrules/cli publish .opencode
 ```
 
 The version auto-increments. Users installing your preset get your latest changes.

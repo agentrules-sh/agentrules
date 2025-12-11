@@ -17,17 +17,18 @@ export type PublishResponse = {
   presetId: string;
   versionId: string;
   slug: string;
-  platform: string;
   title: string;
   version: string;
   isNewPreset: boolean;
-  bundleUrl: string;
+  /** All published platform variants */
+  variants: Array<{ platform: string; bundleUrl: string }>;
+  /** URL to the preset page on the registry */
+  url: string;
 };
 
 /** Response from DELETE {API_ENDPOINTS.presets.unpublish()} (unpublish). */
 export type UnpublishResponse = {
   slug: string;
-  platform: string;
   version: string;
 };
 
@@ -95,15 +96,15 @@ export type UnpublishResult =
 
 /**
  * Unpublishes a preset version from the registry.
+ * This unpublishes all platform variants for the specified version.
  */
 export async function unpublishPreset(
   baseUrl: string,
   token: string,
   slug: string,
-  platform: string,
   version: string
 ): Promise<UnpublishResult> {
-  const url = `${baseUrl}${API_ENDPOINTS.presets.unpublish(slug, platform, version)}`;
+  const url = `${baseUrl}${API_ENDPOINTS.presets.unpublish(slug, version)}`;
 
   log.debug(`DELETE ${url}`);
 
