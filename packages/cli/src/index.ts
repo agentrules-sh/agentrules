@@ -1,18 +1,19 @@
 #!/usr/bin/env node
 
-import { PLATFORM_IDS } from "@agentrules/core";
+import {
+  isSupportedPlatform,
+  PLATFORM_IDS,
+  PLATFORMS,
+  type PlatformId,
+} from "@agentrules/core";
 import { Command } from "commander";
 import { createRequire } from "module";
-import { basename } from "path";
+import { basename, join } from "path";
 import { type AddResult, add, normalizePlatformInput } from "@/commands/add";
 import { login } from "@/commands/auth/login";
 import { logout } from "@/commands/auth/logout";
 import { whoami } from "@/commands/auth/whoami";
-import {
-  initPreset,
-  requiresPlatformFlag,
-  resolvePlatformDirectory,
-} from "@/commands/preset/init";
+import { detectPlatformContext, initPreset } from "@/commands/preset/init";
 import { initInteractive } from "@/commands/preset/init-interactive";
 import { validatePreset } from "@/commands/preset/validate";
 import { publish } from "@/commands/publish";
@@ -273,7 +274,7 @@ program
 
       if (useInteractive) {
         const result = await initInteractive({
-          baseDir: targetDir,
+          directory: targetDir,
           name: options.name ?? defaultName,
           title: options.title,
           description: options.description,
@@ -298,41 +299,55 @@ program
         return;
       }
 
-      // Non-interactive mode - use centralized resolution
-      const resolved = await resolvePlatformDirectory(
-        targetDir,
-        options.platform
-      );
+      // Validate platform option if provided
+      if (options.platform && !isSupportedPlatform(options.platform)) {
+        throw new Error(
+          `Unknown platform "${options.platform}". Supported: ${PLATFORM_IDS.join(", ")}`
+        );
+      }
+      const platformOption = options.platform as PlatformId | undefined;
 
-      // In non-interactive mode, require explicit --platform if we can't determine which one
-      if (!options.platform) {
-        const check = requiresPlatformFlag(resolved);
-        if (check.required) {
-          if (check.reason === "no_platforms") {
-            const targetDirName = basename(targetDir);
-            log.error(
-              `No platform directory found in "${targetDirName}". ` +
-                `Specify --platform (${PLATFORM_IDS.join(
-                  ", "
-                )}) or run from a platform directory.`
-            );
-          } else {
-            log.error(
-              `Multiple platform directories found (${check.platforms.join(
-                ", "
-              )}). Specify --platform to choose one.`
-            );
-          }
-          process.exit(1);
-        }
+      // Non-interactive mode - detect platform context
+      const ctx = await detectPlatformContext(targetDir);
+
+      let platformDir: string;
+      let platform: PlatformId;
+
+      if (ctx.insidePlatformDir) {
+        // Inside a platform directory - use it directly
+        platformDir = targetDir;
+        platform = platformOption ?? ctx.platform;
+      } else if (platformOption) {
+        // User specified platform - use it
+        platform = platformOption;
+        const detected = ctx.platforms.find((p) => p.id === platform);
+        platformDir = detected
+          ? join(targetDir, detected.path)
+          : join(targetDir, PLATFORMS[platform].platformDir);
+      } else if (ctx.platforms.length === 1) {
+        // Exactly one platform detected - use it
+        platform = ctx.platforms[0].id;
+        platformDir = join(targetDir, ctx.platforms[0].path);
+      } else if (ctx.platforms.length === 0) {
+        // No platforms detected - require --platform
+        throw new Error(
+          `No platform directory found in "${basename(targetDir)}". ` +
+            `Specify --platform (${PLATFORM_IDS.join(", ")})`
+        );
+      } else {
+        // Multiple platforms detected - require --platform
+        throw new Error(
+          `Multiple platform directories found (${ctx.platforms.map((p) => p.id).join(", ")}). ` +
+            "Specify --platform to choose one"
+        );
       }
 
       const result = await initPreset({
-        directory: resolved.platformDir,
+        directory: platformDir,
         name: options.name ?? defaultName,
         title: options.title,
         description: options.description,
-        platform: resolved.platform,
+        platform,
         license: options.license,
         force: options.force,
       });

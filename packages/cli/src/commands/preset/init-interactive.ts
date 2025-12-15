@@ -1,25 +1,27 @@
 import {
   COMMON_LICENSES,
   descriptionSchema,
-  getPlatformFromDir,
+  isSupportedPlatform,
   licenseSchema,
   nameSchema,
   PLATFORM_IDS,
+  PLATFORMS,
   type PlatformId,
   PRESET_CONFIG_FILENAME,
   tagsSchema,
   titleSchema,
 } from "@agentrules/core";
 import * as p from "@clack/prompts";
-import { basename, join } from "path";
+import { join } from "path";
 import { fileExists } from "@/lib/fs";
 import { normalizeName, toTitleCase } from "@/lib/preset-utils";
 import { check } from "@/lib/zod-validator";
 import {
+  type DetectedPlatform,
+  detectPlatformContext,
   type InitOptions,
   type InitResult,
   initPreset,
-  resolvePlatformDirectory,
 } from "./init";
 
 const DEFAULT_PRESET_NAME = "my-preset";
@@ -46,10 +48,8 @@ function checkTags(value: string): string | undefined {
 }
 
 export type InteractiveInitOptions = {
-  /** Base directory to search for platform dirs (defaults to cwd) */
-  baseDir: string;
-  /** Explicit platform directory (e.g., ".opencode") */
-  platformDir?: string;
+  /** Directory to initialize in (defaults to cwd) */
+  directory: string;
   name?: string;
   title?: string;
   description?: string;
@@ -60,16 +60,12 @@ export type InteractiveInitOptions = {
 
 /**
  * Run interactive init flow with clack prompts.
- *
- * If platformDir is provided, init directly in that directory.
- * Otherwise, detect platform directories and prompt user to select one.
  */
 export async function initInteractive(
   options: InteractiveInitOptions
 ): Promise<InitResult | null> {
   const {
-    baseDir,
-    platformDir: explicitPlatformDir,
+    directory,
     name: nameOption,
     title: titleOption,
     description: descriptionOption,
@@ -81,72 +77,69 @@ export async function initInteractive(
 
   p.intro("Create a new preset");
 
-  // Determine the target platform directory
+  // Validate platform option if provided
+  if (platformOption && !isSupportedPlatform(platformOption)) {
+    p.cancel(`Unknown platform "${platformOption}"`);
+    process.exit(1);
+  }
+  const validatedPlatform = platformOption as PlatformId | undefined;
+
+  // Detect platform context
+  const ctx = await detectPlatformContext(directory);
+
   let targetPlatformDir: string;
   let selectedPlatform: PlatformId;
 
-  if (explicitPlatformDir) {
-    // User specified a platform directory explicitly
-    targetPlatformDir = explicitPlatformDir;
-    // Try to infer platform from directory name, or use provided platform option
-    const dirName = basename(explicitPlatformDir);
-    selectedPlatform =
-      (platformOption as PlatformId) ??
-      getPlatformFromDir(dirName) ??
-      "opencode";
+  if (ctx.insidePlatformDir) {
+    // Already in a platform directory - use it directly
+    targetPlatformDir = directory;
+    selectedPlatform = validatedPlatform ?? ctx.platform;
+
+    p.note(
+      `Detected platform directory: ${ctx.platform}`,
+      "Using current directory"
+    );
   } else {
-    // Use centralized resolution logic
-    const resolved = await resolvePlatformDirectory(baseDir, platformOption);
+    // Show detected platforms and prompt for selection
+    const detectedMap = new Map<PlatformId, DetectedPlatform>(
+      ctx.platforms.map((d) => [d.id, d])
+    );
 
-    if (resolved.isTargetPlatformDir) {
-      // Already in a platform directory - use it directly, no prompt needed
-      targetPlatformDir = resolved.platformDir;
-      selectedPlatform = resolved.platform;
-
+    if (ctx.platforms.length > 0) {
       p.note(
-        `Detected platform directory: ${resolved.platform}`,
-        "Using current directory"
+        ctx.platforms.map((d) => `${d.id} → ${d.path}`).join("\n"),
+        "Detected platform directories"
       );
-    } else {
-      // Show detected platforms and prompt for selection
-      const detectedMap = new Map(resolved.detected.map((d) => [d.id, d]));
-
-      if (resolved.detected.length > 0) {
-        p.note(
-          resolved.detected.map((d) => `${d.id} → ${d.path}`).join("\n"),
-          "Detected platform directories"
-        );
-      }
-
-      // Prompt for platform selection
-      const platformChoice = await p.select({
-        message: "Platform",
-        options: PLATFORM_IDS.map((id) => ({
-          value: id,
-          label: detectedMap.has(id) ? `${id} (detected)` : id,
-          hint: detectedMap.get(id)?.path,
-        })),
-        initialValue: resolved.platform,
-      });
-
-      if (p.isCancel(platformChoice)) {
-        p.cancel("Cancelled");
-        process.exit(0);
-      }
-
-      selectedPlatform = platformChoice as PlatformId;
-
-      // Re-resolve if user selected a different platform than the default
-      if (selectedPlatform !== resolved.platform) {
-        const reResolved = await resolvePlatformDirectory(
-          baseDir,
-          selectedPlatform
-        );
-        targetPlatformDir = reResolved.platformDir;
-      } else {
-        targetPlatformDir = resolved.platformDir;
-      }
     }
+
+    // Determine initial value for prompt (only if we have a hint)
+    const initialPlatform: PlatformId | undefined =
+      validatedPlatform ??
+      (ctx.platforms.length > 0 ? ctx.platforms[0].id : undefined);
+
+    // Prompt for platform selection
+    const platformChoice = await p.select({
+      message: "Platform",
+      options: PLATFORM_IDS.map((id) => ({
+        value: id,
+        label: detectedMap.has(id) ? `${id} (detected)` : id,
+        hint: detectedMap.get(id)?.path,
+      })),
+      ...(initialPlatform && { initialValue: initialPlatform }),
+    });
+
+    if (p.isCancel(platformChoice)) {
+      p.cancel("Cancelled");
+      process.exit(0);
+    }
+
+    selectedPlatform = platformChoice as PlatformId;
+
+    // Determine target directory based on selection
+    const detected = detectedMap.get(selectedPlatform);
+    targetPlatformDir = detected
+      ? join(directory, detected.path)
+      : join(directory, PLATFORMS[selectedPlatform].platformDir);
   }
 
   // Check if config already exists in target platform dir

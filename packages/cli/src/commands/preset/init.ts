@@ -2,7 +2,6 @@ import {
   getPlatformFromDir,
   isSupportedPlatform,
   PLATFORM_IDS,
-  PLATFORMS,
   type PlatformId,
   PRESET_CONFIG_FILENAME,
   PRESET_SCHEMA_URL,
@@ -37,16 +36,9 @@ export type DetectedPlatform = {
   path: string;
 };
 
-export type ResolvePlatformResult = {
-  /** The resolved platform directory path */
-  platformDir: string;
-  /** The detected/inferred platform ID */
-  platform: PlatformId;
-  /** Whether the target directory itself is a platform directory */
-  isTargetPlatformDir: boolean;
-  /** Detected platform directories inside target (empty if target is a platform dir) */
-  detected: DetectedPlatform[];
-};
+export type PlatformDetection =
+  | { insidePlatformDir: true; platform: PlatformId }
+  | { insidePlatformDir: false; platforms: DetectedPlatform[] };
 
 /** Paths to check for existing platform configs (in order of preference) */
 const PLATFORM_DETECTION_PATHS: Record<PlatformId, string[]> = {
@@ -83,99 +75,23 @@ export async function detectPlatforms(
 }
 
 /**
- * Resolve the target platform directory for initialization.
+ * Detect platform context for a directory.
  *
- * Detection order (deterministic):
- * 1. If targetDir itself is a platform directory (e.g., ".claude"), use it directly
- * 2. Otherwise, detect platform directories inside targetDir
- *
- * @param targetDir - The target directory (cwd or user-provided path)
- * @param platformOverride - Optional platform to use instead of detecting/inferring
+ * Returns either:
+ * - { insidePlatformDir: true, platform } if directory itself is a platform dir
+ * - { insidePlatformDir: false, platforms } with detected platform dirs inside
  */
-export async function resolvePlatformDirectory(
-  targetDir: string,
-  platformOverride?: string
-): Promise<ResolvePlatformResult> {
-  const targetDirName = basename(targetDir);
+export async function detectPlatformContext(
+  directory: string
+): Promise<PlatformDetection> {
+  const platform = getPlatformFromDir(basename(directory));
 
-  // Step 1: Check if targetDir itself is a platform directory
-  const targetPlatform = getPlatformFromDir(targetDirName);
-
-  if (targetPlatform) {
-    // Target is a platform directory - use it directly
-    const platform = platformOverride
-      ? normalizePlatform(platformOverride)
-      : targetPlatform;
-
-    return {
-      platformDir: targetDir,
-      platform,
-      isTargetPlatformDir: true,
-      detected: [],
-    };
+  if (platform) {
+    return { insidePlatformDir: true, platform };
   }
 
-  // Step 2: Detect platform directories inside targetDir
-  const detected = await detectPlatforms(targetDir);
-
-  // Determine which platform to use
-  let platform: PlatformId;
-  let platformDir: string;
-
-  if (platformOverride) {
-    // User specified a platform - use it
-    platform = normalizePlatform(platformOverride);
-    const detectedPath = detected.find((d) => d.id === platform)?.path;
-    platformDir = detectedPath
-      ? join(targetDir, detectedPath)
-      : join(targetDir, PLATFORMS[platform].platformDir);
-  } else if (detected.length > 0) {
-    // Use first detected platform
-    platform = detected[0].id;
-    platformDir = join(targetDir, detected[0].path);
-  } else {
-    // No detection, default to opencode
-    platform = "opencode";
-    platformDir = join(targetDir, PLATFORMS.opencode.platformDir);
-  }
-
-  return {
-    platformDir,
-    platform,
-    isTargetPlatformDir: false,
-    detected,
-  };
-}
-
-export type PlatformFlagCheck =
-  | { required: false }
-  | { required: true; reason: "no_platforms" }
-  | { required: true; reason: "multiple_platforms"; platforms: string[] };
-
-/**
- * Check if --platform flag is required for non-interactive mode.
- * Returns the reason if required, so CLI can show appropriate error.
- */
-export function requiresPlatformFlag(
-  resolved: ResolvePlatformResult
-): PlatformFlagCheck {
-  if (resolved.isTargetPlatformDir) {
-    return { required: false };
-  }
-
-  if (resolved.detected.length === 0) {
-    return { required: true, reason: "no_platforms" };
-  }
-
-  if (resolved.detected.length > 1) {
-    return {
-      required: true,
-      reason: "multiple_platforms",
-      platforms: resolved.detected.map((d) => d.id),
-    };
-  }
-
-  return { required: false };
+  const platforms = await detectPlatforms(directory);
+  return { insidePlatformDir: false, platforms };
 }
 
 /**
@@ -193,9 +109,15 @@ export async function initPreset(options: InitOptions): Promise<InitResult> {
 
   // Infer platform from directory name if not provided
   const inferredPlatform = getPlatformFromDir(basename(platformDir));
-  const platform = normalizePlatform(
-    options.platform ?? inferredPlatform ?? "opencode"
-  );
+  const platformInput = options.platform ?? inferredPlatform;
+
+  if (!platformInput) {
+    throw new Error(
+      "Cannot determine platform. Specify --platform or run from a platform directory."
+    );
+  }
+
+  const platform = normalizePlatform(platformInput);
 
   // Validate/normalize inputs
   const name = normalizeName(options.name ?? DEFAULT_PRESET_NAME);
