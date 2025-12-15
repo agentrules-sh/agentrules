@@ -119,8 +119,8 @@ console.log(PLATFORM_IDS); // ["opencode", "claude", "cursor", "codex"]
 
 // Get paths for a platform
 const opencode = PLATFORMS.opencode;
-console.log(opencode.projectDir); // ".opencode"
-console.log(opencode.globalDir);  // "~/.config/opencode"
+console.log(opencode.platformDir); // ".opencode"
+console.log(opencode.globalDir);   // "~/.config/opencode"
 ```
 
 ## Types

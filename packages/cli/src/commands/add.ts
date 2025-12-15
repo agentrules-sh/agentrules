@@ -511,7 +511,7 @@ type InstallTarget = {
   root: string;
   mode: "project" | "global" | "custom";
   platform: PlatformId;
-  projectDir: string;
+  platformDir: string;
   label: string;
 };
 
@@ -519,7 +519,7 @@ function resolveInstallTarget(
   platform: PlatformId,
   options: AddOptions
 ): InstallTarget {
-  const { projectDir, globalDir } = PLATFORMS[platform];
+  const { platformDir, globalDir } = PLATFORMS[platform];
 
   if (options.directory) {
     const customRoot = resolve(expandHome(options.directory));
@@ -527,7 +527,7 @@ function resolveInstallTarget(
       root: customRoot,
       mode: "custom",
       platform,
-      projectDir,
+      platformDir,
       label: `custom directory ${customRoot}`,
     };
   }
@@ -543,7 +543,7 @@ function resolveInstallTarget(
       root: globalRoot,
       mode: "global",
       platform,
-      projectDir,
+      platformDir,
       label: `global path ${globalRoot}`,
     };
   }
@@ -553,7 +553,7 @@ function resolveInstallTarget(
     root: projectRoot,
     mode: "project",
     platform,
-    projectDir,
+    platformDir,
     label: `project root ${projectRoot}`,
   };
 }
@@ -575,7 +575,7 @@ function computePresetDestinationPath(
   if (target.mode === "global") {
     relativePath = normalized;
   } else {
-    relativePath = `${target.projectDir}/${normalized}`;
+    relativePath = `${target.platformDir}/${normalized}`;
   }
 
   const destination = resolve(target.root, relativePath);

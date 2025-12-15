@@ -70,6 +70,6 @@ export const ruleCreateInputSchema = z
 
 export type RuleCreateInput = z.infer<typeof ruleCreateInputSchema>;
 
-/** Re-export platform-rule types for convenience */
-export { getValidRuleTypes, PLATFORM_RULE_TYPES } from "../platform/config";
+/** Re-export platform types for convenience */
+export { PLATFORM_RULE_TYPES } from "../platform/config";
 export type { PlatformRuleType, RuleTypeForPlatform } from "../platform/types";

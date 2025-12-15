@@ -1,14 +1,19 @@
 /**
  * Platform configuration data.
  *
- * When adding a new platform or rule type:
+ * When adding a new platform or type:
  * 1. Add to PLATFORM_ID_TUPLE in types.ts
  * 2. Add entry to PLATFORMS below
  * 3. Update PlatformRuleType in types.ts to include new types
- * 4. Update PLATFORM_RULE_TYPES below
+ *
+ * Path templates support:
+ * - {platformDir} - platform's project directory (e.g., ".claude")
+ * - {globalDir} - platform's global directory (e.g., "~/.claude")
+ * - {name} - preset/rule name
+ * - Trailing / indicates directory type (e.g., skills)
  */
 
-import type { PlatformId, PlatformRuleConfig, RuleTypeConfig } from "./types";
+import type { PlatformConfig, PlatformId, TypeConfig } from "./types";
 import { PLATFORM_ID_TUPLE } from "./types";
 
 export const PLATFORM_IDS = PLATFORM_ID_TUPLE as unknown as [
@@ -17,168 +22,162 @@ export const PLATFORM_IDS = PLATFORM_ID_TUPLE as unknown as [
 ];
 
 /**
- * Platform configuration including supported rule types and install paths.
+ * Platform configuration including supported types and install paths.
  */
 export const PLATFORMS = {
   opencode: {
     label: "OpenCode",
-    projectDir: ".opencode",
+    platformDir: ".opencode",
     globalDir: "~/.config/opencode",
     types: {
       instruction: {
         description: "Project instructions",
-        format: "markdown",
-        extension: "md",
-        projectPath: "AGENTS.md",
-        globalPath: "~/.config/opencode/AGENTS.md",
+        project: "AGENTS.md",
+        global: "{globalDir}/AGENTS.md",
       },
       agent: {
         description: "Specialized AI agent",
-        format: "markdown",
-        extension: "md",
-        projectPath: ".opencode/agent/{name}.md",
-        globalPath: "~/.config/opencode/agent/{name}.md",
+        project: "{platformDir}/agent/{name}.md",
+        global: "{globalDir}/agent/{name}.md",
       },
       command: {
         description: "Custom slash command",
-        format: "markdown",
-        extension: "md",
-        projectPath: ".opencode/command/{name}.md",
-        globalPath: "~/.config/opencode/command/{name}.md",
+        project: "{platformDir}/command/{name}.md",
+        global: "{globalDir}/command/{name}.md",
       },
       tool: {
         description: "Custom tool",
-        format: "typescript",
-        extension: "ts",
-        projectPath: ".opencode/tool/{name}.ts",
-        globalPath: "~/.config/opencode/tool/{name}.ts",
+        project: "{platformDir}/tool/{name}.ts",
+        global: "{globalDir}/tool/{name}.ts",
       },
     },
   },
   claude: {
     label: "Claude Code",
-    projectDir: ".claude",
+    platformDir: ".claude",
     globalDir: "~/.claude",
     types: {
       instruction: {
         description: "Project instructions",
-        format: "markdown",
-        extension: "md",
-        projectPath: "CLAUDE.md",
-        globalPath: "~/.claude/CLAUDE.md",
+        project: "CLAUDE.md",
+        global: "{globalDir}/CLAUDE.md",
+      },
+      rule: {
+        description: "Project rule",
+        project: "{platformDir}/rules/{name}.md",
+        global: "{globalDir}/rules/{name}.md",
       },
       command: {
         description: "Custom slash command",
-        format: "markdown",
-        extension: "md",
-        projectPath: ".claude/commands/{name}.md",
-        globalPath: "~/.claude/commands/{name}.md",
+        project: "{platformDir}/commands/{name}.md",
+        global: "{globalDir}/commands/{name}.md",
       },
       skill: {
         description: "Custom skill",
-        format: "markdown",
-        extension: "md",
-        projectPath: ".claude/skills/{name}/SKILL.md",
-        globalPath: "~/.claude/skills/{name}/SKILL.md",
+        project: "{platformDir}/skills/{name}/",
+        global: "{globalDir}/skills/{name}/",
       },
     },
   },
   cursor: {
     label: "Cursor",
-    projectDir: ".cursor",
+    platformDir: ".cursor",
     globalDir: "~/.cursor",
     types: {
       instruction: {
         description: "Project instructions",
-        format: "markdown",
-        extension: "md",
-        projectPath: "AGENTS.md",
-        globalPath: null,
+        project: "AGENTS.md",
+        global: null,
       },
       rule: {
         description: "Custom rule",
-        format: "mdc",
-        extension: "mdc",
-        projectPath: ".cursor/rules/{name}.mdc",
-        globalPath: null,
+        project: "{platformDir}/rules/{name}.mdc",
+        global: null,
       },
       command: {
         description: "Custom slash command",
-        format: "markdown",
-        extension: "md",
-        projectPath: ".cursor/commands/{name}.md",
-        globalPath: "~/.cursor/commands/{name}.md",
+        project: "{platformDir}/commands/{name}.md",
+        global: "{globalDir}/commands/{name}.md",
       },
     },
   },
   codex: {
     label: "Codex",
-    projectDir: ".codex",
+    platformDir: ".codex",
     globalDir: "~/.codex",
     types: {
       instruction: {
         description: "Project instructions",
-        format: "markdown",
-        extension: "md",
-        projectPath: "AGENTS.md",
-        globalPath: "~/.codex/AGENTS.md",
+        project: "AGENTS.md",
+        global: "{globalDir}/AGENTS.md",
       },
       command: {
         description: "Custom prompt",
-        format: "markdown",
-        extension: "md",
-        projectPath: null,
-        globalPath: "~/.codex/prompts/{name}.md",
+        project: null,
+        global: "{globalDir}/prompts/{name}.md",
       },
     },
   },
-} as const satisfies Record<PlatformId, PlatformRuleConfig>;
+} as const satisfies Record<PlatformId, PlatformConfig>;
 
-/** Valid rule types for each platform. Must be kept in sync with PLATFORMS. */
-export const PLATFORM_RULE_TYPES = {
-  opencode: ["instruction", "command", "agent", "tool"],
-  claude: ["instruction", "command", "skill"],
-  codex: ["instruction", "command"],
-  cursor: ["instruction", "command", "rule"],
-} as const satisfies Record<PlatformId, readonly string[]>;
-
-/** Get valid rule types for a specific platform */
-export function getValidRuleTypes(platform: PlatformId): readonly string[] {
-  return PLATFORM_RULE_TYPES[platform];
+/** Get valid types for a specific platform */
+export function getValidTypes(platform: PlatformId): string[] {
+  return Object.keys(PLATFORMS[platform].types);
 }
 
 /** Check if a type is valid for a given platform */
-export function isValidRuleType(platform: PlatformId, type: string): boolean {
-  return (PLATFORM_RULE_TYPES[platform] as readonly string[]).includes(type);
+export function isValidType(platform: PlatformId, type: string): boolean {
+  return type in PLATFORMS[platform].types;
 }
 
 /** Get the configuration for a specific platform + type combination */
-export function getRuleTypeConfig(
+export function getTypeConfig(
   platform: PlatformId,
   type: string
-): RuleTypeConfig | undefined {
+): TypeConfig | undefined {
   const platformConfig = PLATFORMS[platform];
   return platformConfig.types[type as keyof typeof platformConfig.types];
 }
 
-/** Get the install path for a rule, replacing {name} placeholder */
+/** Check if a type is a directory type (trailing /) */
+export function isDirectoryType(platform: PlatformId, type: string): boolean {
+  const config = getTypeConfig(platform, type);
+  if (!config?.project) return false;
+  return config.project.endsWith("/");
+}
+
+/** Get the install path for a type, resolving all placeholders */
 export function getInstallPath(
   platform: PlatformId,
   type: string,
   name: string,
-  location: "project" | "global" = "project"
+  scope: "project" | "global" = "project"
 ): string | null {
-  const config = getRuleTypeConfig(platform, type);
-  if (!config) return null;
+  const platformConfig = PLATFORMS[platform];
+  const typeConfig = getTypeConfig(platform, type);
+  if (!typeConfig) return null;
 
-  const pathTemplate =
-    location === "project" ? config.projectPath : config.globalPath;
-  if (!pathTemplate) return null;
+  const template = scope === "project" ? typeConfig.project : typeConfig.global;
+  if (!template) return null;
 
-  return pathTemplate.replace("{name}", name);
+  return template
+    .replace("{platformDir}", platformConfig.platformDir)
+    .replace("{globalDir}", platformConfig.globalDir)
+    .replace("{name}", name);
 }
 
 /** Get platform configuration */
-export function getPlatformConfig(platform: PlatformId): PlatformRuleConfig {
+export function getPlatformConfig(platform: PlatformId): PlatformConfig {
   return PLATFORMS[platform];
 }
+
+/**
+ * Platform-specific type tuples for zod schema validation.
+ * Must be kept in sync with PLATFORMS types above.
+ */
+export const PLATFORM_RULE_TYPES = {
+  opencode: ["instruction", "agent", "command", "tool"] as const,
+  claude: ["instruction", "rule", "command", "skill"] as const,
+  cursor: ["instruction", "rule", "command"] as const,
+  codex: ["instruction", "command"] as const,
+} as const satisfies Record<PlatformId, readonly string[]>;

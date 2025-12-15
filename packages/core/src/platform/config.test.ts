@@ -1,11 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import {
   getInstallPath,
-  getRuleTypeConfig,
-  getValidRuleTypes,
-  isValidRuleType,
+  getTypeConfig,
+  getValidTypes,
+  isDirectoryType,
+  isValidType,
   PLATFORM_IDS,
-  PLATFORM_RULE_TYPES,
   PLATFORMS,
 } from "./config";
 
@@ -14,71 +14,104 @@ describe("PLATFORMS", () => {
     expect(Object.keys(PLATFORMS).sort()).toEqual([...PLATFORM_IDS].sort());
   });
 
-  it("has matching rule types in PLATFORM_RULE_TYPES", () => {
+  it("has required fields for each platform", () => {
     for (const platform of PLATFORM_IDS) {
-      const configTypes = Object.keys(PLATFORMS[platform].types);
-      const declaredTypes = [...PLATFORM_RULE_TYPES[platform]];
-      expect(configTypes.sort()).toEqual(declaredTypes.sort());
+      const config = PLATFORMS[platform];
+      expect(config.label).toBeDefined();
+      expect(config.platformDir).toBeDefined();
+      expect(config.globalDir).toBeDefined();
+      expect(config.types).toBeDefined();
     }
   });
 });
 
-describe("getValidRuleTypes", () => {
-  it("returns the rule types array for a platform", () => {
-    const types = getValidRuleTypes("opencode");
+describe("getValidTypes", () => {
+  it("returns the types array for a platform", () => {
+    const types = getValidTypes("opencode");
     expect(Array.isArray(types)).toBe(true);
     expect(types.length).toBeGreaterThan(0);
     expect(types).toContain("instruction");
   });
+
+  it("includes claude rule type", () => {
+    const types = getValidTypes("claude");
+    expect(types).toContain("rule");
+    expect(types).toContain("skill");
+  });
 });
 
-describe("isValidRuleType", () => {
+describe("isValidType", () => {
   it("returns true for valid platform/type combinations", () => {
-    expect(isValidRuleType("opencode", "instruction")).toBe(true);
-    expect(isValidRuleType("cursor", "rule")).toBe(true);
+    expect(isValidType("opencode", "instruction")).toBe(true);
+    expect(isValidType("cursor", "rule")).toBe(true);
+    expect(isValidType("claude", "rule")).toBe(true);
+    expect(isValidType("claude", "skill")).toBe(true);
   });
 
   it("returns false for invalid platform/type combinations", () => {
-    expect(isValidRuleType("opencode", "rule")).toBe(false);
-    expect(isValidRuleType("cursor", "skill")).toBe(false);
+    expect(isValidType("opencode", "rule")).toBe(false);
+    expect(isValidType("cursor", "skill")).toBe(false);
   });
 
   it("returns false for unknown types", () => {
-    expect(isValidRuleType("opencode", "unknown")).toBe(false);
+    expect(isValidType("opencode", "unknown")).toBe(false);
   });
 });
 
-describe("getRuleTypeConfig", () => {
+describe("getTypeConfig", () => {
   it("returns undefined for invalid type", () => {
-    expect(getRuleTypeConfig("opencode", "invalid")).toBeUndefined();
-    expect(getRuleTypeConfig("cursor", "agent")).toBeUndefined();
+    expect(getTypeConfig("opencode", "invalid")).toBeUndefined();
+    expect(getTypeConfig("cursor", "agent")).toBeUndefined();
   });
 
   it("returns config with null paths for unsupported locations", () => {
     // Cursor rule has no global support
-    const cursorConfig = getRuleTypeConfig("cursor", "rule");
-    expect(cursorConfig?.projectPath).toBe(".cursor/rules/{name}.mdc");
-    expect(cursorConfig?.globalPath).toBeNull();
+    const cursorConfig = getTypeConfig("cursor", "rule");
+    expect(cursorConfig?.project).toBe("{platformDir}/rules/{name}.mdc");
+    expect(cursorConfig?.global).toBeNull();
 
     // Codex command has no project support
-    const codexConfig = getRuleTypeConfig("codex", "command");
-    expect(codexConfig?.projectPath).toBeNull();
-    expect(codexConfig?.globalPath).toBe("~/.codex/prompts/{name}.md");
+    const codexConfig = getTypeConfig("codex", "command");
+    expect(codexConfig?.project).toBeNull();
+    expect(codexConfig?.global).toBe("{globalDir}/prompts/{name}.md");
+  });
+});
+
+describe("isDirectoryType", () => {
+  it("returns true for skill type", () => {
+    expect(isDirectoryType("claude", "skill")).toBe(true);
   });
 
-  it("returns correct format for non-markdown types", () => {
-    expect(getRuleTypeConfig("cursor", "rule")?.format).toBe("mdc");
-    expect(getRuleTypeConfig("opencode", "tool")?.format).toBe("typescript");
+  it("returns false for single-file types", () => {
+    expect(isDirectoryType("claude", "rule")).toBe(false);
+    expect(isDirectoryType("opencode", "instruction")).toBe(false);
+    expect(isDirectoryType("cursor", "rule")).toBe(false);
+  });
+
+  it("returns false for invalid type", () => {
+    expect(isDirectoryType("opencode", "invalid")).toBe(false);
   });
 });
 
 describe("getInstallPath", () => {
-  it("replaces {name} placeholder in path", () => {
+  it("replaces {name} and {platformDir} placeholders", () => {
     expect(getInstallPath("opencode", "agent", "my-agent", "project")).toBe(
       ".opencode/agent/my-agent.md"
     );
     expect(getInstallPath("cursor", "rule", "my-rule", "project")).toBe(
       ".cursor/rules/my-rule.mdc"
+    );
+    expect(getInstallPath("claude", "rule", "my-rule", "project")).toBe(
+      ".claude/rules/my-rule.md"
+    );
+  });
+
+  it("replaces {globalDir} placeholder", () => {
+    expect(getInstallPath("opencode", "agent", "my-agent", "global")).toBe(
+      "~/.config/opencode/agent/my-agent.md"
+    );
+    expect(getInstallPath("claude", "rule", "my-rule", "global")).toBe(
+      "~/.claude/rules/my-rule.md"
     );
   });
 
@@ -97,9 +130,15 @@ describe("getInstallPath", () => {
     expect(getInstallPath("codex", "command", "my-cmd", "project")).toBeNull();
   });
 
-  it("defaults to project location", () => {
+  it("defaults to project scope", () => {
     expect(getInstallPath("opencode", "agent", "my-agent")).toBe(
       ".opencode/agent/my-agent.md"
+    );
+  });
+
+  it("returns path with trailing slash for directory types", () => {
+    expect(getInstallPath("claude", "skill", "my-skill", "project")).toBe(
+      ".claude/skills/my-skill/"
     );
   });
 });

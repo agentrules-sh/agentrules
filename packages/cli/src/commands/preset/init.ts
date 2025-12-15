@@ -128,7 +128,7 @@ export async function resolvePlatformDirectory(
     const detectedPath = detected.find((d) => d.id === platform)?.path;
     platformDir = detectedPath
       ? join(targetDir, detectedPath)
-      : join(targetDir, PLATFORMS[platform].projectDir);
+      : join(targetDir, PLATFORMS[platform].platformDir);
   } else if (detected.length > 0) {
     // Use first detected platform
     platform = detected[0].id;
@@ -136,7 +136,7 @@ export async function resolvePlatformDirectory(
   } else {
     // No detection, default to opencode
     platform = "opencode";
-    platformDir = join(targetDir, PLATFORMS.opencode.projectDir);
+    platformDir = join(targetDir, PLATFORMS.opencode.platformDir);
   }
 
   return {

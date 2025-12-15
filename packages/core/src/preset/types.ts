@@ -1,27 +1,13 @@
 import type { PlatformId } from "../platform";
 
-/**
- * Platform entry in raw config - either a platform ID string or an object with optional path.
- *
- * Examples:
- * - "opencode" (shorthand, uses default directory)
- * - { platform: "opencode", path: "rules" } (custom path)
- */
-export type RawPlatformEntry =
-  | PlatformId
-  | { platform: PlatformId; path?: string };
+/** Normalized platform entry - always object form */
+export type PlatformEntry = { platform: PlatformId; path?: string };
 
-/**
- * Normalized platform entry - always the object form.
- */
-export type PlatformConfig = { platform: PlatformId; path?: string };
+/** Raw platform entry - string shorthand or object with optional path */
+export type RawPlatformEntry = PlatformId | PlatformEntry;
 
-/**
- * Normalize a raw platform entry to the object form.
- */
-export function normalizePlatformEntry(
-  entry: RawPlatformEntry
-): PlatformConfig {
+/** Normalize a raw platform entry to the object form */
+export function normalizePlatformEntry(entry: RawPlatformEntry): PlatformEntry {
   if (typeof entry === "string") {
     return { platform: entry };
   }
@@ -65,10 +51,9 @@ export type RawPresetConfig = {
 
 /**
  * Normalized preset configuration - used internally after loading.
- * Always has platforms as PlatformConfig[] (object form).
  */
 export type PresetConfig = Omit<RawPresetConfig, "platforms"> & {
-  platforms: PlatformConfig[];
+  platforms: PlatformEntry[];
 };
 
 export type BundledFile = {

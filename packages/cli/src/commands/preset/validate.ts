@@ -69,8 +69,8 @@ export async function validatePreset(
       // In-project mode: files are siblings of config
       log.debug(`In-project mode: files expected in ${configDir}`);
     } else {
-      // Standalone mode: files are in custom path or platform's default projectDir
-      const filesPath = customPath ?? PLATFORMS[platform].projectDir;
+      // Standalone mode: files are in custom path or platform's default platformDir
+      const filesPath = customPath ?? PLATFORMS[platform].platformDir;
       const filesDir = join(configDir, filesPath);
       const filesExists = await directoryExists(filesDir);
 

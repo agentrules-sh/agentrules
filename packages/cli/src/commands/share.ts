@@ -6,11 +6,7 @@
  * Requires authentication - run `agentrules login` first.
  */
 
-import {
-  getValidRuleTypes,
-  PLATFORM_IDS,
-  type PlatformId,
-} from "@agentrules/core";
+import { getValidTypes, PLATFORM_IDS, type PlatformId } from "@agentrules/core";
 import { readFile } from "fs/promises";
 import { resolve } from "path";
 import { publishRule } from "@/lib/api/rules";
@@ -87,7 +83,7 @@ export async function share(options: ShareOptions = {}): Promise<ShareResult> {
     return { success: false, error };
   }
 
-  const validTypes = getValidRuleTypes(options.platform);
+  const validTypes = getValidTypes(options.platform);
   if (!options.type) {
     const error = `Type is required. Use --type <${validTypes.join("|")}>`;
     log.error(error);

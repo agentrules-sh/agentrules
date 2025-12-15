@@ -3,7 +3,6 @@ import {
   isPlatformDir,
   normalizePlatformEntry,
   PLATFORMS,
-  type PlatformConfig,
   type PlatformFiles,
   PRESET_CONFIG_FILENAME,
   type PresetConfig,
@@ -16,7 +15,7 @@ import { directoryExists, fileExists } from "./fs";
 import { log } from "./log";
 
 // Re-export types for consumers
-export type { PlatformConfig, PresetConfig } from "@agentrules/core";
+export type { PresetConfig } from "@agentrules/core";
 
 const INSTALL_FILENAME = "INSTALL.txt";
 const README_FILENAME = "README.md";
@@ -82,7 +81,6 @@ export async function resolveConfigPath(inputPath?: string): Promise<string> {
 export type LoadConfigResult = {
   /** Resolved path to the config file */
   configPath: string;
-  /** Normalized config with platforms as PlatformConfig[] */
   config: PresetConfig;
   /** Directory containing the config file */
   configDir: string;
@@ -92,9 +90,6 @@ export type LoadConfigResult = {
 
 /**
  * Load and normalize a preset config file.
- *
- * This is the single source of truth for reading preset configs.
- * Always returns a normalized shape with `platforms` as PlatformConfig[].
  *
  * @throws Error if config file is missing, invalid JSON, or fails validation
  */
@@ -126,9 +121,7 @@ export async function loadConfig(
   const rawConfig = validatePresetConfig(configJson, identifier);
 
   // Normalize platforms: expand string entries to { platform, path? } objects
-  const platforms: PlatformConfig[] = rawConfig.platforms.map(
-    normalizePlatformEntry
-  );
+  const platforms = rawConfig.platforms.map(normalizePlatformEntry);
 
   if (platforms.length === 0) {
     throw new Error(
@@ -241,7 +234,7 @@ export async function loadPreset(presetDir: string): Promise<PresetInput> {
     } else {
       // Config at repo root: files in platform subdir
       // Use custom path if specified, otherwise use platform's default dir
-      const platformDir = customPath ?? PLATFORMS[platform].projectDir;
+      const platformDir = customPath ?? PLATFORMS[platform].platformDir;
       filesDir = join(configDir, platformDir);
 
       log.debug(`Config at repo root: files for ${platform} in ${filesDir}`);

@@ -17,19 +17,19 @@ export function normalizePlatformInput(value: string): PlatformId {
 }
 
 /**
- * Check if a directory name matches a platform's projectDir.
+ * Check if a directory name matches a platform's platformDir.
  * Used to detect if a preset config is inside a platform directory (in-project mode).
  */
 export function isPlatformDir(dirName: string): boolean {
-  return PLATFORM_IDS.some((id) => PLATFORMS[id].projectDir === dirName);
+  return PLATFORM_IDS.some((id) => PLATFORMS[id].platformDir === dirName);
 }
 
 /**
- * Get the platform ID from a directory name, if it matches a platform's projectDir.
+ * Get the platform ID from a directory name, if it matches a platform's platformDir.
  */
 export function getPlatformFromDir(dirName: string): PlatformId | undefined {
   for (const id of PLATFORM_IDS) {
-    if (PLATFORMS[id].projectDir === dirName) {
+    if (PLATFORMS[id].platformDir === dirName) {
       return id;
     }
   }
