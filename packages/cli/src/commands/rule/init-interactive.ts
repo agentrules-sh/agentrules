@@ -1,12 +1,12 @@
 import {
   COMMON_LICENSES,
+  descriptionSchema,
   isSupportedPlatform,
   licenseSchema,
   nameSchema,
   PLATFORM_IDS,
   type PlatformId,
   RULE_CONFIG_FILENAME,
-  requiredDescriptionSchema,
   tagsSchema,
 } from "@agentrules/core";
 import * as p from "@clack/prompts";
@@ -142,12 +142,13 @@ export async function initInteractive(
           message: "Description",
           placeholder: "Describe what this rule does...",
           defaultValue: descriptionOption,
-          validate: check(requiredDescriptionSchema),
+          validate: check(descriptionSchema),
         }),
 
       tags: () =>
         p.text({
-          message: "Tags (comma-separated, at least one)",
+          message: "Tags (comma-separated, optional)",
+
           placeholder: "e.g., typescript, testing, react",
           validate: checkTags,
         }),

@@ -47,7 +47,7 @@ Check the current directory for platform config folders:
 List the files in \`[config-dir]\` first to see what exists.
 
 If \`agentrules.json\` is in the listing, read it:
-- If complete (has name, description, tags): "You already have a rule configured: '[name]'. Ready to republish?" → Skip to Step 4 if yes
+- If complete (has name and title): "You already have a rule configured: '[name]'. Ready to republish?" → Skip to Step 4 if yes
 - If missing required fields: Help them add the missing fields
 
 If \`agentrules.json\` is not in the listing, continue to Step 3.
@@ -97,7 +97,7 @@ Based on your analysis, generate suggestions for ALL fields:
 - **Name**: lowercase, hyphens, based on repo/directory/theme (1-64 chars)
 - **Title**: Title-cased, compelling name
 - **Description**: Value-focused - who is this for, what problem does it solve? (max 500 chars)
-- **Tags**: For discovery - technologies, frameworks, use cases (1-10 tags)
+- **Tags**: For discovery - technologies, frameworks, use cases (0-10 tags, recommended)
 - **Features**: Key benefits, not just capabilities (optional, up to 5)
 - **License**: Default to MIT
 
@@ -253,8 +253,8 @@ npm i -g @agentrules/cli
 **Required fields:**
 - \`name\`: slug format (lowercase, hyphens, 1-64 chars)
 - \`title\`: 1-80 characters
-- \`description\`: 1-500 characters
-- \`tags\`: array, 1-10 items, each lowercase/hyphens, max 35 chars
+- \`description\`: 0-500 characters (optional, recommended)
+- \`tags\`: array, 0-10 items, each lowercase/hyphens, max 35 chars (optional, recommended)
 - \`license\`: SPDX identifier (e.g., "MIT")
 - \`platforms\`: array of platforms (e.g., \`["opencode"]\` or \`[{ "platform": "opencode", "path": ".opencode" }]\`)
 

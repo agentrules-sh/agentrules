@@ -91,7 +91,7 @@ describe("validateRule", () => {
     expect(result.errors).toHaveLength(0);
   });
 
-  it("requires at least one tag", async () => {
+  it("allows missing tags", async () => {
     const ruleDir = join(testDir, "no-tags");
     await mkdir(ruleDir, { recursive: true });
     await mkdir(join(ruleDir, "files"), { recursive: true });
@@ -110,8 +110,9 @@ describe("validateRule", () => {
 
     const result = await validateRule({ path: ruleDir });
 
-    expect(result.valid).toBeFalse();
-    expect(result.errors.some((e) => e.includes("tag"))).toBeTrue();
+    expect(result.valid).toBeTrue();
+    expect(result.errors).toHaveLength(0);
+    expect(result.rule?.tags ?? []).toEqual([]);
   });
 
   it("reports error for missing license", async () => {

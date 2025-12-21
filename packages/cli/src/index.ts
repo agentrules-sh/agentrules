@@ -307,7 +307,7 @@ program
 
         const nextSteps: string[] = [
           "Add your rule files in this directory",
-          "Add tags (required) and features (recommended) to agentrules.json",
+          "Add tags (recommended) and features (recommended) to agentrules.json",
           `Run ${ui.command("agentrules publish")} to publish your rule`,
         ];
 
@@ -335,7 +335,7 @@ program
 
       const nextSteps: string[] = [
         "Add your rule files in this directory",
-        "Add tags (required) and features (recommended) to agentrules.json",
+        "Add tags (recommended) and features (recommended) to agentrules.json",
         `Run ${ui.command("agentrules publish")} to publish your rule`,
       ];
 
@@ -361,7 +361,7 @@ program
         const platforms = p.platforms.map((entry) => entry.platform).join(", ");
 
         log.success(p.title);
-        log.print(ui.keyValue("Description", p.description));
+        if (p.description) log.print(ui.keyValue("Description", p.description));
         log.print(ui.keyValue("License", p.license));
         log.print(ui.keyValue("Platforms", platforms));
         if (p.tags?.length) log.print(ui.keyValue("Tags", p.tags.join(", ")));

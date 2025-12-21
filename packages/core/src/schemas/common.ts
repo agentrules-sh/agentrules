@@ -35,12 +35,9 @@ export const tagSchema = z
 
 /**
  * Schema for tags array.
- * - 1-10 tags required
+ * - 0-10 tags allowed
  */
-export const tagsSchema = z
-  .array(tagSchema)
-  .min(1, "At least one tag is required")
-  .max(10, "Maximum 10 tags allowed");
+export const tagsSchema = z.array(tagSchema).max(10, "Maximum 10 tags allowed");
 
 // =============================================================================
 // Name

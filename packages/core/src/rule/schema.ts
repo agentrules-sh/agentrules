@@ -1,14 +1,11 @@
 import { z } from "zod";
 import { PLATFORM_IDS, RULE_TYPE_TUPLE } from "../platform";
 import {
-  descriptionSchema as baseDescriptionSchema,
+  descriptionSchema,
   nameSchema,
   tagsSchema,
   titleSchema,
 } from "../schemas";
-
-// Re-export shared schemas for convenience
-export { nameSchema, tagSchema, tagsSchema, titleSchema } from "../schemas";
 
 // Version format: MAJOR.MINOR (e.g., "1.0", "2.15")
 // MAJOR: set by publisher
@@ -17,14 +14,8 @@ const VERSION_REGEX = /^[1-9]\d*\.\d+$/;
 
 export const platformIdSchema = z.enum(PLATFORM_IDS);
 
-/**
- * Schema for required description (rules require a description).
- * Extends base descriptionSchema with min(1) constraint.
- */
-export const requiredDescriptionSchema = baseDescriptionSchema.min(
-  1,
-  "Description is required"
-);
+const normalizedDescriptionSchema = descriptionSchema.optional().default("");
+const normalizedTagsSchema = tagsSchema.optional().default([]);
 
 // Schema for stored versions (MAJOR.MINOR format)
 const versionSchema = z
@@ -128,8 +119,8 @@ export const ruleConfigSchema = z
     type: typeSchema, // Optional - defaults to "multi" (freeform)
     title: titleSchema,
     version: majorVersionSchema.optional(), // Major version. Registry assigns minor.
-    description: requiredDescriptionSchema,
-    tags: tagsSchema, // Required - at least one tag for discoverability
+    description: normalizedDescriptionSchema,
+    tags: normalizedTagsSchema,
     features: featuresSchema.optional(),
     license: licenseSchema, // Required SPDX license identifier
     ignore: ignoreSchema.optional(), // Additional patterns to exclude from bundle
@@ -170,8 +161,8 @@ export const rulePublishInputSchema = z.object({
   name: nameSchema, // Rule name (registry builds full slug)
   type: typeSchema, // Rule type - must be valid for all variant platforms
   title: titleSchema,
-  description: requiredDescriptionSchema,
-  tags: tagsSchema,
+  description: normalizedDescriptionSchema,
+  tags: normalizedTagsSchema,
   license: licenseSchema, // Required SPDX license identifier
   features: featuresSchema.optional(),
   /** Platform variants - each contains files for that platform */
@@ -191,8 +182,8 @@ export const ruleBundleSchema = z.object({
   type: typeSchema, // Rule type
   platform: platformIdSchema,
   title: titleSchema,
-  description: requiredDescriptionSchema,
-  tags: tagsSchema,
+  description: normalizedDescriptionSchema,
+  tags: normalizedTagsSchema,
   license: licenseSchema,
   features: featuresSchema.optional(),
   files: z.array(bundledFileSchema).min(1, "At least one file is required"),

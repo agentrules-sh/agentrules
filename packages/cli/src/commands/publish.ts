@@ -7,6 +7,7 @@
 
 import {
   buildPublishInput,
+  descriptionSchema,
   getInstallPath,
   getValidTypes,
   inferInstructionPlatformsFromFileName,
@@ -21,7 +22,6 @@ import {
   type RuleInput,
   type RulePublishInput,
   type RuleType,
-  requiredDescriptionSchema,
   supportsInstallPath,
   tagsSchema,
   validateRule as validateRuleConfig,
@@ -560,13 +560,13 @@ async function resolveSingleFileInputs(
     options.description ??
     (await (async () => {
       if (!isInteractive) {
-        throw new Error("Missing --description");
+        return "";
       }
 
       const input = await p.text({
-        message: "Description",
+        message: "Description (optional)",
         placeholder: "Describe what this rule does...",
-        validate: check(requiredDescriptionSchema),
+        validate: check(descriptionSchema),
       });
 
       if (p.isCancel(input)) {
@@ -581,11 +581,11 @@ async function resolveSingleFileInputs(
     }
 
     if (!isInteractive) {
-      throw new Error("Missing --tags (at least one required)");
+      return [];
     }
 
     const input = await p.text({
-      message: "Tags",
+      message: "Tags (optional)",
       placeholder: "comma-separated, e.g. typescript, react",
       validate: check(tagsInputSchema),
     });
@@ -608,7 +608,9 @@ async function resolveSingleFileInputs(
     log.print(ui.keyValue("Platform", platform));
     log.print(ui.keyValue("Type", type));
     log.print(ui.keyValue("Installs to", ui.path(bundlePath)));
-    log.print(ui.keyValue("Tags", finalTags.join(", ")));
+    if (finalTags.length > 0) {
+      log.print(ui.keyValue("Tags", finalTags.join(", ")));
+    }
     log.print("");
 
     const confirm = await p.confirm({

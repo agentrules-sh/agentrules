@@ -64,7 +64,7 @@ agentrules add agentic-dev-starter --platform opencode --dry-run
 
 ### `agentrules init [directory]`
 
-Initialize a rule config in a platform directory. The command guides you through the required fields for publishing.
+Initialize a rule config in a platform directory. The command guides you through the publishing fields (with sensible defaults).
 
 ```bash
 agentrules init [directory] [options]
@@ -117,11 +117,11 @@ By default, files are collected from the config directory and bundled under the 
 |-------|----------|-------------|
 | `name` | Yes | URL-safe identifier (lowercase, hyphens) |
 | `title` | Yes | Display name |
-| `description` | Yes | Short description (max 500 chars) |
+| `description` | No | Short description (max 500 chars; recommended) |
 | `license` | Yes | SPDX license identifier (e.g., `MIT`) |
 | `platforms` | Yes | Array of target platforms: `opencode`, `claude`, `cursor`, `codex` |
 | `version` | No | Major version (default: 1) |
-| `tags` | Yes | 1-10 tags for discoverability |
+| `tags` | No | 0-10 tags for discoverability (recommended) |
 | `features` | No | Up to 5 key features to highlight |
 | `ignore` | No | Additional patterns to exclude from bundle |
 

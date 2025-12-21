@@ -1,13 +1,11 @@
 import { describe, expect, it } from "bun:test";
+import { nameSchema, titleSchema } from "../schemas";
 import {
   COMMON_LICENSES,
   licenseSchema,
-  nameSchema,
   platformIdSchema,
-  requiredDescriptionSchema,
   ruleBundleSchema,
   ruleConfigSchema,
-  titleSchema,
 } from "./schema";
 
 describe("platformIdSchema", () => {
@@ -80,25 +78,6 @@ describe("titleSchema", () => {
 
   it("rejects titles over 80 characters", () => {
     expect(() => titleSchema.parse("a".repeat(81))).toThrow();
-  });
-});
-
-describe("requiredDescriptionSchema", () => {
-  it("accepts valid descriptions", () => {
-    expect(requiredDescriptionSchema.parse("A description")).toBe(
-      "A description"
-    );
-    expect(requiredDescriptionSchema.parse("a".repeat(500))).toBe(
-      "a".repeat(500)
-    );
-  });
-
-  it("rejects empty descriptions", () => {
-    expect(() => requiredDescriptionSchema.parse("")).toThrow();
-  });
-
-  it("rejects descriptions over 500 characters", () => {
-    expect(() => requiredDescriptionSchema.parse("a".repeat(501))).toThrow();
   });
 });
 
@@ -266,6 +245,13 @@ describe("ruleConfigSchema", () => {
     expect(result.name).toBe("test-rule");
     expect(result.platforms).toEqual(["opencode"]);
     expect(result.version).toBeUndefined();
+  });
+
+  it("accepts config without description and tags", () => {
+    const { description: _description, tags: _tags, ...config } = validConfig;
+    const result = ruleConfigSchema.parse(config);
+    expect(result.description).toBe("");
+    expect(result.tags).toEqual([]);
   });
 
   it("accepts config with major version", () => {

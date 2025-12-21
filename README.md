@@ -87,7 +87,7 @@ cd .opencode
 npx @agentrules/cli init
 ```
 
-The `init` command guides you through the required fields. Your rule structure is simply:
+The `init` command guides you through the publishing fields (with sensible defaults). Your rule structure is simply:
 
 ```
 .opencode/
@@ -136,10 +136,10 @@ Rules use `agentrules.json` for configuration:
 |-------|----------|-------------|
 | `name` | Yes | URL-safe identifier (lowercase, hyphens) |
 | `title` | Yes | Display name |
-| `description` | Yes | Short description (max 500 chars) |
+| `description` | No | Short description (max 500 chars; recommended) |
 | `license` | Yes | SPDX license identifier (e.g., `MIT`) |
 | `platforms` | Yes | Array of target platforms: `opencode`, `claude`, `cursor`, `codex` |
-| `tags` | Yes | 1-10 tags for discoverability |
+| `tags` | No | 0-10 tags for discoverability (recommended) |
 | `version` | No | Major version (default: 1) |
 | `features` | No | Up to 5 key features to highlight |
 | `ignore` | No | Additional patterns to exclude from bundle |

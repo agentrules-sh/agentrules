@@ -11,11 +11,11 @@ The `agentrules.json` file created by `init` supports these fields:
 |-------|----------|-------------|
 | `name` | Yes | URL-safe identifier (lowercase, hyphens only) |
 | `title` | Yes | Display name shown in the registry |
-| `description` | Yes | Short description (max 500 characters) |
+| `description` | No | Short description (max 500 characters; recommended) |
 | `license` | Yes | SPDX license identifier (e.g., `MIT`, `Apache-2.0`) |
 | `platforms` | Yes | Array of target platforms: `opencode`, `claude`, `cursor`, `codex` |
 | `version` | No | Major version (default: 1) |
-| `tags` | Yes | 1-10 tags for discoverability (lowercase with hyphens) |
+| `tags` | No | 0-10 tags for discoverability (lowercase with hyphens; recommended) |
 | `features` | No | Up to 5 key features to highlight |
 | `ignore` | No | Glob patterns to exclude from bundle |
 
