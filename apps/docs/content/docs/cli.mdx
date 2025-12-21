@@ -99,7 +99,7 @@ agentrules init [directory] [options]
 | `-n, --name <name>` | Rule name |
 | `-t, --title <title>` | Display title |
 | `--description <text>` | Rule description |
-| `-p, --platform <platform>` | Target platform |
+| `-p, --platform <platform>` | Target platform(s). Repeatable, accepts comma-separated. Supports `<platform>=<path>` for custom paths |
 | `-l, --license <license>` | License (e.g., `MIT`) |
 | `-f, --force` | Overwrite existing config |
 | `-y, --yes` | Accept defaults, skip prompts |
@@ -115,6 +115,15 @@ agentrules init my-rule
 
 # Non-interactive (requires --platform unless directory name is a platform dir)
 agentrules init my-rule --platform opencode --yes
+
+# Multiple platforms (comma-separated or repeated)
+agentrules init my-rule --platform opencode,claude --yes
+agentrules init my-rule -p opencode -p claude --yes
+
+# With custom source paths per platform
+agentrules init my-rule --platform opencode=src/opencode,claude=.claude-files --yes
+# Alternatively:
+agentrules init my-rule -p opencode=src/opencode -p claude=.claude-files --yes
 ```
 
 **Result:**
