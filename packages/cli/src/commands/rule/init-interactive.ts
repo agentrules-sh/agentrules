@@ -19,9 +19,12 @@ import { type InitOptions, type InitResult, initRule } from "./init";
 const DEFAULT_RULE_NAME = "my-rule";
 
 /**
- * Parse comma-separated tags string into array
+ * Parse comma-separated tags string into array.
  */
-function parseTags(input: string): string[] {
+function parseTags(input: unknown): string[] {
+  if (typeof input !== "string") return [];
+  if (input.trim().length === 0) return [];
+
   return input
     .split(",")
     .map((tag) => tag.trim().toLowerCase())
@@ -29,9 +32,9 @@ function parseTags(input: string): string[] {
 }
 
 /**
- * Validator for comma-separated tags input
+ * Validator for comma-separated tags input.
  */
-function checkTags(value: string): string | undefined {
+function checkTags(value: unknown): string | undefined {
   const tags = parseTags(value);
   const result = tagsSchema.safeParse(tags);
   if (!result.success) {
@@ -200,7 +203,7 @@ export async function initInteractive(
     name: result.name,
     title: result.title as string,
     description: result.description as string,
-    tags: parseTags(result.tags as string),
+    tags: parseTags(result.tags),
     platforms: selectedPlatforms,
     license: result.license as string,
     force,
