@@ -27,62 +27,88 @@ This package contains **pure functions with no environment assumptions**. It doe
 ### Validating Rule Config
 
 ```ts
-import { ruleConfigSchema, validateRuleConfig } from "@agentrules/core";
+import {
+  normalizePlatformEntry,
+  ruleConfigSchema,
+  validateRule,
+} from "@agentrules/core";
 
-// Using Zod schema directly
-const result = ruleConfigSchema.safeParse(jsonData);
-if (!result.success) {
-  console.error(result.error.issues);
+// Parse/validate user-provided JSON (agentrules.json)
+const parsed = ruleConfigSchema.safeParse(jsonData);
+if (!parsed.success) {
+  console.error(parsed.error.issues);
+} else {
+  // Normalize platform entries (string shorthand → object form)
+  const config = {
+    ...parsed.data,
+    platforms: parsed.data.platforms.map(normalizePlatformEntry),
+  };
+
+  // Additional cross-field checks (platform/type compatibility, placeholders, etc.)
+  const result = validateRule(config);
+  if (!result.valid) {
+    console.error(result.errors);
+  }
 }
-
-// Or use the helper (throws on error)
-const config = validateRuleConfig(jsonData, "my-rule");
 ```
+
+Note: `description` and `tags` are optional in `agentrules.json` (they default to `""` and `[]`).
 
 ### Building Registry Artifacts
 
 ```ts
-import { buildRuleRegistry } from "@agentrules/core";
+import { buildRegistry, type RuleInput } from "@agentrules/core";
 
-const result = await buildRuleRegistry({
-  rules: [
-    {
-      slug: "my-rule",
-      config: {
-        name: "my-rule",
-        title: "My Rule",
-        version: 1,
-        description: "A helpful rule",
-        tags: ["starter"],
-        license: "MIT",
-        platforms: ["opencode", "claude"], // or use `platform: "opencode"` for single platform
-        path: "files",
-      },
-      files: [
-        { path: "AGENT_RULES.md", contents: "# Rules\n" },
-      ],
+const rules: RuleInput[] = [
+  {
+    name: "my-rule",
+    config: {
+      name: "my-rule",
+      title: "My Rule",
+      description: "A helpful rule",
+      license: "MIT",
+      // Optional metadata
+      tags: ["starter"],
+      features: ["Fast install"],
+      // Platforms (object form)
+      platforms: [{ platform: "opencode" }, { platform: "claude" }],
     },
-  ],
-});
+    platformFiles: [
+      {
+        platform: "opencode",
+        files: [{ path: "AGENTS.md", content: "# Rules\n" }],
+      },
+      {
+        platform: "claude",
+        files: [{ path: "CLAUDE.md", content: "# Rules\n" }],
+      },
+    ],
+  },
+];
 
-// result.entries  → Rule[] for registry listing
-// result.index    → RuleIndex for lookups
-// result.bundles  → RuleBundle[] with encoded files
+const result = await buildRegistry({ rules, bundleBase: "https://example.com" });
+
+// result.items   → ResolvedRule[] (metadata + bundle URLs)
+// result.bundles → RuleBundle[] (per-platform bundles)
 ```
 
 ### Fetching from a Registry
 
 ```ts
-import { resolveRule, fetchBundle } from "@agentrules/core";
+import { fetchBundle, resolveSlug } from "@agentrules/core";
 
-// Resolve a rule (gets metadata and bundle URL)
-const { rule, bundleUrl } = await resolveRule(
+// Resolve metadata + variant bundle URLs
+const resolved = await resolveSlug(
   "https://agentrules.directory/",
-  "my-rule",
-  "opencode"
+  "my-rule" // or "username/my-rule" for namespaced registries
 );
 
-// Fetch the bundle
+if (!resolved) throw new Error("Rule not found");
+
+// Pick a variant bundle URL (example: first variant of latest version)
+const bundleUrl = resolved.versions[0].variants[0].bundleUrl;
+
+// Fetch the per-platform bundle
 const bundle = await fetchBundle(bundleUrl);
 ```
 
