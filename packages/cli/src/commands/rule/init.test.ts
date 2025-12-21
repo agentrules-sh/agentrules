@@ -40,7 +40,7 @@ describe("initRule", () => {
 
     const result = await initRule({
       directory: platformDir,
-      platform: "opencode",
+      platforms: ["opencode"],
     });
 
     // Should report the created directory
@@ -58,7 +58,7 @@ describe("initRule", () => {
       name: "custom-name",
       title: "Custom Title",
       description: "Custom description",
-      platform: "claude",
+      platforms: ["claude"],
       license: "MIT",
     });
 
@@ -117,7 +117,7 @@ describe("initRule", () => {
     await expect(
       initRule({
         directory: platformDir,
-        platform: "unknown",
+        platforms: ["unknown"],
       })
     ).rejects.toThrow(/Unknown platform/);
   });
@@ -138,5 +138,16 @@ describe("initRule", () => {
     const result = await initRule({ directory: platformDir });
 
     expect(result.createdDir).toBeUndefined();
+  });
+
+  it("supports multiple platforms", async () => {
+    const ruleDir = join(testDir, "multi-platform");
+
+    const result = await initRule({
+      directory: ruleDir,
+      platforms: ["claude", "opencode", "cursor"],
+    });
+
+    expect(result.rule.platforms).toEqual(["claude", "opencode", "cursor"]);
   });
 });

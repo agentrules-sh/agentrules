@@ -1,10 +1,6 @@
 #!/usr/bin/env node
 
-import {
-  isSupportedPlatform,
-  PLATFORM_IDS,
-  type PlatformId,
-} from "@agentrules/core";
+import { isSupportedPlatform, PLATFORM_IDS } from "@agentrules/core";
 import { Command } from "commander";
 import { createRequire } from "module";
 import { basename } from "path";
@@ -257,7 +253,9 @@ program
   .option("--description <text>", "Rule description")
   .option(
     "-p, --platform <platform>",
-    "Target platform (opencode, claude, cursor, codex)"
+    "Target platform(s). Repeatable, accepts comma-separated.",
+    (value: string, previous?: string[]) =>
+      previous ? [...previous, value] : [value]
   )
   .option("-l, --license <license>", "License (e.g., MIT)")
   .option("-f, --force", "Overwrite existing agentrules.json")
@@ -268,6 +266,22 @@ program
       // If directory arg provided, use its basename as default name
       // Otherwise fall back to generic "my-rule"
       const defaultName = directory ? basename(directory) : undefined;
+
+      // Parse platforms from repeatable/comma-separated flag
+      const platforms = options.platform
+        ?.flatMap((p: string) => p.split(",").map((s: string) => s.trim()))
+        .filter((p: string) => p.length > 0);
+
+      // Validate platforms if provided
+      if (platforms) {
+        for (const platform of platforms) {
+          if (!isSupportedPlatform(platform)) {
+            throw new Error(
+              `Unknown platform "${platform}". Supported: ${PLATFORM_IDS.join(", ")}`
+            );
+          }
+        }
+      }
 
       // Use interactive mode if:
       // - Not using --yes flag
@@ -281,7 +295,7 @@ program
           name: options.name ?? defaultName,
           title: options.title,
           description: options.description,
-          platform: options.platform,
+          platforms,
           license: options.license,
           force: options.force,
         });
@@ -302,22 +316,12 @@ program
         return;
       }
 
-      // Validate platform option if provided
-      if (options.platform && !isSupportedPlatform(options.platform)) {
-        throw new Error(
-          `Unknown platform "${
-            options.platform
-          }". Supported: ${PLATFORM_IDS.join(", ")}`
-        );
-      }
-      const platformOption = options.platform as PlatformId | undefined;
-
       const result = await initRule({
         directory: targetDir,
         name: options.name ?? defaultName,
         title: options.title,
         description: options.description,
-        platform: platformOption,
+        platforms,
         license: options.license,
         force: options.force,
       });

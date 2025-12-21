@@ -46,7 +46,8 @@ export type InteractiveInitOptions = {
   name?: string;
   title?: string;
   description?: string;
-  platform?: string;
+  /** Pre-selected platforms */
+  platforms?: string[];
   license?: string;
   force?: boolean;
 };
@@ -62,7 +63,7 @@ export async function initInteractive(
     name: nameOption,
     title: titleOption,
     description: descriptionOption,
-    platform: platformOption,
+    platforms: platformsOption,
     license: licenseOption,
   } = options;
   let { force } = options;
@@ -70,28 +71,35 @@ export async function initInteractive(
 
   p.intro("Create a new rule");
 
-  // Validate platform option if provided
-  if (platformOption && !isSupportedPlatform(platformOption)) {
-    p.cancel(`Unknown platform "${platformOption}"`);
-    process.exit(1);
-  }
-  const validatedPlatform = platformOption as PlatformId | undefined;
-
-  const selectedPlatform: PlatformId =
-    validatedPlatform ??
-    (await (async () => {
-      const platformChoice = await p.select({
-        message: "Platform",
-        options: PLATFORM_IDS.map((id) => ({ value: id, label: id })),
-      });
-
-      if (p.isCancel(platformChoice)) {
-        p.cancel("Cancelled");
-        process.exit(0);
+  // Validate platform options if provided
+  const validatedPlatforms: PlatformId[] = [];
+  if (platformsOption) {
+    for (const platform of platformsOption) {
+      if (!isSupportedPlatform(platform)) {
+        p.cancel(`Unknown platform "${platform}"`);
+        process.exit(1);
       }
+      validatedPlatforms.push(platform as PlatformId);
+    }
+  }
 
-      return platformChoice as PlatformId;
-    })());
+  const selectedPlatforms: PlatformId[] =
+    validatedPlatforms.length > 0
+      ? validatedPlatforms
+      : await (async () => {
+          const platformChoices = await p.multiselect({
+            message: "Platforms (select one or more)",
+            options: PLATFORM_IDS.map((id) => ({ value: id, label: id })),
+            required: true,
+          });
+
+          if (p.isCancel(platformChoices)) {
+            p.cancel("Cancelled");
+            process.exit(0);
+          }
+
+          return platformChoices as PlatformId[];
+        })();
 
   // Check if config already exists in target directory
   const configPath = join(directory, RULE_CONFIG_FILENAME);
@@ -196,7 +204,7 @@ export async function initInteractive(
     title: result.title as string,
     description: result.description as string,
     tags: parseTags(result.tags as string),
-    platform: selectedPlatform,
+    platforms: selectedPlatforms,
     license: result.license as string,
     force,
   };

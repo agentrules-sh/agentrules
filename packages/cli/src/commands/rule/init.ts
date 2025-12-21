@@ -20,7 +20,8 @@ export type InitOptions = {
   name?: string;
   title?: string;
   description?: string;
-  platform?: string;
+  /** Target platforms (at least one required) */
+  platforms?: string[];
   license?: string;
   tags?: string[];
   /** Rule type (optional; when omitted, type is not set) */
@@ -52,15 +53,16 @@ export async function initRule(options: InitOptions): Promise<InitResult> {
 
   // Infer platform from directory name if not provided
   const inferredPlatform = getPlatformFromDir(basename(ruleDir));
-  const platformInput = options.platform ?? inferredPlatform;
+  const platformInputs =
+    options.platforms ?? (inferredPlatform ? [inferredPlatform] : []);
 
-  if (!platformInput) {
+  if (platformInputs.length === 0) {
     throw new Error(
       `Cannot determine platform. Specify --platform (${PLATFORM_IDS.join(", ")}).`
     );
   }
 
-  const platform = normalizePlatform(platformInput);
+  const platforms = platformInputs.map(normalizePlatform);
 
   // Validate/normalize inputs
   const name = normalizeName(options.name ?? DEFAULT_RULE_NAME);
@@ -68,7 +70,7 @@ export async function initRule(options: InitOptions): Promise<InitResult> {
   const description = options.description ?? `${title} rule`;
   const license = options.license ?? "MIT";
 
-  log.debug(`Rule name: ${name}, platform: ${platform}`);
+  log.debug(`Rule name: ${name}, platforms: ${platforms.join(", ")}`);
 
   const configPath = join(ruleDir, RULE_CONFIG_FILENAME);
 
@@ -88,7 +90,7 @@ export async function initRule(options: InitOptions): Promise<InitResult> {
     description,
     tags: options.tags ?? [],
     license,
-    platforms: [platform],
+    platforms,
   };
 
   // Create rule directory if needed
