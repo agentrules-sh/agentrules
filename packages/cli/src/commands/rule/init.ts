@@ -20,8 +20,11 @@ export type InitOptions = {
   name?: string;
   title?: string;
   description?: string;
-  /** Target platforms (at least one required) */
-  platforms?: string[];
+  /**
+   * Target platforms (at least one required).
+   * Accepts strings or per-platform entries with an optional source path.
+   */
+  platforms?: Array<string | { platform: string; path?: string }>;
   license?: string;
   tags?: string[];
   /** Rule type (optional; when omitted, type is not set) */
@@ -53,7 +56,7 @@ export async function initRule(options: InitOptions): Promise<InitResult> {
 
   // Infer platform from directory name if not provided
   const inferredPlatform = getPlatformFromDir(basename(ruleDir));
-  const platformInputs =
+  const platformInputs: Array<string | { platform: string; path?: string }> =
     options.platforms ?? (inferredPlatform ? [inferredPlatform] : []);
 
   if (platformInputs.length === 0) {
@@ -62,7 +65,7 @@ export async function initRule(options: InitOptions): Promise<InitResult> {
     );
   }
 
-  const platforms = platformInputs.map(normalizePlatform);
+  const platforms = platformInputs.map(normalizePlatformEntryInput);
 
   // Validate/normalize inputs
   const name = normalizeName(options.name ?? DEFAULT_RULE_NAME);
@@ -70,7 +73,11 @@ export async function initRule(options: InitOptions): Promise<InitResult> {
   const description = options.description ?? "";
   const license = options.license ?? "MIT";
 
-  log.debug(`Rule name: ${name}, platforms: ${platforms.join(", ")}`);
+  const platformLabels = platforms
+    .map((p) => (typeof p === "string" ? p : p.platform))
+    .join(", ");
+
+  log.debug(`Rule name: ${name}, platforms: ${platformLabels}`);
 
   const configPath = join(ruleDir, RULE_CONFIG_FILENAME);
 
@@ -112,6 +119,8 @@ export async function initRule(options: InitOptions): Promise<InitResult> {
   return { configPath, rule: config, createdDir };
 }
 
+type PlatformEntryInput = string | { platform: string; path?: string };
+
 function normalizePlatform(input: string): PlatformId {
   const normalized = input.toLowerCase();
   if (!isSupportedPlatform(normalized)) {
@@ -120,4 +129,21 @@ function normalizePlatform(input: string): PlatformId {
     );
   }
   return normalized;
+}
+
+function normalizePlatformEntryInput(
+  input: PlatformEntryInput
+): PlatformId | { platform: PlatformId; path: string } {
+  if (typeof input === "string") {
+    return normalizePlatform(input);
+  }
+
+  const platform = normalizePlatform(input.platform);
+  const path = typeof input.path === "string" ? input.path.trim() : "";
+
+  if (path.length === 0 || path === ".") {
+    return platform;
+  }
+
+  return { platform, path };
 }

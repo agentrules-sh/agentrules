@@ -150,4 +150,21 @@ describe("initRule", () => {
 
     expect(result.rule.platforms).toEqual(["claude", "opencode", "cursor"]);
   });
+
+  it("supports per-platform paths", async () => {
+    const ruleDir = join(testDir, "multi-platform-paths");
+
+    const result = await initRule({
+      directory: ruleDir,
+      platforms: [
+        { platform: "opencode", path: "opencode" },
+        { platform: "cursor", path: "cursor" },
+      ],
+    });
+
+    expect(result.rule.platforms).toEqual([
+      { platform: "opencode", path: "opencode" },
+      { platform: "cursor", path: "cursor" },
+    ]);
+  });
 });

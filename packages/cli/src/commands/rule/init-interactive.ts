@@ -11,7 +11,7 @@ import {
 } from "@agentrules/core";
 import * as p from "@clack/prompts";
 import { join } from "path";
-import { fileExists } from "@/lib/fs";
+import { directoryExists, fileExists } from "@/lib/fs";
 import { normalizeName, toTitleCase } from "@/lib/rule-utils";
 import { check } from "@/lib/zod-validator";
 import { type InitOptions, type InitResult, initRule } from "./init";
@@ -50,6 +50,8 @@ export type InteractiveInitOptions = {
   description?: string;
   /** Pre-selected platforms */
   platforms?: string[];
+  /** Optional per-platform source paths (relative to rule root) */
+  platformPaths?: Partial<Record<PlatformId, string>>;
   license?: string;
   force?: boolean;
 };
@@ -66,6 +68,7 @@ export async function initInteractive(
     title: titleOption,
     description: descriptionOption,
     platforms: platformsOption,
+    platformPaths,
     license: licenseOption,
   } = options;
   let { force } = options;
@@ -103,6 +106,63 @@ export async function initInteractive(
           return platformChoices as PlatformId[];
         })();
 
+  const platformEntries: Array<
+    PlatformId | { platform: PlatformId; path: string }
+  > = await (async () => {
+    if (selectedPlatforms.length === 0) {
+      return [];
+    }
+
+    const hasCompletePathMapping = selectedPlatforms.every((platform) => {
+      const value = platformPaths?.[platform];
+      return typeof value === "string" && value.trim().length > 0;
+    });
+
+    if (hasCompletePathMapping) {
+      return selectedPlatforms.map((platform) => {
+        const path = platformPaths?.[platform]?.trim();
+        if (!path || path === ".") return platform;
+        return { platform, path };
+      });
+    }
+
+    if (selectedPlatforms.length === 1) {
+      return selectedPlatforms;
+    }
+
+    const entries: Array<PlatformId | { platform: PlatformId; path: string }> =
+      [];
+
+    for (const platform of selectedPlatforms) {
+      const mappedPath = platformPaths?.[platform]?.trim();
+      const suggestedPath =
+        mappedPath ??
+        ((await directoryExists(join(directory, platform))) ? platform : ".");
+
+      const input = await p.text({
+        message: `Folder for ${platform} files ('.' = same folder as agentrules.json)`,
+        placeholder: suggestedPath,
+        defaultValue: suggestedPath,
+      });
+
+      if (p.isCancel(input)) {
+        p.cancel("Cancelled");
+        process.exit(0);
+      }
+
+      const trimmed = input.trim();
+      const resolvedPath = trimmed.length > 0 ? trimmed : suggestedPath;
+
+      if (resolvedPath === ".") {
+        entries.push(platform);
+      } else {
+        entries.push({ platform, path: resolvedPath });
+      }
+    }
+
+    return entries;
+  })();
+
   // Check if config already exists in target directory
   const configPath = join(directory, RULE_CONFIG_FILENAME);
   if (!force && (await fileExists(configPath))) {
@@ -130,7 +190,7 @@ export async function initInteractive(
           validate: check(nameSchema),
         }),
 
-      title: ({ results }) => {
+      title: ({ results }: { results: { name?: string } }) => {
         const defaultTitle =
           titleOption ?? toTitleCase(results.name ?? defaultName);
         return p.text({
@@ -201,11 +261,11 @@ export async function initInteractive(
   const initOptions: InitOptions = {
     directory,
     name: result.name,
-    title: result.title as string,
-    description: result.description as string,
+    title: result.title.trim() || undefined,
+    description: result.description,
     tags: parseTags(result.tags),
-    platforms: selectedPlatforms,
-    license: result.license as string,
+    platforms: platformEntries,
+    license: result.license,
     force,
   };
 

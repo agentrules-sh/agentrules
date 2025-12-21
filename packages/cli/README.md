@@ -77,7 +77,7 @@ agentrules init [directory] [options]
 | `-n, --name <name>` | Rule name (default: `my-rule`) |
 | `-t, --title <title>` | Display title |
 | `--description <text>` | Rule description |
-| `-p, --platform <platform>` | Target platform |
+| `-p, --platform <platform>` | Target platform (repeatable). Supports `<platform>=<path>` mappings for multi-platform rules. |
 | `-l, --license <license>` | License (e.g., `MIT`) |
 | `-f, --force` | Overwrite existing config |
 | `-y, --yes` | Accept defaults, skip prompts |
@@ -94,6 +94,9 @@ agentrules init
 
 # Initialize non-interactively (requires --platform)
 agentrules init --platform opencode --yes
+
+# Multi-platform with per-platform source paths
+agentrules init --platform opencode=opencode --platform cursor=cursor --yes
 ```
 
 A typical single-platform rule structure is:

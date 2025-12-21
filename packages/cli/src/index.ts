@@ -253,7 +253,7 @@ program
   .option("--description <text>", "Rule description")
   .option(
     "-p, --platform <platform>",
-    "Target platform(s). Repeatable, accepts comma-separated.",
+    "Target platform(s). Repeatable, accepts comma-separated. Supports <platform>=<path> mappings.",
     (value: string, previous?: string[]) =>
       previous ? [...previous, value] : [value]
   )
@@ -267,21 +267,50 @@ program
       // Otherwise fall back to generic "my-rule"
       const defaultName = directory ? basename(directory) : undefined;
 
-      // Parse platforms from repeatable/comma-separated flag
-      const platforms = options.platform
+      // Parse platforms from repeatable/comma-separated flag.
+      // Supports:
+      // - opencode
+      // - opencode=opencode (use platform subdir)
+      const platformInputs = options.platform
         ?.flatMap((p: string) => p.split(",").map((s: string) => s.trim()))
         .filter((p: string) => p.length > 0);
 
-      // Validate platforms if provided
-      if (platforms) {
-        for (const platform of platforms) {
+      const platformIds: string[] = [];
+      const platformPaths: Record<string, string> = {};
+
+      if (platformInputs) {
+        for (const input of platformInputs) {
+          const [rawPlatform, ...rest] = input.split("=");
+          const platform = rawPlatform.trim();
+
           if (!isSupportedPlatform(platform)) {
             throw new Error(
               `Unknown platform "${platform}". Supported: ${PLATFORM_IDS.join(", ")}`
             );
           }
+
+          if (!platformIds.includes(platform)) {
+            platformIds.push(platform);
+          }
+
+          if (rest.length > 0) {
+            const path = rest.join("=").trim();
+            if (path.length === 0) {
+              throw new Error(
+                `Invalid --platform "${input}". Use <platform>=<path>.`
+              );
+            }
+            platformPaths[platform] = path;
+          }
         }
       }
+
+      const platforms = platformIds.length > 0 ? platformIds : undefined;
+      const platformEntries = platforms?.map((platform: string) => {
+        const path = platformPaths[platform];
+        if (!path || path === ".") return platform;
+        return { platform, path };
+      });
 
       // Use interactive mode if:
       // - Not using --yes flag
@@ -296,6 +325,7 @@ program
           title: options.title,
           description: options.description,
           platforms,
+          platformPaths,
           license: options.license,
           force: options.force,
         });
@@ -316,12 +346,18 @@ program
         return;
       }
 
+      if (platformIds.length > 1 && Object.keys(platformPaths).length === 0) {
+        log.warn(
+          `Multiple platforms selected. Consider mapping source paths like ${ui.muted("--platform opencode=opencode --platform cursor=cursor")} to avoid bundling all files for each platform.`
+        );
+      }
+
       const result = await initRule({
         directory: targetDir,
         name: options.name ?? defaultName,
         title: options.title,
         description: options.description,
-        platforms,
+        platforms: platformEntries,
         license: options.license,
         force: options.force,
       });
