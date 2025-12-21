@@ -11,4 +11,5 @@ export default defineConfig({
   outDir: "dist",
   platform: "node",
   target: "node20",
+  noExternal: ["@agentrules/core"],
 });
