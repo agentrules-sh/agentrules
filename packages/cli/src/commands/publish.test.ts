@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { API_ENDPOINTS } from "@agentrules/core";
-import { mkdir, mkdtemp, rm, writeFile } from "fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { initAppContext } from "../lib/context";
@@ -19,44 +19,69 @@ const DEFAULT_REGISTRY_URL = "https://agentrules.directory/";
 
 const VALID_CONFIG = {
   $schema: "https://agentrules.directory/schema/agentrules.json",
-  name: "test-preset",
-  title: "Test Preset",
-  description: "A test preset for publishing",
+  name: "test-rule",
+  type: "instruction",
+  title: "Test Rule",
+  description: "A test rule for publishing",
   license: "MIT",
   tags: ["test", "example"],
   platforms: ["opencode"],
 };
 
 /**
- * Creates a standalone preset: config at repo root, files in platform subdir
+ * Creates a standalone rule: config at repo root, files in platform subdir
  */
-async function createValidPreset(
+async function createValidRule(
   baseDir: string,
   slug: string,
   config = VALID_CONFIG
 ) {
-  const presetDir = join(baseDir, slug);
-  await mkdir(presetDir, { recursive: true });
+  const ruleDir = join(baseDir, slug);
+  await mkdir(ruleDir, { recursive: true });
 
-  // Create platform directory with a file
-  const platformDir = join(presetDir, ".opencode");
-  await mkdir(platformDir, { recursive: true });
-  await writeFile(join(platformDir, "AGENTS.md"), "# Test Agent Rules\n");
+  // Create a root-level file (default collection is rule root)
+  await writeFile(join(ruleDir, "AGENTS.md"), "# Test Agent Rules\n");
 
   // Write config with correct slug
   const finalConfig = { ...config, name: slug };
   await writeFile(
-    join(presetDir, "agentrules.json"),
+    join(ruleDir, "agentrules.json"),
     JSON.stringify(finalConfig)
   );
 
-  return presetDir;
+  return ruleDir;
+}
+
+async function createMultiPlatformRule(baseDir: string, slug: string) {
+  const ruleDir = join(baseDir, slug);
+  await mkdir(ruleDir, { recursive: true });
+
+  const opencodeDir = join(ruleDir, "opencode");
+  await mkdir(opencodeDir, { recursive: true });
+  await writeFile(join(opencodeDir, "AGENTS.md"), "# Test Agent Rules\n");
+
+  const claudeDir = join(ruleDir, "claude");
+  await mkdir(claudeDir, { recursive: true });
+  await writeFile(join(claudeDir, "CLAUDE.md"), "# Test Claude\n");
+
+  const config = {
+    ...VALID_CONFIG,
+    name: slug,
+    platforms: [
+      { platform: "opencode", path: "opencode" },
+      { platform: "claude", path: "claude" },
+    ],
+  };
+
+  await writeFile(join(ruleDir, "agentrules.json"), JSON.stringify(config));
+
+  return ruleDir;
 }
 
 /**
- * Creates an in-project preset: config inside platform dir, files as siblings
+ * Creates an in-project rule: config inside platform dir, files as siblings
  */
-async function createInProjectPreset(
+async function createInProjectRule(
   baseDir: string,
   slug: string,
   config = VALID_CONFIG
@@ -69,7 +94,11 @@ async function createInProjectPreset(
   await writeFile(join(platformDir, "AGENTS.md"), "# Test Agent Rules\n");
 
   // Write config inside platform dir
-  const finalConfig = { ...config, name: slug };
+  const finalConfig = {
+    ...config,
+    name: slug,
+    platforms: ["opencode"],
+  };
   await writeFile(
     join(platformDir, "agentrules.json"),
     JSON.stringify(finalConfig)
@@ -121,7 +150,7 @@ describe("publish", () => {
     expect(result.error).toContain("Not logged in");
   });
 
-  it("fails when preset validation fails", async () => {
+  it("fails when rule validation fails", async () => {
     await setupLoggedInContext();
 
     const result = await publish({ path: join(testDir, "nonexistent") });
@@ -130,48 +159,282 @@ describe("publish", () => {
     expect(result.error).toContain("Config file not found");
   });
 
-  it("publishes a valid preset successfully", async () => {
+  describe("single file quick publish", () => {
+    it("publishes a single file when flags provided", async () => {
+      await setupLoggedInContext();
+
+      const filePath = join(testDir, "deploy.md");
+      await writeFile(filePath, "# Deploy\n");
+
+      let sentBody: unknown;
+      mockFetch({
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
+        method: "POST",
+        response: createPublishResponse("deploy"),
+        onCall: (_url, init) => {
+          sentBody = JSON.parse(init?.body as string);
+        },
+      });
+
+      const result = await publish({
+        path: filePath,
+        platform: ["claude"],
+        type: "command",
+        name: "deploy",
+        description: "A deploy command",
+        tags: ["deploy", "automation"],
+        yes: true,
+      });
+
+      expect(result.success).toBeTrue();
+
+      const payload = sentBody as {
+        name: string;
+        variants: Array<{
+          platform: string;
+          files: Array<{ path: string; content: string }>;
+        }>;
+      };
+
+      expect(payload.name).toBe("deploy");
+      expect(payload.variants).toHaveLength(1);
+      expect(payload.variants[0].platform).toBe("claude");
+      expect(payload.variants[0].files).toHaveLength(1);
+      expect(payload.variants[0].files[0]?.path).toBe(
+        ".claude/commands/deploy.md"
+      );
+      expect(payload.variants[0].files[0]?.content).toBe("# Deploy\n");
+    });
+
+    it("fails without required flags when using --yes", async () => {
+      await setupLoggedOutContext();
+
+      const filePath = join(testDir, "deploy.md");
+      await writeFile(filePath, "# Deploy\n");
+
+      const result = await publish({
+        path: filePath,
+        yes: true,
+        dryRun: true,
+      });
+
+      expect(result.success).toBeFalse();
+      expect(result.error).toContain("requires --name, --platform, and --type");
+    });
+
+    it("rejects multiple platforms for single-file publish", async () => {
+      await setupLoggedOutContext();
+
+      const filePath = join(testDir, "deploy.md");
+      await writeFile(filePath, "# Deploy\n");
+
+      const result = await publish({
+        path: filePath,
+        platform: ["claude", "opencode"],
+        type: "command",
+        name: "deploy",
+        dryRun: true,
+      });
+
+      expect(result.success).toBeFalse();
+      expect(result.error).toContain("requires exactly one --platform");
+    });
+
+    it("publishes a claude skill as a single file", async () => {
+      await setupLoggedInContext();
+
+      const filePath = join(testDir, "SKILL.md");
+      await writeFile(
+        filePath,
+        "---\nname: git-tools\ndescription: Test skill\n---\n\n# Git Tools\n"
+      );
+
+      let sentBody: unknown;
+      mockFetch({
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
+        method: "POST",
+        response: createPublishResponse("git-tools"),
+        onCall: (_url, init) => {
+          sentBody = JSON.parse(init?.body as string);
+        },
+      });
+
+      const result = await publish({
+        path: filePath,
+        platform: ["claude"],
+        type: "skill",
+        name: "git-tools",
+        description: "Git tools skill",
+        tags: ["git", "tools"],
+        yes: true,
+      });
+
+      expect(result.success).toBeTrue();
+
+      const payload = sentBody as {
+        variants: Array<{ platform: string; files: Array<{ path: string }> }>;
+      };
+
+      expect(payload.variants).toHaveLength(1);
+      expect(payload.variants[0].platform).toBe("claude");
+      expect(payload.variants[0].files[0]?.path).toBe(
+        ".claude/skills/git-tools/SKILL.md"
+      );
+    });
+  });
+
+  describe("config publish overrides", () => {
+    it("applies metadata overrides without modifying config", async () => {
+      await setupLoggedInContext();
+
+      const ruleDir = await createValidRule(testDir, "override-rule");
+      const configPath = join(ruleDir, "agentrules.json");
+      const beforeConfig = JSON.parse(await readFile(configPath, "utf8")) as {
+        title: string;
+        tags: string[];
+        license: string;
+      };
+
+      let sentBody: unknown;
+      mockFetch({
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
+        method: "POST",
+        response: createPublishResponse("override-rule"),
+        onCall: (_url, init) => {
+          sentBody = JSON.parse(init?.body as string);
+        },
+      });
+
+      const result = await publish({
+        path: ruleDir,
+        title: "Overridden Title",
+        tags: ["alpha", "beta"],
+        license: "Apache-2.0",
+      });
+
+      expect(result.success).toBeTrue();
+
+      const payload = sentBody as {
+        title: string;
+        tags: string[];
+        license: string;
+      };
+      expect(payload.title).toBe("Overridden Title");
+      expect(payload.tags).toEqual(["alpha", "beta"]);
+      expect(payload.license).toBe("Apache-2.0");
+
+      const afterConfig = JSON.parse(await readFile(configPath, "utf8")) as {
+        title: string;
+        tags: string[];
+        license: string;
+      };
+      expect(afterConfig).toEqual(beforeConfig);
+    });
+
+    it("can publish only one platform variant", async () => {
+      await setupLoggedInContext();
+
+      const ruleDir = await createMultiPlatformRule(testDir, "multi-rule");
+
+      let sentBody: unknown;
+      mockFetch({
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
+        method: "POST",
+        response: createPublishResponse("multi-rule"),
+        onCall: (_url, init) => {
+          sentBody = JSON.parse(init?.body as string);
+        },
+      });
+
+      const result = await publish({
+        path: ruleDir,
+        platform: ["claude"],
+      });
+
+      expect(result.success).toBeTrue();
+
+      const payload = sentBody as {
+        variants: Array<{ platform: string; files: Array<{ path: string }> }>;
+      };
+      expect(payload.variants).toHaveLength(1);
+      expect(payload.variants[0].platform).toBe("claude");
+      expect(
+        payload.variants[0].files.some((f) => f.path === "CLAUDE.md")
+      ).toBeTrue();
+    });
+
+    it("accepts comma-separated platforms", async () => {
+      await setupLoggedInContext();
+
+      const ruleDir = await createMultiPlatformRule(testDir, "multi-rule-2");
+
+      let sentBody: unknown;
+      mockFetch({
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
+        method: "POST",
+        response: createPublishResponse("multi-rule-2"),
+        onCall: (_url, init) => {
+          sentBody = JSON.parse(init?.body as string);
+        },
+      });
+
+      const result = await publish({
+        path: ruleDir,
+        platform: "claude,opencode",
+      });
+
+      expect(result.success).toBeTrue();
+
+      const payload = sentBody as {
+        variants: Array<{ platform: string }>;
+      };
+      const platforms = payload.variants.map((v) => v.platform).sort();
+      expect(platforms).toEqual(["claude", "opencode"]);
+    });
+  });
+
+  it("publishes a valid rule successfully", async () => {
     await setupLoggedInContext();
 
-    const presetDir = await createValidPreset(testDir, "my-preset");
+    const ruleDir = await createValidRule(testDir, "my-rule");
 
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
       method: "POST",
-      response: createPublishResponse("my-preset", {
-        bundleUrl: `https://cdn.example.com/presets/my-preset/opencode.${TEST_VERSION}.json`,
+      response: createPublishResponse("my-rule", {
+        bundleUrl: `https://cdn.example.com/rules/my-rule/opencode.${TEST_VERSION}.json`,
       }),
     });
 
     const result = await publish({
-      path: presetDir,
+      path: ruleDir,
     });
 
     expect(result.success).toBeTrue();
-    expect(result.preset?.slug).toBe("my-preset");
-    expect(result.preset?.variants).toHaveLength(1);
-    expect(result.preset?.variants[0].platform).toBe("opencode");
-    expect(result.preset?.title).toBe("Test Preset");
-    expect(result.preset?.version).toBe(TEST_VERSION);
-    expect(result.preset?.isNewPreset).toBeTrue();
-    expect(result.preset?.variants[0].bundleUrl).toContain("my-preset");
+    expect(result.rule?.slug).toBe("my-rule");
+    expect(result.rule?.variants).toHaveLength(1);
+    expect(result.rule?.variants[0].platform).toBe("opencode");
+    expect(result.rule?.title).toBe("Test Rule");
+    expect(result.rule?.version).toBe(TEST_VERSION);
+    expect(result.rule?.isNew).toBeTrue();
+    expect(result.rule?.variants[0].bundleUrl).toContain("my-rule");
   });
 
   it("handles API errors gracefully", async () => {
     await setupLoggedInContext();
 
-    const presetDir = await createValidPreset(testDir, "error-preset");
+    const ruleDir = await createValidRule(testDir, "error-rule");
 
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
       method: "POST",
       status: 409,
       response: {
-        error: 'Version 1.0 of "error-preset" already exists.',
+        error: 'Version 1.0 of "error-rule" already exists.',
       },
     });
 
-    const result = await publish({ path: presetDir });
+    const result = await publish({ path: ruleDir });
 
     expect(result.success).toBeFalse();
     expect(result.error).toContain("already exists");
@@ -180,11 +443,11 @@ describe("publish", () => {
   it("handles network errors", async () => {
     await setupLoggedInContext();
 
-    const presetDir = await createValidPreset(testDir, "network-error-preset");
+    const ruleDir = await createValidRule(testDir, "network-error-rule");
 
     mockFetchError("Connection refused");
 
-    const result = await publish({ path: presetDir });
+    const result = await publish({ path: ruleDir });
 
     expect(result.success).toBeFalse();
     expect(result.error).toContain("Failed to connect");
@@ -195,19 +458,19 @@ describe("publish", () => {
     await saveCredentials(customUrl, { token: "custom-token" });
     await initAppContext({ url: customUrl });
 
-    const presetDir = await createValidPreset(testDir, "custom-url-preset");
+    const ruleDir = await createValidRule(testDir, "custom-url-rule");
 
     let calledUrl = "";
     mockFetch({
-      url: `${customUrl}${API_ENDPOINTS.presets.base}`,
+      url: `${customUrl}${API_ENDPOINTS.rules.base}`,
       method: "POST",
-      response: createPublishResponse("custom-url-preset"),
+      response: createPublishResponse("custom-url-rule"),
       onCall: (url) => {
         calledUrl = url;
       },
     });
 
-    const result = await publish({ path: presetDir });
+    const result = await publish({ path: ruleDir });
 
     expect(result.success).toBeTrue();
     expect(calledUrl).toContain(customUrl);
@@ -216,19 +479,19 @@ describe("publish", () => {
   it("sends correct authorization header", async () => {
     await setupLoggedInContext("my-secret-token");
 
-    const presetDir = await createValidPreset(testDir, "auth-test-preset");
+    const ruleDir = await createValidRule(testDir, "auth-test-rule");
 
     let capturedHeaders: Headers | undefined;
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
       method: "POST",
-      response: createPublishResponse("auth-test-preset"),
+      response: createPublishResponse("auth-test-rule"),
       onCall: (_url, init) => {
         capturedHeaders = init?.headers as Headers | undefined;
       },
     });
 
-    await publish({ path: presetDir });
+    await publish({ path: ruleDir });
 
     const authHeader =
       capturedHeaders instanceof Headers
@@ -238,22 +501,22 @@ describe("publish", () => {
     expect(authHeader).toBe("Bearer my-secret-token");
   });
 
-  it("sends PresetPublishInput to API", async () => {
+  it("sends RulePublishInput to API", async () => {
     await setupLoggedInContext();
 
-    const presetDir = await createValidPreset(testDir, "bundle-test-preset");
+    const ruleDir = await createValidRule(testDir, "bundle-test-rule");
 
     let sentBody: unknown;
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
       method: "POST",
-      response: createPublishResponse("bundle-test-preset"),
+      response: createPublishResponse("bundle-test-rule"),
       onCall: (_url, init) => {
         sentBody = JSON.parse(init?.body as string);
       },
     });
 
-    await publish({ path: presetDir });
+    await publish({ path: ruleDir });
 
     // Verify we sent a bundle with variants array
     const bundle = sentBody as {
@@ -267,7 +530,7 @@ describe("publish", () => {
     expect(bundle).toBeDefined();
 
     // Verify bundle structure (version is optional major, full version assigned by registry)
-    expect(bundle.name).toBe("bundle-test-preset");
+    expect(bundle.name).toBe("bundle-test-rule");
     expect(bundle.version).toBeUndefined(); // Client doesn't send version by default
     expect(Array.isArray(bundle.variants)).toBeTrue();
     expect(bundle.variants.length).toBe(1);
@@ -286,13 +549,10 @@ describe("publish", () => {
   it("handles validation errors from API", async () => {
     await setupLoggedInContext();
 
-    const presetDir = await createValidPreset(
-      testDir,
-      "validation-error-preset"
-    );
+    const ruleDir = await createValidRule(testDir, "validation-error-rule");
 
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
       method: "POST",
       status: 400,
       response: {
@@ -304,7 +564,7 @@ describe("publish", () => {
       },
     });
 
-    const result = await publish({ path: presetDir });
+    const result = await publish({ path: ruleDir });
 
     expect(result.success).toBeFalse();
     expect(result.error).toContain("Validation failed");
@@ -316,11 +576,11 @@ describe("publish", () => {
     it("shows preview without calling API", async () => {
       await setupLoggedInContext();
 
-      const presetDir = await createValidPreset(testDir, "dry-run-preset");
+      const ruleDir = await createValidRule(testDir, "dry-run-rule");
 
       let apiCalled = false;
       mockFetch({
-        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
         method: "POST",
         response: {},
         onCall: () => {
@@ -329,28 +589,28 @@ describe("publish", () => {
       });
 
       const result = await publish({
-        path: presetDir,
+        path: ruleDir,
         dryRun: true,
       });
 
       expect(result.success).toBeTrue();
       expect(apiCalled).toBeFalse();
       expect(result.preview).toBeDefined();
-      expect(result.preview?.slug).toBe("dry-run-preset");
+      expect(result.preview?.slug).toBe("dry-run-rule");
       expect(result.preview?.platforms).toContain("opencode");
       // Version is not in preview - it's assigned by registry on actual publish
       expect(result.preview?.totalSize).toBeGreaterThan(0);
       expect(result.preview?.fileCount).toBeGreaterThan(0);
-      expect(result.preset).toBeUndefined();
+      expect(result.rule).toBeUndefined();
     });
 
     it("works without authentication", async () => {
       await setupLoggedOutContext();
 
-      const presetDir = await createValidPreset(testDir, "dry-run-no-auth");
+      const ruleDir = await createValidRule(testDir, "dry-run-no-auth");
 
       const result = await publish({
-        path: presetDir,
+        path: ruleDir,
         dryRun: true,
       });
 
@@ -362,22 +622,20 @@ describe("publish", () => {
     it("still validates bundle size", async () => {
       await setupLoggedInContext();
 
-      // Create a preset with a large file that exceeds 1MB
-      const presetDir = join(testDir, "large-preset");
-      await mkdir(presetDir, { recursive: true });
-      const platformDir = join(presetDir, ".opencode");
-      await mkdir(platformDir, { recursive: true });
+      // Create a rule with a large file that exceeds 1MB
+      const ruleDir = join(testDir, "large-rule");
+      await mkdir(ruleDir, { recursive: true });
 
       // Create a file larger than 1MB (1MB = 1024 * 1024 = 1048576 bytes)
       const largeContent = "x".repeat(1024 * 1024 + 1000);
-      await writeFile(join(platformDir, "large-file.md"), largeContent);
+      await writeFile(join(ruleDir, "large-file.md"), largeContent);
       await writeFile(
-        join(presetDir, "agentrules.json"),
+        join(ruleDir, "agentrules.json"),
         JSON.stringify(VALID_CONFIG)
       );
 
       const result = await publish({
-        path: presetDir,
+        path: ruleDir,
         dryRun: true,
       });
 
@@ -386,49 +644,40 @@ describe("publish", () => {
     });
   });
 
-  describe("in-project preset (config inside platform dir)", () => {
+  describe("in-project rule (config inside platform dir)", () => {
     it("publishes when config is inside platform directory", async () => {
       await setupLoggedInContext();
 
-      const platformDir = await createInProjectPreset(
-        testDir,
-        "in-project-preset"
-      );
+      const platformDir = await createInProjectRule(testDir, "in-project-rule");
 
       mockFetch({
-        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
         method: "POST",
-        response: createPublishResponse("in-project-preset"),
+        response: createPublishResponse("in-project-rule"),
       });
 
       const result = await publish({ path: platformDir });
 
       expect(result.success).toBeTrue();
-      expect(result.preset?.slug).toBe("in-project-preset");
+      expect(result.rule?.slug).toBe("in-project-rule");
     });
 
-    it("reads metadata from .agentrules/ subdirectory", async () => {
+    it("reads metadata from rule root", async () => {
       await setupLoggedInContext();
 
-      const platformDir = await createInProjectPreset(
-        testDir,
-        "metadata-preset"
-      );
+      const platformDir = await createInProjectRule(testDir, "metadata-rule");
 
-      // Add .agentrules/ metadata folder
-      const metadataDir = join(platformDir, ".agentrules");
-      await mkdir(metadataDir, { recursive: true });
-      await writeFile(join(metadataDir, "README.md"), "# Preset README");
+      await writeFile(join(platformDir, "README.md"), "# Rule README");
       await writeFile(
-        join(metadataDir, "INSTALL.txt"),
+        join(platformDir, "INSTALL.txt"),
         "Installation instructions"
       );
 
       let sentBody: unknown;
       mockFetch({
-        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
         method: "POST",
-        response: createPublishResponse("metadata-preset"),
+        response: createPublishResponse("metadata-rule"),
         onCall: (_url, init) => {
           sentBody = JSON.parse(init?.body as string);
         },
@@ -445,25 +694,24 @@ describe("publish", () => {
           installMessage?: string;
         }>;
       };
-      expect(bundle.variants[0].readmeContent).toBe("# Preset README");
+      expect(bundle.variants[0].readmeContent).toBe("# Rule README");
       expect(bundle.variants[0].installMessage).toBe(
         "Installation instructions"
       );
     });
 
-    it("excludes config and .agentrules/ from bundle files", async () => {
+    it("excludes config and metadata files from bundle files", async () => {
       await setupLoggedInContext();
 
-      const platformDir = await createInProjectPreset(testDir, "exclude-test");
+      const platformDir = await createInProjectRule(testDir, "exclude-test");
 
-      // Add .agentrules/ metadata folder
-      const metadataDir = join(platformDir, ".agentrules");
-      await mkdir(metadataDir, { recursive: true });
-      await writeFile(join(metadataDir, "README.md"), "# README");
+      await writeFile(join(platformDir, "README.md"), "# README");
+      await writeFile(join(platformDir, "LICENSE.md"), "MIT");
+      await writeFile(join(platformDir, "INSTALL.txt"), "Install");
 
       let sentBody: unknown;
       mockFetch({
-        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
         method: "POST",
         response: createPublishResponse("exclude-test"),
         onCall: (_url, init) => {
@@ -481,8 +729,10 @@ describe("publish", () => {
 
       // Should include AGENTS.md but not config or metadata
       expect(filePaths).toContain("AGENTS.md");
-      expect(filePaths).not.toContain("agentrules.json");
-      expect(filePaths.some((p) => p.startsWith(".agentrules/"))).toBeFalse();
+      expect(filePaths.some((p) => p.includes("agentrules.json"))).toBeFalse();
+      expect(filePaths.some((p) => p.includes("README.md"))).toBeFalse();
+      expect(filePaths.some((p) => p.includes("LICENSE.md"))).toBeFalse();
+      expect(filePaths.some((p) => p.includes("INSTALL.txt"))).toBeFalse();
     });
   });
 
@@ -490,20 +740,18 @@ describe("publish", () => {
     it("rejects platform bundles exceeding maximum size", async () => {
       await setupLoggedInContext();
 
-      const presetDir = join(testDir, "oversized-preset");
-      await mkdir(presetDir, { recursive: true });
-      const platformDir = join(presetDir, ".opencode");
-      await mkdir(platformDir, { recursive: true });
+      const ruleDir = join(testDir, "oversized-rule");
+      await mkdir(ruleDir, { recursive: true });
 
       // Create a file larger than 1MB
       const largeContent = "x".repeat(1024 * 1024 + 1000);
-      await writeFile(join(platformDir, "large-file.md"), largeContent);
+      await writeFile(join(ruleDir, "large-file.md"), largeContent);
       await writeFile(
-        join(presetDir, "agentrules.json"),
+        join(ruleDir, "agentrules.json"),
         JSON.stringify(VALID_CONFIG)
       );
 
-      const result = await publish({ path: presetDir });
+      const result = await publish({ path: ruleDir });
 
       expect(result.success).toBeFalse();
       expect(result.error).toContain("exceed maximum size");
@@ -512,15 +760,15 @@ describe("publish", () => {
     it("allows platform bundles within size limits", async () => {
       await setupLoggedInContext();
 
-      const presetDir = await createValidPreset(testDir, "normal-size-preset");
+      const ruleDir = await createValidRule(testDir, "normal-size-rule");
 
       mockFetch({
-        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.base}`,
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
         method: "POST",
-        response: createPublishResponse("normal-size-preset"),
+        response: createPublishResponse("normal-size-rule"),
       });
 
-      const result = await publish({ path: presetDir });
+      const result = await publish({ path: ruleDir });
 
       expect(result.success).toBeTrue();
     });
@@ -563,16 +811,16 @@ function createPublishResponse(
 ) {
   const bundleUrl =
     (overrides.bundleUrl as string) ??
-    `https://cdn.example.com/presets/${slug}/opencode.${TEST_VERSION}.json`;
+    `https://cdn.example.com/rules/${slug}/opencode.${TEST_VERSION}.json`;
   return {
-    presetId: "preset-123",
+    ruleId: "rule-123",
     versionId: "version-456",
     slug,
-    title: "Test Preset",
+    title: "Test Rule",
     version: TEST_VERSION,
-    isNewPreset: true,
+    isNew: true,
     variants: [{ platform: "opencode", bundleUrl }],
-    url: `https://example.com/presets/${slug}`, // URL structure is registry-defined
+    url: `https://example.com/rules/${slug}`,
     ...overrides,
   };
 }

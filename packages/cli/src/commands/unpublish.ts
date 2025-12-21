@@ -1,19 +1,19 @@
 /**
  * CLI Unpublish Command
  *
- * Removes a preset version from the AGENT_RULES registry.
+ * Removes a rule version from the AGENT_RULES registry.
  * Unpublishes the entire version including all platform variants.
  * Requires authentication - run `agentrules login` first.
  */
 
-import { unpublishPreset } from "@/lib/api/presets";
+import { unpublishRule } from "@/lib/api/rules";
 import { useAppContext } from "@/lib/context";
 import { log } from "@/lib/log";
 import { ui } from "@/lib/ui";
 
 export type UnpublishOptions = {
-  /** Preset identifier (e.g., my-preset@1.0 or username/my-preset@1.0) */
-  preset: string;
+  /** Rule identifier (e.g., my-rule@1.0 or username/my-rule@1.0) */
+  rule: string;
   /** Version override */
   version?: string;
 };
@@ -23,19 +23,19 @@ export type UnpublishResult = {
   success: boolean;
   /** Error message if unpublish failed */
   error?: string;
-  /** Unpublished preset info */
-  preset?: {
+  /** Unpublished rule info */
+  rule?: {
     slug: string;
     version: string;
   };
 };
 
 /**
- * Parses preset input to extract slug and version.
+ * Parses rule input to extract slug and version.
  * Supports formats:
- * - "my-preset@1.0" (slug and version)
- * - "username/my-preset@1.0" (namespaced slug and version)
- * - "my-preset" (requires explicit --version)
+ * - "my-rule@1.0" (slug and version)
+ * - "username/my-rule@1.0" (namespaced slug and version)
+ * - "my-rule" (requires explicit --version)
  *
  * Explicit --version flag takes precedence.
  */
@@ -60,22 +60,19 @@ function parseUnpublishInput(
 }
 
 /**
- * Unpublishes a preset version from the registry.
+ * Unpublishes a rule version from the registry.
  * This unpublishes all platform variants for the specified version.
  */
 export async function unpublish(
   options: UnpublishOptions
 ): Promise<UnpublishResult> {
-  const { slug, version } = parseUnpublishInput(
-    options.preset,
-    options.version
-  );
+  const { slug, version } = parseUnpublishInput(options.rule, options.version);
 
   if (!slug) {
-    log.error("Preset slug is required");
+    log.error("Rule slug is required");
     return {
       success: false,
-      error: "Preset slug is required",
+      error: "Rule slug is required",
     };
   }
 
@@ -89,7 +86,7 @@ export async function unpublish(
     };
   }
 
-  log.debug(`Unpublishing preset: ${slug}@${version}`);
+  log.debug(`Unpublishing rule: ${slug}@${version}`);
 
   const ctx = useAppContext();
 
@@ -106,7 +103,7 @@ export async function unpublish(
     `Unpublishing ${ui.code(slug)} ${ui.version(version)}...`
   );
 
-  const result = await unpublishPreset(
+  const result = await unpublishRule(
     ctx.registry.url,
     ctx.credentials.token,
     slug,
@@ -139,7 +136,7 @@ export async function unpublish(
 
   return {
     success: true,
-    preset: {
+    rule: {
       slug: data.slug,
       version: data.version,
     },

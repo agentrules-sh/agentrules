@@ -1,4 +1,4 @@
-import type { BundledFile } from "../preset";
+import type { BundledFile } from "../rule";
 import { decodeUtf8, encodeUtf8, toUint8Array } from "../utils/encoding";
 
 export function decodeBundledFile(file: BundledFile): Uint8Array {
@@ -40,7 +40,7 @@ export function toUtf8String(payload: ArrayBuffer | ArrayBufferView) {
 }
 
 async function sha256Hex(payload: Uint8Array) {
-  const crypto = globalThis.crypto;
+  const crypto = (globalThis as { crypto?: Crypto }).crypto;
   if (!crypto?.subtle) {
     throw new Error("SHA-256 hashing requires Web Crypto API support.");
   }

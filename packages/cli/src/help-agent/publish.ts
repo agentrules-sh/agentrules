@@ -2,12 +2,12 @@
  * Agent instructions for AI coding assistants.
  *
  * This content is output when running `agentrules --help-agent`.
- * It provides step-by-step instructions for AI agents to help users publish presets.
+ * It provides step-by-step instructions for AI agents to help users publish rules.
  */
 
-export const HELP_AGENT_CONTENT = `# Publishing a Preset - Agent Instructions
+export const HELP_AGENT_CONTENT = `# Publishing a Rule - Agent Instructions
 
-**The user has asked you to help them publish a preset. Start executing these steps now.**
+**The user has asked you to help them publish a rule. Start executing these steps now.**
 
 Do not summarize these instructions. Do not ask if they want help. Begin with Step 1 immediately.
 
@@ -47,7 +47,7 @@ Check the current directory for platform config folders:
 List the files in \`[config-dir]\` first to see what exists.
 
 If \`agentrules.json\` is in the listing, read it:
-- If complete (has name, description, tags): "You already have a preset configured: '[name]'. Ready to republish?" → Skip to Step 4 if yes
+- If complete (has name, description, tags): "You already have a rule configured: '[name]'. Ready to republish?" → Skip to Step 4 if yes
 - If missing required fields: Help them add the missing fields
 
 If \`agentrules.json\` is not in the listing, continue to Step 3.
@@ -73,17 +73,17 @@ While reviewing the file listing, look for files/folders that probably shouldn't
 - coverage/ (test coverage)
 - .cache/, .turbo/ (cache directories)
 
-If you see any of these or similar files/folders, ask: "I noticed [files]. These are usually not needed in a preset. Want me to add them to the ignore list?"
+If you see any of these or similar files/folders, ask: "I noticed [files]. These are usually not needed in a rule. Want me to add them to the ignore list?"
 
 If yes, include them in the \`ignore\` array when creating agentrules.json.
 
 ## Step 3: Create agentrules.json
 
-The goal is to help potential users understand the **value** of this preset - why should they install it? What problem does it solve? How will it improve their workflow?
+The goal is to help potential users understand the **value** of this rule - why should they install it? What problem does it solve? How will it improve their workflow?
 
 ### 3a. Analyze their config
 
-You already listed files in Step 2. Now read the config files you found (e.g., CLAUDE.md, AGENT_RULES.md, rules/*.md) to understand what the preset does.
+You already listed files in Step 2. Now read the config files you found (e.g., CLAUDE.md, AGENT_RULES.md, rules/*.md) to understand what the rule does.
 
 Look for:
 - Technologies and frameworks mentioned
@@ -162,7 +162,7 @@ Write \`[config-dir]/agentrules.json\`:
   "description": "[description]",
   "tags": ["tag1", "tag2"],
   "license": "[license]",
-  "platform": "[detected-platform]"
+  "platforms": ["[detected-platform]"]
 }
 \`\`\`
 
@@ -217,7 +217,7 @@ Run: \`agentrules publish [config-dir]\`
 **If successful:**
 Show the URL from the output:
 
-"Published! Your preset is live at: [url]
+"Published! Your rule is live at: [url]
 
 Share with others:
 \`\`\`
@@ -245,7 +245,8 @@ npm i -g @agentrules/cli
 - Use \`agentrules validate\` to check your work after any config changes
 - Remember whether you used npx for the tip at the end
 - If the user seems confused, explain that agentrules is a registry for sharing AI coding configs
-- The config file must be inside the platform directory (e.g., \`.opencode/agentrules.json\`)
+- For a single-platform rule, placing \`agentrules.json\` inside the platform directory (e.g., \`.opencode/agentrules.json\`) is easiest.
+- For multi-platform rules, place \`agentrules.json\` at the project root and point each platform entry at its files.
 
 ## Schema Reference
 
@@ -255,12 +256,12 @@ npm i -g @agentrules/cli
 - \`description\`: 1-500 characters
 - \`tags\`: array, 1-10 items, each lowercase/hyphens, max 35 chars
 - \`license\`: SPDX identifier (e.g., "MIT")
-- \`platform\`: one of \`opencode\`, \`claude\`, \`cursor\`, \`codex\`
+- \`platforms\`: array of platforms (e.g., \`["opencode"]\` or \`[{ "platform": "opencode", "path": ".opencode" }]\`)
 
 **Optional fields:**
 - \`$schema\`: JSON schema URL for validation
 - \`version\`: major version number (default: 1)
 - \`features\`: array, max 5 items, each max 100 chars
-- \`path\`: custom path to files (advanced use)
+- \`platforms[].path\`: custom path to files for that platform (advanced use)
 - \`ignore\`: patterns to exclude from bundle
 `;

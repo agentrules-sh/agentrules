@@ -1,17 +1,18 @@
 import { describe, expect, it } from "bun:test";
-import { buildPresetRegistry, STATIC_BUNDLE_DIR } from "./registry";
+import { buildRegistry, STATIC_BUNDLE_DIR } from "./registry";
 
-describe("buildPresetRegistry", () => {
-  it("produces registry items and bundles from preset inputs", async () => {
-    const result = await buildPresetRegistry({
-      presets: [
+describe("buildRegistry", () => {
+  it("produces registry items and bundles from rule inputs", async () => {
+    const result = await buildRegistry({
+      rules: [
         {
           name: "starter",
           config: {
             name: "starter",
+            type: "instruction",
             title: "Fixture",
             // version defaults to 1 when not specified
-            description: "Test preset",
+            description: "Test rule",
             tags: ["test"],
             features: ["Example"],
             license: "MIT",
@@ -34,8 +35,8 @@ describe("buildPresetRegistry", () => {
     expect(result.items).toHaveLength(1);
 
     const item = result.items[0];
-    expect(item?.kind).toBe("preset");
     expect(item?.slug).toBe("starter");
+    expect(item?.name).toBe("starter");
     expect(item?.versions).toHaveLength(1);
 
     const version = item?.versions[0];
@@ -61,13 +62,14 @@ describe("buildPresetRegistry", () => {
   });
 
   it("uses version from config when specified", async () => {
-    const result = await buildPresetRegistry({
-      presets: [
+    const result = await buildRegistry({
+      rules: [
         {
           name: "versioned",
           config: {
             name: "versioned",
-            title: "Versioned Preset",
+            type: "rule",
+            title: "Versioned Rule",
             version: 2, // Major version 2
             description: "Has explicit version",
             tags: ["test"],
@@ -95,13 +97,14 @@ describe("buildPresetRegistry", () => {
     expect(result.bundles[0]?.version).toBe("2.0");
   });
 
-  it("handles multi-platform preset with platforms array", async () => {
-    const result = await buildPresetRegistry({
-      presets: [
+  it("handles multi-platform rule with platforms array", async () => {
+    const result = await buildRegistry({
+      rules: [
         {
           name: "multi-platform",
           config: {
             name: "multi-platform",
+            type: "instruction",
             title: "Multi Platform",
             description: "Works on multiple platforms",
             tags: ["test"],
@@ -140,15 +143,16 @@ describe("buildPresetRegistry", () => {
     expect(result.bundles).toHaveLength(2);
   });
 
-  it("handles multiple separate presets", async () => {
-    const result = await buildPresetRegistry({
-      presets: [
+  it("handles multiple separate rules", async () => {
+    const result = await buildRegistry({
+      rules: [
         {
-          name: "preset-a",
+          name: "rule-a",
           config: {
-            name: "preset-a",
-            title: "Preset A",
-            description: "First preset",
+            name: "rule-a",
+            type: "instruction",
+            title: "Rule A",
+            description: "First rule",
             tags: ["test"],
             license: "MIT",
             platforms: [{ platform: "opencode" }],
@@ -161,11 +165,12 @@ describe("buildPresetRegistry", () => {
           ],
         },
         {
-          name: "preset-b",
+          name: "rule-b",
           config: {
-            name: "preset-b",
-            title: "Preset B",
-            description: "Second preset",
+            name: "rule-b",
+            type: "rule",
+            title: "Rule B",
+            description: "Second rule",
             tags: ["test"],
             license: "MIT",
             platforms: [{ platform: "claude" }],
@@ -180,22 +185,23 @@ describe("buildPresetRegistry", () => {
       ],
     });
 
-    // Each preset is separate - no grouping by name
+    // Each rule is separate - no grouping by name
     expect(result.items).toHaveLength(2);
     expect(result.bundles).toHaveLength(2);
 
-    expect(result.items[0]?.slug).toBe("preset-a");
-    expect(result.items[1]?.slug).toBe("preset-b");
+    expect(result.items[0]?.slug).toBe("rule-a");
+    expect(result.items[1]?.slug).toBe("rule-b");
   });
 
   it("rejects binary files", async () => {
     await expect(
-      buildPresetRegistry({
-        presets: [
+      buildRegistry({
+        rules: [
           {
-            name: "bad-preset",
+            name: "bad-rule",
             config: {
-              name: "bad-preset",
+              name: "bad-rule",
+              type: "instruction",
               title: "Bad",
               description: "Contains binary",
               tags: ["test"],

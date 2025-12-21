@@ -1,75 +1,206 @@
 import { z } from "zod";
-import { PLATFORM_IDS, PLATFORM_RULE_TYPES } from "../platform";
+import { PLATFORM_IDS, RULE_TYPE_TUPLE } from "../platform";
 import {
-  descriptionSchema,
+  descriptionSchema as baseDescriptionSchema,
   nameSchema,
-  tagSchema,
   tagsSchema,
   titleSchema,
 } from "../schemas";
 
+// Re-export shared schemas for convenience
+export { nameSchema, tagSchema, tagsSchema, titleSchema } from "../schemas";
+
+// Version format: MAJOR.MINOR (e.g., "1.0", "2.15")
+// MAJOR: set by publisher
+// MINOR: auto-incremented by registry
+const VERSION_REGEX = /^[1-9]\d*\.\d+$/;
+
+export const platformIdSchema = z.enum(PLATFORM_IDS);
+
 /**
- * Rule-specific schema aliases.
- * All use shared schemas for consistency with presets:
- * - name: max 64 chars, lowercase kebab-case
- * - title: max 80 chars
- * - description: max 500 chars (optional for rules)
- * - tags: max 35 chars each, 1-10 required, platform names blocked
+ * Schema for required description (rules require a description).
+ * Extends base descriptionSchema with min(1) constraint.
  */
-export const ruleNameSchema = nameSchema;
-export const ruleTitleSchema = titleSchema;
-export const ruleDescriptionSchema = descriptionSchema;
-export const ruleTagSchema = tagSchema;
-export const ruleTagsSchema = tagsSchema;
+export const requiredDescriptionSchema = baseDescriptionSchema.min(
+  1,
+  "Description is required"
+);
 
-export const rulePlatformSchema = z.enum(PLATFORM_IDS);
-
-export const ruleTypeSchema = z.string().trim().min(1).max(32);
-
-export const ruleContentSchema = z
+// Schema for stored versions (MAJOR.MINOR format)
+const versionSchema = z
   .string()
-  .min(1, "Content is required")
-  .max(100_000, "Content must be 100KB or less");
+  .trim()
+  .regex(VERSION_REGEX, "Version must be in MAJOR.MINOR format (e.g., 1.3)");
 
-/** Common fields shared across all platform-type combinations */
-const ruleCommonFields = {
-  name: ruleNameSchema,
-  title: ruleTitleSchema,
-  description: ruleDescriptionSchema.optional(),
-  content: ruleContentSchema,
-  tags: ruleTagsSchema,
-};
+// Schema for input major version (positive integer)
+const majorVersionSchema = z
+  .number()
+  .int()
+  .positive("Major version must be a positive integer");
+
+const featureSchema = z
+  .string()
+  .trim()
+  .min(1, "Feature cannot be empty")
+  .max(100, "Feature must be 100 characters or less");
+
+const featuresSchema = z
+  .array(featureSchema)
+  .max(5, "Maximum 5 features allowed");
+
+const installMessageSchema = z
+  .string()
+  .trim()
+  .max(2000, "Install message must be 2000 characters or less");
+const contentSchema = z.string(); // For readmeContent and licenseContent (no length limit)
+
+// Common SPDX license identifiers (for quick selection)
+// See: https://spdx.org/licenses/
+export const COMMON_LICENSES = [
+  "MIT",
+  "Apache-2.0",
+  "GPL-3.0-only",
+  "BSD-3-Clause",
+  "ISC",
+  "Unlicense",
+] as const;
+
+export type CommonLicense = (typeof COMMON_LICENSES)[number];
+
+// License schema - just requires non-empty string, user is responsible for valid SPDX
+export const licenseSchema = z
+  .string()
+  .trim()
+  .min(1, "License is required")
+  .max(128, "License must be 128 characters or less");
+
+const pathSchema = z.string().trim().min(1);
+
+const ignorePatternSchema = z
+  .string()
+  .trim()
+  .min(1, "Ignore pattern cannot be empty");
+
+const ignoreSchema = z
+  .array(ignorePatternSchema)
+  .max(50, "Maximum 50 ignore patterns allowed");
 
 /**
- * Discriminated union schema for platform + type combinations.
- * Each platform has its own set of valid types.
+ * Platform entry - either a platform ID string or an object with optional path.
+ *
+ * Examples:
+ * - "opencode" (shorthand, uses default directory)
+ * - { platform: "opencode", path: "rules" } (custom path)
  */
-export const rulePlatformTypeSchema = z.discriminatedUnion("platform", [
-  z.object({
-    platform: z.literal("opencode"),
-    type: z.enum(PLATFORM_RULE_TYPES.opencode),
-  }),
-  z.object({
-    platform: z.literal("claude"),
-    type: z.enum(PLATFORM_RULE_TYPES.claude),
-  }),
-  z.object({
-    platform: z.literal("cursor"),
-    type: z.enum(PLATFORM_RULE_TYPES.cursor),
-  }),
-  z.object({
-    platform: z.literal("codex"),
-    type: z.enum(PLATFORM_RULE_TYPES.codex),
-  }),
+const platformEntryObjectSchema = z
+  .object({
+    platform: platformIdSchema,
+    path: pathSchema.optional(),
+  })
+  .strict();
+
+const platformEntrySchema = z.union([
+  platformIdSchema,
+  platformEntryObjectSchema,
 ]);
 
-/** Schema for rule creation with discriminated union for platform+type */
-export const ruleCreateInputSchema = z
-  .object(ruleCommonFields)
-  .and(rulePlatformTypeSchema);
+/**
+ * Schema for rule type.
+ * Valid types: instruction, rule, command, skill, agent, tool, multi.
+ * Optional - defaults to "multi" (freeform file structure).
+ * Platform-specific validation happens at publish time.
+ */
+export const ruleTypeSchema = z.enum(RULE_TYPE_TUPLE);
+const typeSchema = ruleTypeSchema.optional();
 
-export type RuleCreateInput = z.infer<typeof ruleCreateInputSchema>;
+/**
+ * Rule config schema.
+ *
+ * Uses a unified `platforms` array that accepts either:
+ * - Platform ID strings: `["opencode", "claude"]`
+ * - Objects with optional path: `[{ platform: "opencode", path: "rules" }]`
+ * - Mixed: `["opencode", { platform: "claude", path: "my-claude" }]`
+ */
+export const ruleConfigSchema = z
+  .object({
+    $schema: z.string().optional(),
+    name: nameSchema,
+    type: typeSchema, // Optional - defaults to "multi" (freeform)
+    title: titleSchema,
+    version: majorVersionSchema.optional(), // Major version. Registry assigns minor.
+    description: requiredDescriptionSchema,
+    tags: tagsSchema, // Required - at least one tag for discoverability
+    features: featuresSchema.optional(),
+    license: licenseSchema, // Required SPDX license identifier
+    ignore: ignoreSchema.optional(), // Additional patterns to exclude from bundle
+    platforms: z
+      .array(platformEntrySchema)
+      .min(1, "At least one platform is required"),
+  })
+  .strict();
 
-/** Re-export platform types for convenience */
-export { PLATFORM_RULE_TYPES } from "../platform/config";
-export type { PlatformRuleType, RuleTypeForPlatform } from "../platform/types";
+export const bundledFileSchema = z.object({
+  path: z.string().min(1),
+  size: z.number().int().nonnegative(),
+  checksum: z.string().length(64),
+  content: z.string(),
+});
+
+/**
+ * Schema for per-platform variant in publish input.
+ */
+export const publishVariantInputSchema = z.object({
+  platform: platformIdSchema,
+  files: z.array(bundledFileSchema).min(1),
+  readmeContent: contentSchema.optional(),
+  licenseContent: contentSchema.optional(),
+  installMessage: installMessageSchema.optional(),
+});
+
+/**
+ * Schema for what clients send to publish a rule.
+ *
+ * One publish call creates ONE version with ALL platform variants.
+ * Version is optional major version. Registry assigns full MAJOR.MINOR.
+ *
+ * Note: Clients send `name` (e.g., "my-rule"), and the registry defines the format of the slug.
+ * For example, a namespaced slug could be returned as "username/my-rule"
+ */
+export const rulePublishInputSchema = z.object({
+  name: nameSchema, // Rule name (registry builds full slug)
+  type: typeSchema, // Rule type - must be valid for all variant platforms
+  title: titleSchema,
+  description: requiredDescriptionSchema,
+  tags: tagsSchema,
+  license: licenseSchema, // Required SPDX license identifier
+  features: featuresSchema.optional(),
+  /** Platform variants - each contains files for that platform */
+  variants: z
+    .array(publishVariantInputSchema)
+    .min(1, "At least one platform variant is required"),
+  /** Major version. Defaults to 1 if not specified. */
+  version: majorVersionSchema.optional(),
+});
+
+/**
+ * Schema for what registries store and return for a single platform bundle.
+ * This is per-platform (flat structure), stored in R2 and fetched via bundleUrl.
+ */
+export const ruleBundleSchema = z.object({
+  name: nameSchema,
+  type: typeSchema, // Rule type
+  platform: platformIdSchema,
+  title: titleSchema,
+  description: requiredDescriptionSchema,
+  tags: tagsSchema,
+  license: licenseSchema,
+  features: featuresSchema.optional(),
+  files: z.array(bundledFileSchema).min(1, "At least one file is required"),
+  readmeContent: contentSchema.optional(),
+  licenseContent: contentSchema.optional(),
+  installMessage: installMessageSchema.optional(),
+  /** Full namespaced slug (e.g., "username/my-rule") */
+  slug: z.string().trim().min(1),
+  /** Full version in MAJOR.MINOR format (e.g., "1.3", "2.1") */
+  version: versionSchema,
+});

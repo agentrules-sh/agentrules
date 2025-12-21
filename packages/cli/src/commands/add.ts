@@ -1,17 +1,13 @@
 /**
- * Unified Add Command
+ * Add Command
  *
- * Resolves a slug from the registry and installs the content,
- * whether it's a preset or a rule.
+ * Resolves a slug from the registry and installs the content.
  */
 
 import type {
   PlatformId,
-  PresetBundle,
-  PresetVariant,
-  PresetVersion,
-  ResolvedPreset,
   ResolvedRule,
+  RuleBundle,
   RuleVariant,
   RuleVersion,
 } from "@agentrules/core";
@@ -20,12 +16,9 @@ import {
   decodeBundledFile,
   fetchBundle,
   getInstallPath,
-  getLatestPresetVersion,
-  getLatestRuleVersion,
-  getPresetVariant,
-  getPresetVersion,
-  getRuleVariant,
-  getRuleVersion,
+  getLatestVersion,
+  getVariant,
+  getVersion,
   hasBundle,
   isLikelyText,
   normalizeBundlePath,
@@ -80,27 +73,11 @@ type WriteStats = {
   backups: BackupDetail[];
 };
 
-// Preset result
-export type AddPresetResult = {
-  kind: "preset";
-  resolved: ResolvedPreset;
-  version: PresetVersion;
-  variant: PresetVariant;
-  bundle: PresetBundle;
-  files: FileResult[];
-  backups: BackupDetail[];
-  targetRoot: string;
-  targetLabel: string;
-  registryAlias: string;
-  dryRun: boolean;
-};
-
-// Rule result
-export type AddRuleResult = {
-  kind: "rule";
+export type AddResult = {
   resolved: ResolvedRule;
   version: RuleVersion;
   variant: RuleVariant;
+  bundle: RuleBundle;
   files: FileResult[];
   backups: BackupDetail[];
   targetRoot: string;
@@ -108,8 +85,6 @@ export type AddRuleResult = {
   registryAlias: string;
   dryRun: boolean;
 };
-
-export type AddResult = AddPresetResult | AddRuleResult;
 
 // Helper to get conflicts from files
 export function getConflicts(files: FileResult[]): FileResult[] {
@@ -141,24 +116,14 @@ export async function add(options: AddOptions): Promise<AddResult> {
     throw new Error(`"${slug}" was not found in the registry.`);
   }
 
-  // Handle based on content kind
-  if (resolved.kind === "preset") {
-    // Select version and variant
-    const { selectedVersion: presetVersion, selectedVariant: presetVariant } =
-      selectPresetVariant(resolved, version, platform);
+  // Select version and variant
+  const { selectedVersion, selectedVariant } = selectVariant(
+    resolved,
+    version,
+    platform
+  );
 
-    return addPreset(resolved, presetVersion, presetVariant, {
-      ...options,
-      registryAlias,
-      dryRun,
-    });
-  }
-
-  // Rule
-  const { selectedVersion: ruleVersion, selectedVariant: ruleVariant } =
-    selectRuleVariant(resolved, version, platform);
-
-  return addRule(resolved, ruleVersion, ruleVariant, {
+  return addRule(resolved, selectedVersion, selectedVariant, {
     ...options,
     registryAlias,
     dryRun,
@@ -169,61 +134,15 @@ export async function add(options: AddOptions): Promise<AddResult> {
 // Variant Selection
 // =============================================================================
 
-function selectPresetVariant(
-  resolved: ResolvedPreset,
-  requestedVersion: string | undefined,
-  platform: PlatformId | undefined
-): { selectedVersion: PresetVersion; selectedVariant: PresetVariant } {
-  // Get the requested version or latest
-  const selectedVersion = requestedVersion
-    ? getPresetVersion(resolved, requestedVersion)
-    : getLatestPresetVersion(resolved);
-
-  if (!selectedVersion) {
-    const versionLabel = requestedVersion ?? "latest";
-    throw new Error(
-      `Version "${versionLabel}" not found for "${resolved.slug}".`
-    );
-  }
-
-  // Check if platform is needed
-  if (selectedVersion.variants.length === 0) {
-    throw new Error(`No platform variants found for "${resolved.slug}".`);
-  }
-
-  if (selectedVersion.variants.length > 1 && !platform) {
-    const platforms = selectedVersion.variants
-      .map((v) => v.platform)
-      .join(", ");
-    throw new Error(
-      `"${resolved.slug}" is available for multiple platforms: ${platforms}. ` +
-        "Use --platform <platform> to specify which one."
-    );
-  }
-
-  // Select variant (auto-selects if only one variant)
-  const selectedVariant = platform
-    ? getPresetVariant(selectedVersion, platform)
-    : selectedVersion.variants[0];
-
-  if (!selectedVariant) {
-    throw new Error(
-      `Platform "${platform}" not found for "${resolved.slug}" v${selectedVersion.version}.`
-    );
-  }
-
-  return { selectedVersion, selectedVariant };
-}
-
-function selectRuleVariant(
+function selectVariant(
   resolved: ResolvedRule,
   requestedVersion: string | undefined,
   platform: PlatformId | undefined
 ): { selectedVersion: RuleVersion; selectedVariant: RuleVariant } {
   // Get the requested version or latest
   const selectedVersion = requestedVersion
-    ? getRuleVersion(resolved, requestedVersion)
-    : getLatestRuleVersion(resolved);
+    ? getVersion(resolved, requestedVersion)
+    : getLatestVersion(resolved);
 
   if (!selectedVersion) {
     const versionLabel = requestedVersion ?? "latest";
@@ -249,7 +168,7 @@ function selectRuleVariant(
 
   // Select variant (auto-selects if only one variant)
   const selectedVariant = platform
-    ? getRuleVariant(selectedVersion, platform)
+    ? getVariant(selectedVersion, platform)
     : selectedVersion.variants[0];
 
   if (!selectedVariant) {
@@ -262,7 +181,7 @@ function selectRuleVariant(
 }
 
 // =============================================================================
-// Preset Installation
+// Installation
 // =============================================================================
 
 type InstallOptions = AddOptions & {
@@ -270,16 +189,16 @@ type InstallOptions = AddOptions & {
   dryRun: boolean;
 };
 
-async function addPreset(
-  resolved: ResolvedPreset,
-  version: PresetVersion,
-  variant: PresetVariant,
+async function addRule(
+  resolved: ResolvedRule,
+  version: RuleVersion,
+  variant: RuleVariant,
   options: InstallOptions
-): Promise<AddPresetResult> {
-  log.debug(`Installing preset: ${variant.platform} v${version.version}`);
+): Promise<AddResult> {
+  log.debug(`Installing rule: ${variant.platform} v${version.version}`);
 
   // Get bundle content
-  let bundle: PresetBundle;
+  let bundle: RuleBundle;
 
   if (hasBundle(variant)) {
     log.debug(`Downloading bundle from ${variant.bundleUrl}`);
@@ -287,7 +206,7 @@ async function addPreset(
   } else {
     // Inline content
     log.debug("Using inline bundle content");
-    bundle = JSON.parse(variant.content) as PresetBundle;
+    bundle = JSON.parse(variant.content) as RuleBundle;
   }
 
   if (bundle.slug !== resolved.slug || bundle.platform !== variant.platform) {
@@ -297,18 +216,39 @@ async function addPreset(
     );
   }
 
-  const target = resolveInstallTarget(variant.platform, options);
+  const target = resolveInstallTarget(
+    variant.platform,
+    bundle.type,
+    bundle.name,
+    options
+  );
 
   log.debug(`Writing ${bundle.files.length} files to ${target.root}`);
 
-  // Prepare files to write
+  // Prepare files to write, tracking skipped files
   const filesToWrite: Array<{ path: string; content: Buffer }> = [];
+  const skippedFiles: FileResult[] = [];
+
   for (const file of bundle.files) {
     const decoded = decodeBundledFile(file);
     const data = Buffer.from(decoded);
     await verifyBundledFileChecksum(file, data);
 
-    const destPath = computePresetDestinationPath(file.path, target);
+    const destPath = computeDestinationPath(file.path, target);
+
+    if (destPath === null) {
+      // File skipped (e.g., multi type global install with non-platformDir path)
+      const normalizedPath = normalizeBundlePath(file.path) ?? file.path;
+      skippedFiles.push({
+        path: normalizedPath,
+        status: "skipped",
+      });
+      log.debug(
+        `Skipped (not supported for ${target.mode}): ${normalizedPath}`
+      );
+      continue;
+    }
+
     filesToWrite.push({ path: destPath, content: data });
   }
 
@@ -320,12 +260,11 @@ async function addPreset(
   });
 
   return {
-    kind: "preset",
     resolved,
     version,
     variant,
     bundle,
-    files: writeStats.files,
+    files: [...writeStats.files, ...skippedFiles],
     backups: writeStats.backups,
     targetRoot: target.root,
     targetLabel: target.label,
@@ -335,55 +274,7 @@ async function addPreset(
 }
 
 // =============================================================================
-// Rule Installation
-// =============================================================================
-
-async function addRule(
-  resolved: ResolvedRule,
-  version: RuleVersion,
-  variant: RuleVariant,
-  options: InstallOptions
-): Promise<AddRuleResult> {
-  log.debug(`Installing rule: ${variant.platform} v${version.version}`);
-
-  // Determine target path and root
-  const { targetPath, targetRoot, targetLabel } = resolveRuleTarget(
-    variant.platform,
-    variant.type,
-    resolved.name,
-    options
-  );
-
-  log.debug(`Target path: ${targetPath}`);
-
-  // Write single file using shared logic
-  const writeStats = await writeFiles(
-    [{ path: targetPath, content: Buffer.from(variant.content, "utf-8") }],
-    targetRoot,
-    {
-      force: Boolean(options.force),
-      skipConflicts: false, // Single file, no skip
-      noBackup: Boolean(options.noBackup),
-      dryRun: options.dryRun,
-    }
-  );
-
-  return {
-    kind: "rule",
-    resolved,
-    version,
-    variant,
-    files: writeStats.files,
-    backups: writeStats.backups,
-    targetRoot,
-    targetLabel,
-    registryAlias: options.registryAlias,
-    dryRun: options.dryRun,
-  };
-}
-
-// =============================================================================
-// Shared File Writing Logic
+// File Writing
 // =============================================================================
 
 type WriteOptions = {
@@ -393,10 +284,6 @@ type WriteOptions = {
   dryRun: boolean;
 };
 
-/**
- * Write files with conflict detection, backup support, and diff preview.
- * Used by both preset and rule installation.
- */
 async function writeFiles(
   filesToWrite: Array<{ path: string; content: Buffer }>,
   root: string,
@@ -474,13 +361,135 @@ async function writeFiles(
 }
 
 // =============================================================================
-// Shared Helpers
+// Path Resolution
 // =============================================================================
 
+type InstallTarget = {
+  root: string;
+  mode: "project" | "global";
+  platform: PlatformId;
+  platformDir: string;
+  globalDir: string;
+  type?: string;
+  name: string;
+  label: string;
+};
+
+function resolveInstallTarget(
+  platform: PlatformId,
+  type: string | undefined,
+  name: string,
+  options: AddOptions
+): InstallTarget {
+  const { platformDir, globalDir } = PLATFORMS[platform];
+
+  if (options.global) {
+    if (!globalDir) {
+      throw new Error(
+        `Platform "${platform}" does not support global installation`
+      );
+    }
+    const globalRoot = resolve(expandHome(globalDir));
+    return {
+      root: globalRoot,
+      mode: "global",
+      platform,
+      platformDir,
+      globalDir,
+      type,
+      name,
+      label: `global path ${globalRoot}`,
+    };
+  }
+
+  // Project install: use custom directory or current working directory
+  const projectRoot = options.directory
+    ? resolve(expandHome(options.directory))
+    : process.cwd();
+  const label = options.directory
+    ? `directory ${projectRoot}`
+    : `project root ${projectRoot}`;
+
+  return {
+    root: projectRoot,
+    mode: "project",
+    platform,
+    platformDir,
+    globalDir,
+    type,
+    name,
+    label,
+  };
+}
+
 /**
- * Parse input to extract slug and version.
- * Platform must be specified via --platform flag.
+ * Resolve install path based on scope and type.
+ *
+ * - Project scope: use file.path directly
+ * - Global scope:
+ *   - If path starts with platformDir: transform to globalDir
+ *   - If type is "multi" and path doesn't start with platformDir: skip (return null)
+ *   - Otherwise: use getInstallPath for root-level files (e.g., instruction)
  */
+function resolvePath(filePath: string, target: InstallTarget): string | null {
+  const { platform, platformDir, globalDir, type, name, mode } = target;
+
+  // Project scope: use bundle path directly
+  if (mode === "project") {
+    return filePath;
+  }
+
+  // Global scope
+  const platformDirPrefix = `${platformDir}/`;
+
+  // If path starts with platformDir, transform to globalDir
+  if (filePath.startsWith(platformDirPrefix)) {
+    return `${globalDir}/${filePath.slice(platformDirPrefix.length)}`;
+  }
+
+  // Path doesn't start with platformDir
+  if (!type) {
+    // Freeform (no type): skip non-platformDir files for global install
+    return null;
+  }
+
+  // Named types (like instruction): use getInstallPath for root-level files
+  return getInstallPath({
+    platform,
+    type,
+    name,
+    scope: "global",
+  });
+}
+
+function computeDestinationPath(
+  pathInput: string,
+  target: InstallTarget
+): string | null {
+  const normalized = normalizeBundlePath(pathInput);
+
+  if (!normalized) {
+    throw new Error(
+      `Unable to derive destination for ${pathInput}. The computed relative path is empty.`
+    );
+  }
+
+  const resolvedPath = resolvePath(normalized, target);
+
+  // null means file should be skipped (e.g., multi type global install)
+  if (resolvedPath === null) {
+    return null;
+  }
+
+  const destination = resolve(target.root, resolvedPath);
+  ensureWithinRoot(destination, target.root);
+  return destination;
+}
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
 function parseInput(
   input: string,
   explicitPlatform?: PlatformId,
@@ -502,137 +511,6 @@ function parseInput(
     version: explicitVersion ?? parsedVersion,
   };
 }
-
-// =============================================================================
-// Preset Path Resolution
-// =============================================================================
-
-type InstallTarget = {
-  root: string;
-  mode: "project" | "global" | "custom";
-  platform: PlatformId;
-  platformDir: string;
-  label: string;
-};
-
-function resolveInstallTarget(
-  platform: PlatformId,
-  options: AddOptions
-): InstallTarget {
-  const { platformDir, globalDir } = PLATFORMS[platform];
-
-  if (options.directory) {
-    const customRoot = resolve(expandHome(options.directory));
-    return {
-      root: customRoot,
-      mode: "custom",
-      platform,
-      platformDir,
-      label: `custom directory ${customRoot}`,
-    };
-  }
-
-  if (options.global) {
-    if (!globalDir) {
-      throw new Error(
-        `Platform "${platform}" does not support global installation`
-      );
-    }
-    const globalRoot = resolve(expandHome(globalDir));
-    return {
-      root: globalRoot,
-      mode: "global",
-      platform,
-      platformDir,
-      label: `global path ${globalRoot}`,
-    };
-  }
-
-  const projectRoot = process.cwd();
-  return {
-    root: projectRoot,
-    mode: "project",
-    platform,
-    platformDir,
-    label: `project root ${projectRoot}`,
-  };
-}
-
-function computePresetDestinationPath(
-  pathInput: string,
-  target: InstallTarget
-): string {
-  const normalized = normalizeBundlePath(pathInput);
-
-  if (!normalized) {
-    throw new Error(
-      `Unable to derive destination for ${pathInput}. The computed relative path is empty.`
-    );
-  }
-
-  let relativePath: string;
-
-  if (target.mode === "global") {
-    relativePath = normalized;
-  } else {
-    relativePath = `${target.platformDir}/${normalized}`;
-  }
-
-  const destination = resolve(target.root, relativePath);
-  ensureWithinRoot(destination, target.root);
-  return destination;
-}
-
-// =============================================================================
-// Rule Path Resolution
-// =============================================================================
-
-function resolveRuleTarget(
-  platform: PlatformId,
-  type: string,
-  name: string,
-  options: { global?: boolean; directory?: string }
-): { targetPath: string; targetRoot: string; targetLabel: string } {
-  const location = options.global ? "global" : "project";
-  const pathTemplate = getInstallPath(platform, type, name, location);
-
-  if (!pathTemplate) {
-    const locationLabel = options.global ? "globally" : "to a project";
-    throw new Error(
-      `Rule type "${type}" cannot be installed ${locationLabel} for platform "${platform}"`
-    );
-  }
-
-  if (options.directory) {
-    const customRoot = resolve(expandHome(options.directory));
-    const filename = pathTemplate.split("/").pop() ?? `${name}.md`;
-    const targetPath = resolve(customRoot, filename);
-    ensureWithinRoot(targetPath, customRoot);
-    return {
-      targetPath,
-      targetRoot: customRoot,
-      targetLabel: `custom directory ${customRoot}`,
-    };
-  }
-
-  const expanded = expandHome(pathTemplate);
-  const targetPath = expanded.startsWith("/")
-    ? expanded
-    : resolve(process.cwd(), expanded);
-
-  const targetRoot = options.global ? dirname(targetPath) : process.cwd();
-  ensureWithinRoot(targetPath, targetRoot);
-
-  const targetLabel = options.global
-    ? `global path ${targetRoot}`
-    : `project root ${targetRoot}`;
-
-  return { targetPath, targetRoot, targetLabel };
-}
-
-// =============================================================================
-// Common Utilities
-// =============================================================================
 
 async function readExistingFile(pathname: string): Promise<Buffer | null> {
   try {
@@ -699,17 +577,9 @@ function ensureWithinRoot(candidate: string, root: string) {
   }
 }
 
-/**
- * Expands ~ to the user's home directory.
- *
- * Uses process.env.HOME (Unix) or process.env.USERPROFILE (Windows) first,
- * falling back to os.homedir(). This matches shell behavior and allows
- * tests to override the home directory via environment variables.
- */
 function expandHome(value: string) {
   if (value.startsWith("~")) {
     const remainder = value.slice(1);
-    // Use env vars first (matches shell/Go behavior, enables test isolation)
     const home = process.env.HOME || process.env.USERPROFILE || homedir();
     if (!remainder) {
       return home;

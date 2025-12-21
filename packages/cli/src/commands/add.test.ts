@@ -2,16 +2,16 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import {
   API_ENDPOINTS,
   type PlatformId,
-  type PresetBundle,
-  type PresetVariant,
-  type PresetVersion,
-  type ResolvedPreset,
+  type ResolvedRule,
+  type RuleBundle,
+  type RuleVariant,
+  type RuleVersion,
 } from "@agentrules/core";
 import { access, appendFile, mkdtemp, readFile, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import {
-  type AddPresetResult,
+  type AddResult,
   add,
   type FileResult,
   getConflicts,
@@ -20,8 +20,8 @@ import { loadConfig, saveConfig } from "@/lib/config";
 import { initAppContext } from "@/lib/context";
 
 type FixturePayload = {
-  resolveResponse: ResolvedPreset;
-  bundle: PresetBundle;
+  resolveResponse: ResolvedRule;
+  bundle: RuleBundle;
   bundleUrl: string;
 };
 
@@ -31,8 +31,8 @@ type MockStep = {
   headers?: Record<string, string>;
 };
 
-const PRESET_NAME = "agentic-dev-starter";
-const PRESET_SLUG = `testuser/${PRESET_NAME}`;
+const RULE_NAME = "agentic-dev-starter";
+const RULE_SLUG = `testuser/${RULE_NAME}`;
 const PLATFORM: PlatformId = "opencode";
 const TITLE = "Agentic Dev Starter Kit";
 const DEFAULT_BASE_URL = "https://agentrules.directory/";
@@ -44,18 +44,12 @@ let originalUserHome: string | undefined;
 let projectDir: string;
 let homeDir: string;
 
-/** Helper to call add and assert result is a preset */
-async function addPreset(
-  options: Parameters<typeof add>[0]
-): Promise<AddPresetResult> {
-  const result = await add(options);
-  if (result.kind !== "preset") {
-    throw new Error(`Expected preset result, got ${result.kind}`);
-  }
-  return result;
+/** Helper to call add */
+async function addRule(options: Parameters<typeof add>[0]): Promise<AddResult> {
+  return add(options);
 }
 
-describe("add (preset)", () => {
+describe("add", () => {
   beforeEach(async () => {
     projectDir = await mkdtemp(join(tmpdir(), "cli-project-"));
     homeDir = await mkdtemp(join(tmpdir(), "cli-home-"));
@@ -92,8 +86,8 @@ describe("add (preset)", () => {
     const fixture = await createFixtures("# Initial contents\n");
     mockResolveRequests(DEFAULT_BASE_URL, fixture);
 
-    const result = await addPreset({
-      slug: PRESET_SLUG,
+    const result = await addRule({
+      slug: RULE_SLUG,
       platform: PLATFORM,
       dryRun: true,
     });
@@ -104,38 +98,38 @@ describe("add (preset)", () => {
     );
     expect(filesWritten.length).toBeGreaterThan(0);
     expect(getConflicts(result.files)).toHaveLength(0);
-    expect(
-      await fileExists(join(projectDir, ".opencode/AGENT_RULES.md"))
-    ).toBeFalse();
+    // Dry run: file should not exist
+    expect(await fileExists(join(projectDir, "AGENTS.md"))).toBeFalse();
   });
 
   it("writes files and updates metadata when not a dry run", async () => {
     const fixture = await createFixtures("# Initial contents\n");
     mockResolveRequests(DEFAULT_BASE_URL, fixture);
 
-    const result = await addPreset({ slug: PRESET_SLUG, platform: PLATFORM });
+    const result = await addRule({ slug: RULE_SLUG, platform: PLATFORM });
 
     expect(result.dryRun).toBeFalse();
     const filesWritten = result.files.filter(
       (f: FileResult) => f.status === "created" || f.status === "overwritten"
     );
     expect(filesWritten.length).toBeGreaterThan(0);
-    const rulesPath = join(projectDir, ".opencode/AGENT_RULES.md");
+    // Instruction type: file at project root (per bundle path)
+    const rulesPath = join(projectDir, "AGENTS.md");
     expect(await fileExists(rulesPath)).toBeTrue();
   });
 
   it("skips conflicting files when --skip-conflicts is provided", async () => {
     let fixture = await createFixtures("# Initial contents\n");
     mockResolveRequests(DEFAULT_BASE_URL, fixture);
-    await addPreset({ slug: PRESET_SLUG, platform: PLATFORM, force: true });
+    await addRule({ slug: RULE_SLUG, platform: PLATFORM, force: true });
 
-    const rulesPath = join(projectDir, ".opencode/AGENT_RULES.md");
+    const rulesPath = join(projectDir, "AGENTS.md");
     await appendFile(rulesPath, "\n# Local customization\n");
 
     fixture = await createFixtures("# Initial contents\n");
     mockResolveRequests(DEFAULT_BASE_URL, fixture);
-    const result = await addPreset({
-      slug: PRESET_SLUG,
+    const result = await addRule({
+      slug: RULE_SLUG,
       platform: PLATFORM,
       skipConflicts: true,
     });
@@ -146,7 +140,7 @@ describe("add (preset)", () => {
       (f: FileResult) => f.status === "skipped"
     );
     expect(skippedFiles).toHaveLength(1);
-    expect(skippedFiles[0]?.path).toBe(".opencode/AGENT_RULES.md");
+    expect(skippedFiles[0]?.path).toBe("AGENTS.md");
     expect(skippedFiles[0]?.diff).toBeDefined();
     // Original file should be preserved
     const fileContents = await readFile(rulesPath, "utf8");
@@ -156,21 +150,16 @@ describe("add (preset)", () => {
   it("returns conflicts when files differ and force is not provided", async () => {
     let fixture = await createFixtures("# First install\n");
     mockResolveRequests(DEFAULT_BASE_URL, fixture);
-    await addPreset({ slug: PRESET_SLUG, platform: PLATFORM, force: true });
-    await appendFile(
-      join(projectDir, ".opencode/AGENT_RULES.md"),
-      "\n# Local\n"
-    );
+    await addRule({ slug: RULE_SLUG, platform: PLATFORM, force: true });
+    await appendFile(join(projectDir, "AGENTS.md"), "\n# Local\n");
 
     fixture = await createFixtures("# Updated contents\n");
     mockResolveRequests(DEFAULT_BASE_URL, fixture);
 
-    const result = await addPreset({ slug: PRESET_SLUG, platform: PLATFORM });
+    const result = await addRule({ slug: RULE_SLUG, platform: PLATFORM });
 
     expect(getConflicts(result.files)).toHaveLength(1);
-    expect(getConflicts(result.files)[0]?.path).toBe(
-      ".opencode/AGENT_RULES.md"
-    );
+    expect(getConflicts(result.files)[0]?.path).toBe("AGENTS.md");
     expect(getConflicts(result.files)[0]?.diff).toContain("# Local");
   });
 
@@ -178,28 +167,28 @@ describe("add (preset)", () => {
     // First install
     let fixture = await createFixtures("# Original content\n");
     mockResolveRequests(DEFAULT_BASE_URL, fixture);
-    await addPreset({ slug: PRESET_SLUG, platform: PLATFORM, force: true });
+    await addRule({ slug: RULE_SLUG, platform: PLATFORM, force: true });
 
-    const rulesPath = join(projectDir, ".opencode/AGENT_RULES.md");
+    const rulesPath = join(projectDir, "AGENTS.md");
     await appendFile(rulesPath, "\n# My local changes\n");
     const localContent = await readFile(rulesPath, "utf8");
 
     // Second install with force - should backup
     fixture = await createFixtures("# Updated content\n");
     mockResolveRequests(DEFAULT_BASE_URL, fixture);
-    const result = await addPreset({
-      slug: PRESET_SLUG,
+    const result = await addRule({
+      slug: RULE_SLUG,
       platform: PLATFORM,
       force: true,
     });
 
     // Should have one backup
     expect(result.backups).toHaveLength(1);
-    expect(result.backups[0]?.originalPath).toBe(".opencode/AGENT_RULES.md");
-    expect(result.backups[0]?.backupPath).toBe(".opencode/AGENT_RULES.md.bak");
+    expect(result.backups[0]?.originalPath).toBe("AGENTS.md");
+    expect(result.backups[0]?.backupPath).toBe("AGENTS.md.bak");
 
     // Backup file should exist with original content
-    const backupPath = join(projectDir, ".opencode/AGENT_RULES.md.bak");
+    const backupPath = join(projectDir, "AGENTS.md.bak");
     expect(await fileExists(backupPath)).toBeTrue();
     const backupContent = await readFile(backupPath, "utf8");
     expect(backupContent).toBe(localContent);
@@ -213,16 +202,16 @@ describe("add (preset)", () => {
     // First install
     let fixture = await createFixtures("# Original content\n");
     mockResolveRequests(DEFAULT_BASE_URL, fixture);
-    await addPreset({ slug: PRESET_SLUG, platform: PLATFORM, force: true });
+    await addRule({ slug: RULE_SLUG, platform: PLATFORM, force: true });
 
-    const rulesPath = join(projectDir, ".opencode/AGENT_RULES.md");
+    const rulesPath = join(projectDir, "AGENTS.md");
     await appendFile(rulesPath, "\n# My local changes\n");
 
     // Second install with force and noBackup
     fixture = await createFixtures("# Updated content\n");
     mockResolveRequests(DEFAULT_BASE_URL, fixture);
-    const result = await addPreset({
-      slug: PRESET_SLUG,
+    const result = await addRule({
+      slug: RULE_SLUG,
       platform: PLATFORM,
       force: true,
       noBackup: true,
@@ -232,7 +221,7 @@ describe("add (preset)", () => {
     expect(result.backups).toHaveLength(0);
 
     // Backup file should not exist
-    const backupPath = join(projectDir, ".opencode/AGENT_RULES.md.bak");
+    const backupPath = join(projectDir, "AGENTS.md.bak");
     expect(await fileExists(backupPath)).toBeFalse();
   });
 
@@ -240,16 +229,16 @@ describe("add (preset)", () => {
     // First install
     let fixture = await createFixtures("# Original content\n");
     mockResolveRequests(DEFAULT_BASE_URL, fixture);
-    await addPreset({ slug: PRESET_SLUG, platform: PLATFORM, force: true });
+    await addRule({ slug: RULE_SLUG, platform: PLATFORM, force: true });
 
-    const rulesPath = join(projectDir, ".opencode/AGENT_RULES.md");
+    const rulesPath = join(projectDir, "AGENTS.md");
     await appendFile(rulesPath, "\n# My local changes\n");
 
     // Second install with force and dryRun
     fixture = await createFixtures("# Updated content\n");
     mockResolveRequests(DEFAULT_BASE_URL, fixture);
-    const result = await addPreset({
-      slug: PRESET_SLUG,
+    const result = await addRule({
+      slug: RULE_SLUG,
       platform: PLATFORM,
       force: true,
       dryRun: true,
@@ -257,11 +246,11 @@ describe("add (preset)", () => {
 
     // Should record the backup that would happen
     expect(result.backups).toHaveLength(1);
-    expect(result.backups[0]?.originalPath).toBe(".opencode/AGENT_RULES.md");
-    expect(result.backups[0]?.backupPath).toBe(".opencode/AGENT_RULES.md.bak");
+    expect(result.backups[0]?.originalPath).toBe("AGENTS.md");
+    expect(result.backups[0]?.backupPath).toBe("AGENTS.md.bak");
 
     // But backup file should not exist (dry run)
-    const backupPath = join(projectDir, ".opencode/AGENT_RULES.md.bak");
+    const backupPath = join(projectDir, "AGENTS.md.bak");
     expect(await fileExists(backupPath)).toBeFalse();
   });
 
@@ -270,22 +259,21 @@ describe("add (preset)", () => {
     mockResolveRequests(DEFAULT_BASE_URL, fixture);
 
     const customDir = join(projectDir, "custom-target");
-    await addPreset({
-      slug: PRESET_SLUG,
+    await addRule({
+      slug: RULE_SLUG,
       platform: PLATFORM,
       directory: customDir,
     });
 
-    expect(
-      await fileExists(join(customDir, ".opencode/AGENT_RULES.md"))
-    ).toBeTrue();
+    // Custom directory uses bundle path directly
+    expect(await fileExists(join(customDir, "AGENTS.md"))).toBeTrue();
   });
 
   it("installs into global path when --global is set", async () => {
     const fixture = await createFixtures("# Global install\n");
     mockResolveRequests(DEFAULT_BASE_URL, fixture);
-    const result = await addPreset({
-      slug: PRESET_SLUG,
+    const result = await addRule({
+      slug: RULE_SLUG,
       platform: PLATFORM,
       global: true,
     });
@@ -304,8 +292,8 @@ describe("add (preset)", () => {
       "# README\n"
     );
     mockResolveRequests(DEFAULT_BASE_URL, fixture);
-    const result = await addPreset({
-      slug: PRESET_SLUG,
+    const result = await addRule({
+      slug: RULE_SLUG,
       platform: PLATFORM,
       global: true,
     });
@@ -313,12 +301,15 @@ describe("add (preset)", () => {
     // Global path uses HOME env var (set to temp dir in beforeEach)
     expect(result.targetRoot).toContain(".config/opencode");
     expect(result.targetRoot).toStartWith(homeDir);
-    // All files should be created (fresh temp dir each test)
+    // All files should be created:
+    // - AGENTS.md (root) → uses getInstallPath → ~/.config/opencode/AGENTS.md
+    // - .opencode/README.md → transforms platformDir → ~/.config/opencode/README.md
     const filesCreated = result.files.filter((f) => f.status === "created");
     expect(filesCreated.length).toBe(2);
-    // Verify both files are in the list
-    expect(result.files.map((f) => f.path)).toContain("AGENT_RULES.md");
-    expect(result.files.map((f) => f.path)).toContain("README.md");
+    // Paths include the resolved global dir path
+    const filePaths = result.files.map((f) => f.path);
+    expect(filePaths.some((p) => p.endsWith("AGENTS.md"))).toBeTrue();
+    expect(filePaths.some((p) => p.endsWith("README.md"))).toBeTrue();
   });
 
   it("installs all files to platform directory during project install", async () => {
@@ -327,12 +318,12 @@ describe("add (preset)", () => {
       "# README\n"
     );
     mockResolveRequests(DEFAULT_BASE_URL, fixture);
-    const result = await addPreset({ slug: PRESET_SLUG, platform: PLATFORM });
+    const result = await addRule({ slug: RULE_SLUG, platform: PLATFORM });
 
-    // All files should be in platform dir
-    expect(
-      await fileExists(join(projectDir, ".opencode/AGENT_RULES.md"))
-    ).toBeTrue();
+    // Project install uses bundle paths directly:
+    // - AGENTS.md at project root
+    // - .opencode/README.md inside platform dir
+    expect(await fileExists(join(projectDir, "AGENTS.md"))).toBeTrue();
     expect(
       await fileExists(join(projectDir, ".opencode/README.md"))
     ).toBeTrue();
@@ -345,16 +336,19 @@ describe("add (preset)", () => {
 
   it("installs the requested platform variant when multiple entries exist", async () => {
     // With the new API, we request a specific platform directly via --platform flag
+    // Use a custom file path that's inside the platform directory
     const claudeFixture = await createFixtures("# Claude variant\n", {
       platform: "claude",
-      filePath: "config.md",
+      filePath: ".claude/rules/config.md",
     });
 
     mockResolveRequests(DEFAULT_BASE_URL, claudeFixture);
-    await addPreset({ slug: PRESET_SLUG, platform: "claude" });
+    await addRule({ slug: RULE_SLUG, platform: "claude" });
 
-    // config.md installs to .claude/config.md for project install
-    expect(await fileExists(join(projectDir, ".claude/config.md"))).toBeTrue();
+    // Project install uses bundle path directly
+    expect(
+      await fileExists(join(projectDir, ".claude/rules/config.md"))
+    ).toBeTrue();
   });
 
   it("uses registryAlias overrides for alternate base URLs", async () => {
@@ -371,8 +365,8 @@ describe("add (preset)", () => {
     const fixture = await createFixtures("# Alt registry\n");
     mockResolveRequests(altUrl, fixture);
 
-    const result = await addPreset({
-      slug: PRESET_SLUG,
+    const result = await addRule({
+      slug: RULE_SLUG,
       platform: PLATFORM,
       dryRun: true,
     });
@@ -386,14 +380,14 @@ describe("add (preset)", () => {
     mockResolveRequests(DEFAULT_BASE_URL, fixture);
 
     // Format: slug@version with --platform flag
-    const result = await addPreset({
-      slug: `${PRESET_SLUG}@1.0`,
+    const result = await addRule({
+      slug: `${RULE_SLUG}@1.0`,
       platform: PLATFORM,
       dryRun: true,
     });
 
     expect(result.dryRun).toBeTrue();
-    expect(result.resolved.slug).toBe(PRESET_SLUG);
+    expect(result.resolved.slug).toBe(RULE_SLUG);
   });
 
   it("installs a specific version using --version flag", async () => {
@@ -402,15 +396,15 @@ describe("add (preset)", () => {
     });
     mockResolveRequests(DEFAULT_BASE_URL, fixture, { version: "2.0" });
 
-    const result = await addPreset({
-      slug: PRESET_SLUG,
+    const result = await addRule({
+      slug: RULE_SLUG,
       platform: PLATFORM,
       version: "2.0",
       dryRun: true,
     });
 
     expect(result.dryRun).toBeTrue();
-    expect(result.resolved.slug).toBe(PRESET_SLUG);
+    expect(result.resolved.slug).toBe(RULE_SLUG);
     expect(result.version.version).toBe("2.0");
   });
 
@@ -421,15 +415,15 @@ describe("add (preset)", () => {
     mockResolveRequests(DEFAULT_BASE_URL, fixture, { version: "3.0" });
 
     // Format: slug@version, but --version flag overrides
-    const result = await addPreset({
-      slug: `${PRESET_SLUG}@1.0`,
+    const result = await addRule({
+      slug: `${RULE_SLUG}@1.0`,
       platform: PLATFORM,
       version: "3.0",
       dryRun: true,
     });
 
     expect(result.dryRun).toBeTrue();
-    expect(result.resolved.slug).toBe(PRESET_SLUG);
+    expect(result.resolved.slug).toBe(RULE_SLUG);
     expect(result.version.version).toBe("3.0");
   });
 
@@ -437,21 +431,21 @@ describe("add (preset)", () => {
     const fixture = await createFixtures("# Latest content\n");
     mockResolveRequests(DEFAULT_BASE_URL, fixture);
 
-    const result = await addPreset({
-      slug: PRESET_SLUG,
+    const result = await addRule({
+      slug: RULE_SLUG,
       platform: PLATFORM,
       dryRun: true,
     });
 
     expect(result.dryRun).toBeTrue();
-    expect(result.resolved.slug).toBe(PRESET_SLUG);
+    expect(result.resolved.slug).toBe(RULE_SLUG);
   });
 
   it("errors when slug not found", async () => {
     mockFetchSequence([
       {
         expectUrl: new URL(
-          API_ENDPOINTS.items.get(PRESET_SLUG),
+          API_ENDPOINTS.items.get(RULE_SLUG),
           DEFAULT_BASE_URL
         ).toString(),
         status: 404,
@@ -459,9 +453,9 @@ describe("add (preset)", () => {
       },
     ]);
 
-    await expect(
-      add({ slug: PRESET_SLUG, platform: PLATFORM })
-    ).rejects.toThrow(`"${PRESET_SLUG}" was not found`);
+    await expect(add({ slug: RULE_SLUG, platform: PLATFORM })).rejects.toThrow(
+      `"${RULE_SLUG}" was not found`
+    );
   });
 
   it("errors when multiple variants exist but no platform specified", async () => {
@@ -469,7 +463,7 @@ describe("add (preset)", () => {
     mockResolveRequests(DEFAULT_BASE_URL, fixture, { skipBundleFetch: true });
 
     // No platform suffix - should error
-    await expect(add({ slug: PRESET_SLUG })).rejects.toThrow(
+    await expect(add({ slug: RULE_SLUG })).rejects.toThrow(
       "available for multiple platforms"
     );
   });
@@ -478,8 +472,8 @@ describe("add (preset)", () => {
     const fixture = await createFixturesMultiPlatform();
     mockResolveRequests(DEFAULT_BASE_URL, fixture, { platform: "claude" });
 
-    const result = await addPreset({
-      slug: PRESET_SLUG,
+    const result = await addRule({
+      slug: RULE_SLUG,
       platform: "claude",
       dryRun: true,
     });
@@ -589,10 +583,12 @@ async function createFixtures(
   } = {}
 ): Promise<FixturePayload> {
   const platform = options.platform ?? PLATFORM;
-  const slug = options.slug ?? PRESET_SLUG;
-  const name = options.name ?? PRESET_NAME;
-  // File paths are relative to the platform directory (no config/ prefix)
-  const relativePath = options.filePath ?? "AGENT_RULES.md";
+  const slug = options.slug ?? RULE_SLUG;
+  const name = options.name ?? RULE_NAME;
+  // Bundle paths are full project paths (per UNIFICATION-PLAN)
+  // For instruction type, this is the project root instruction file
+  const defaultPath = platform === "opencode" ? "AGENTS.md" : "CLAUDE.md";
+  const relativePath = options.filePath ?? defaultPath;
 
   const size = Buffer.byteLength(fileContents);
   const checksum = await sha256Hex(fileContents);
@@ -603,8 +599,9 @@ async function createFixtures(
     content: fileContents,
   };
 
-  const bundle: PresetBundle = {
+  const bundle: RuleBundle = {
     name,
+    type: "instruction",
     slug,
     platform,
     title: TITLE,
@@ -617,9 +614,9 @@ async function createFixtures(
     files: [file],
   };
 
-  const bundleUrl = `https://cdn.example.com/presets/${slug}/${platform}.json`;
+  const bundleUrl = `https://cdn.example.com/rules/${slug}/${platform}.json`;
 
-  const variant: PresetVariant = {
+  const variant: RuleVariant = {
     platform,
     fileCount: 1,
     totalSize: size,
@@ -630,21 +627,21 @@ async function createFixtures(
   const allVersions = ["1.0", ...(options.additionalVersions ?? [])];
   const latestVersion = allVersions.at(-1); // Last version is latest
 
-  const versions: PresetVersion[] = allVersions.map((v) => ({
+  const versions: RuleVersion[] = allVersions.map((v) => ({
     version: v,
     isLatest: v === latestVersion,
     variants: [
       {
         ...variant,
-        bundleUrl: `https://cdn.example.com/presets/${slug}/${platform}-v${v}.json`,
+        bundleUrl: `https://cdn.example.com/rules/${slug}/${platform}-v${v}.json`,
       },
     ],
   }));
 
-  const resolveResponse: ResolvedPreset = {
-    kind: "preset",
+  const resolveResponse: ResolvedRule = {
     slug,
     name,
+    type: "instruction",
     title: TITLE,
     description: "Fixture",
     tags: ["test"],
@@ -665,28 +662,31 @@ async function createFixturesWithRootFiles(
   rootContents: string
 ): Promise<FixturePayload> {
   const platform = PLATFORM;
-  const slug = PRESET_SLUG;
+  const slug = RULE_SLUG;
 
+  // For instruction type, the main file is at project root
   const configSize = Buffer.byteLength(configContents);
   const configChecksum = await sha256Hex(configContents);
   const configFile = {
-    path: "AGENT_RULES.md",
+    path: "AGENTS.md",
     size: configSize,
     checksum: configChecksum,
     content: configContents,
   };
 
+  // Additional file inside platform directory (can be transformed for global)
   const rootSize = Buffer.byteLength(rootContents);
   const rootChecksum = await sha256Hex(rootContents);
   const rootFile = {
-    path: "README.md",
+    path: ".opencode/README.md",
     size: rootSize,
     checksum: rootChecksum,
     content: rootContents,
   };
 
-  const bundle: PresetBundle = {
-    name: PRESET_NAME,
+  const bundle: RuleBundle = {
+    name: RULE_NAME,
+    type: "instruction",
     slug,
     platform,
     title: TITLE,
@@ -699,25 +699,25 @@ async function createFixturesWithRootFiles(
     files: [configFile, rootFile],
   };
 
-  const bundleUrl = `https://cdn.example.com/presets/${slug}/${platform}.json`;
+  const bundleUrl = `https://cdn.example.com/rules/${slug}/${platform}.json`;
 
-  const variant: PresetVariant = {
+  const variant: RuleVariant = {
     platform,
     fileCount: 2,
     totalSize: configSize + rootSize,
     bundleUrl,
   };
 
-  const version: PresetVersion = {
+  const version: RuleVersion = {
     version: "1.0",
     isLatest: true,
     variants: [variant],
   };
 
-  const resolveResponse: ResolvedPreset = {
-    kind: "preset",
+  const resolveResponse: ResolvedRule = {
     slug,
-    name: PRESET_NAME,
+    name: RULE_NAME,
+    type: "instruction",
     title: TITLE,
     description: "Fixture with root files",
     tags: ["test"],
@@ -734,35 +734,35 @@ async function createFixturesWithRootFiles(
 }
 
 async function createFixturesMultiPlatform(): Promise<FixturePayload> {
-  const slug = PRESET_SLUG;
+  const slug = RULE_SLUG;
 
-  const opencodeBundleUrl = `https://cdn.example.com/presets/${slug}/opencode.json`;
-  const claudeBundleUrl = `https://cdn.example.com/presets/${slug}/claude.json`;
+  const opencodeBundleUrl = `https://cdn.example.com/rules/${slug}/opencode.json`;
+  const claudeBundleUrl = `https://cdn.example.com/rules/${slug}/claude.json`;
 
-  const opencodeVariant: PresetVariant = {
+  const opencodeVariant: RuleVariant = {
     platform: "opencode",
     fileCount: 1,
     totalSize: 10,
     bundleUrl: opencodeBundleUrl,
   };
 
-  const claudeVariant: PresetVariant = {
+  const claudeVariant: RuleVariant = {
     platform: "claude",
     fileCount: 1,
     totalSize: 10,
     bundleUrl: claudeBundleUrl,
   };
 
-  const version: PresetVersion = {
+  const version: RuleVersion = {
     version: "1.0",
     isLatest: true,
     variants: [opencodeVariant, claudeVariant],
   };
 
-  const resolveResponse: ResolvedPreset = {
-    kind: "preset",
+  const resolveResponse: ResolvedRule = {
     slug,
-    name: PRESET_NAME,
+    name: RULE_NAME,
+    type: "instruction",
     title: TITLE,
     description: "Multi-platform fixture",
     tags: ["test"],
@@ -772,8 +772,9 @@ async function createFixturesMultiPlatform(): Promise<FixturePayload> {
   };
 
   // Default bundle for claude platform
-  const bundle: PresetBundle = {
-    name: PRESET_NAME,
+  const bundle: RuleBundle = {
+    name: RULE_NAME,
+    type: "instruction",
     slug,
     platform: "claude",
     title: TITLE,

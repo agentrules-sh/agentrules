@@ -1,4 +1,4 @@
-import type { PlatformId } from "../platform";
+import type { PlatformId, RuleType } from "../platform";
 
 /** Normalized platform entry - always object form */
 export type PlatformEntry = { platform: PlatformId; path?: string };
@@ -15,7 +15,7 @@ export function normalizePlatformEntry(entry: RawPlatformEntry): PlatformEntry {
 }
 
 /**
- * Raw preset configuration - what users write in agentrules.json.
+ * Raw rule configuration - what users write in agentrules.json.
  *
  * Uses a unified `platforms` array that accepts either:
  * - Platform ID strings: `["opencode", "claude"]`
@@ -23,11 +23,16 @@ export function normalizePlatformEntry(entry: RawPlatformEntry): PlatformEntry {
  * - Mixed: `["opencode", { platform: "claude", path: "my-claude" }]`
  *
  * **Order matters**: The first platform in the array is used as the default
- * when viewing the preset on the registry without specifying a platform.
+ * when viewing the rule on the registry without specifying a platform.
  */
-export type RawPresetConfig = {
+export type RawRuleConfig = {
   $schema?: string;
   name: string;
+  /**
+   * Rule type - determines install path and constrains valid platforms.
+   * Optional - defaults to "multi" (freeform file structure).
+   */
+  type?: RuleType;
   title: string;
   version?: number; // Optional major version. Registry assigns minor.
   description: string;
@@ -37,22 +42,17 @@ export type RawPresetConfig = {
   /** Additional patterns to exclude from bundle (glob patterns) */
   ignore?: string[];
   /**
-   * Directory containing metadata files (README.md, LICENSE.md, INSTALL.txt).
-   * Defaults to ".agentrules". Use "." to read metadata from the project root.
-   */
-  agentrulesDir?: string;
-  /**
    * Target platforms with optional custom paths.
    * Order matters: the first platform is used as the default when viewing
-   * the preset on the registry.
+   * the rule on the registry.
    */
   platforms: RawPlatformEntry[];
 };
 
 /**
- * Normalized preset configuration - used internally after loading.
+ * Normalized rule configuration - used internally after loading.
  */
-export type PresetConfig = Omit<RawPresetConfig, "platforms"> & {
+export type RuleConfig = Omit<RawRuleConfig, "platforms"> & {
   platforms: PlatformEntry[];
 };
 
@@ -80,16 +80,18 @@ export type PublishVariantInput = {
 };
 
 /**
- * What clients send to publish a preset (multi-platform).
+ * What clients send to publish a rule (multi-platform).
  *
  * One publish call creates ONE version with ALL platform variants.
  * Version is optional major version. Registry assigns full MAJOR.MINOR.
  *
- * Note: Clients send `name` (e.g., "my-preset"), and the registry defines the format of the slug.
- * For example, a namespaced slug could be returned as "username/my-preset"
+ * Note: Clients send `name` (e.g., "my-rule"), and the registry defines the format of the slug.
+ * For example, a namespaced slug could be returned as "username/my-rule"
  */
-export type PresetPublishInput = {
+export type RulePublishInput = {
   name: string;
+  /** Rule type - optional, defaults to freeform file structure */
+  type?: RuleType;
   title: string;
   description: string;
   tags: string[];
@@ -105,10 +107,12 @@ export type PresetPublishInput = {
  * What registries store and return for a single platform bundle.
  * This is stored in R2 and fetched via bundleUrl.
  *
- * Note: This is per-platform, while PresetPublishInput is multi-platform.
+ * Note: This is per-platform, while RulePublishInput is multi-platform.
  */
-export type PresetBundle = {
+export type RuleBundle = {
   name: string;
+  /** Rule type - optional, defaults to freeform file structure */
+  type?: RuleType;
   platform: PlatformId;
   title: string;
   description: string;
@@ -119,13 +123,13 @@ export type PresetBundle = {
   readmeContent?: string;
   licenseContent?: string;
   installMessage?: string;
-  /** Full namespaced slug (e.g., "username/my-preset") */
+  /** Full namespaced slug (e.g., "username/my-rule") */
   slug: string;
   /** Full version in MAJOR.MINOR format (e.g., "1.3", "2.1") */
   version: string;
 };
 
-export type PresetFileInput = {
+export type RuleFileInput = {
   path: string;
   content: ArrayBuffer | ArrayBufferView | string;
 };
@@ -135,7 +139,7 @@ export type PresetFileInput = {
  */
 export type PlatformFiles = {
   platform: PlatformId;
-  files: PresetFileInput[];
+  files: RuleFileInput[];
   /** Optional per-platform install message */
   installMessage?: string;
   /** Optional per-platform README */
@@ -145,12 +149,12 @@ export type PlatformFiles = {
 };
 
 /**
- * Preset input - what the CLI builds after loading files.
+ * Rule input - what the CLI builds after loading files.
  * Always uses platformFiles array (works for single or multi-platform).
  */
-export type PresetInput = {
+export type RuleInput = {
   name: string;
-  config: PresetConfig;
+  config: RuleConfig;
   /** Files for each platform */
   platformFiles: PlatformFiles[];
   /** Shared install message (fallback for platforms without their own) */

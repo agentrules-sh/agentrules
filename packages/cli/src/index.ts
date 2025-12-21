@@ -3,19 +3,15 @@
 import {
   isSupportedPlatform,
   PLATFORM_IDS,
-  PLATFORMS,
   type PlatformId,
 } from "@agentrules/core";
 import { Command } from "commander";
 import { createRequire } from "module";
-import { basename, join } from "path";
+import { basename } from "path";
 import { type AddResult, add, normalizePlatformInput } from "@/commands/add";
 import { login } from "@/commands/auth/login";
 import { logout } from "@/commands/auth/logout";
 import { whoami } from "@/commands/auth/whoami";
-import { detectPlatformContext, initPreset } from "@/commands/preset/init";
-import { initInteractive } from "@/commands/preset/init-interactive";
-import { validatePreset } from "@/commands/preset/validate";
 import { publish } from "@/commands/publish";
 import { buildRegistry } from "@/commands/registry/build";
 import {
@@ -24,9 +20,10 @@ import {
   removeRegistry,
   useRegistry,
 } from "@/commands/registry/manage";
-import { share } from "@/commands/share";
+import { initRule } from "@/commands/rule/init";
+import { initInteractive } from "@/commands/rule/init-interactive";
+import { validateRule } from "@/commands/rule/validate";
 import { unpublish } from "@/commands/unpublish";
-import { unshare } from "@/commands/unshare";
 import { HELP_AGENT_CONTENT } from "@/help-agent";
 import { initAppContext } from "@/lib/context";
 import { getErrorMessage } from "@/lib/errors";
@@ -72,12 +69,12 @@ program
   .showHelpAfterError();
 
 // =============================================================================
-// add - Download and install a preset or rule
+// add - Download and install a rule
 // =============================================================================
 
 program
   .command("add <item>")
-  .description("Download and install a preset or rule from the registry")
+  .description("Download and install a rule from the registry")
   .option(
     "-p, --platform <platform>",
     "Target platform (opencode, codex, claude, cursor)"
@@ -92,7 +89,7 @@ program
   .option("-f, --force", "Overwrite existing files (backs up originals)")
   .option("-y, --yes", "Alias for --force")
   .option("--dry-run", "Preview changes without writing")
-  .option("--skip-conflicts", "Skip conflicting files (presets only)")
+  .option("--skip-conflicts", "Skip conflicting files")
   .option(
     "--no-backup",
     "Don't backup files before overwriting (use with --force)"
@@ -126,7 +123,7 @@ program
 
       spinner.stop();
 
-      // Unified handling for both presets and rules
+      // Handle file conflicts
       const conflicts = result.files.filter((f) => f.status === "conflict");
       const hasBlockingConflicts =
         conflicts.length > 0 && !options.skipConflicts && !dryRun;
@@ -186,38 +183,36 @@ program
       log.print("");
       for (const file of result.files) {
         const status = file.status === "overwritten" ? "updated" : file.status;
-        if (status === "unchanged" || status === "skipped") {
-          log.debug(
-            ui.fileStatus(status as "unchanged" | "skipped", file.path, {
-              dryRun,
-            })
-          );
-        } else {
-          log.print(
-            ui.fileStatus(
-              status as "created" | "updated" | "conflict",
-              file.path,
-              { dryRun }
-            )
-          );
+
+        if (status === "unchanged") {
+          log.debug(ui.fileStatus("unchanged", file.path, { dryRun }));
+          continue;
         }
+
+        log.print(
+          ui.fileStatus(
+            status as "created" | "updated" | "conflict" | "skipped",
+            file.path,
+            {
+              dryRun,
+            }
+          )
+        );
       }
 
       // Summary
       log.print("");
       const verb = dryRun ? "Would install" : "Installed";
-      const kindLabel =
-        result.kind === "rule"
-          ? `(${result.variant.platform}/${result.variant.type})`
-          : `for ${result.variant.platform}`;
       log.success(
-        `${verb} ${ui.bold(result.resolved.title)} ${ui.muted(kindLabel)}`
+        `${verb} ${ui.bold(result.resolved.title)} ${ui.muted(
+          `for ${result.variant.platform}`
+        )}`
       );
 
-      // Skipped conflicts warning
-      const skippedConflicts = result.files.filter(
-        (f) => f.status === "skipped"
-      );
+      const skippedFiles = result.files.filter((f) => f.status === "skipped");
+      const skippedConflicts = skippedFiles.filter((f) => Boolean(f.diff));
+      const skippedUnsupported = skippedFiles.filter((f) => !f.diff);
+
       if (skippedConflicts.length > 0) {
         log.warn(
           `${skippedConflicts.length} conflicting file${
@@ -226,32 +221,40 @@ program
         );
       }
 
+      if (skippedUnsupported.length > 0) {
+        log.warn(
+          `${skippedUnsupported.length} file${
+            skippedUnsupported.length === 1 ? "" : "s"
+          } skipped ${ui.muted("(unsupported for global install)")}`
+        );
+      }
+
       if (dryRun) {
         log.print(ui.hint("\nDry run complete. No files were written."));
       }
 
-      // Install message (presets only)
-      if (result.kind === "preset" && result.bundle.installMessage) {
+      // Install message
+      if (result.bundle.installMessage) {
         log.print(`\n${result.bundle.installMessage}`);
       }
     })
   );
 
 // =============================================================================
-// init - Initialize a new preset
+// init - Initialize a new rule
 // =============================================================================
 
 program
   .command("init")
-  .description("Initialize a new preset")
+  .description("Initialize a new rule")
   .argument(
     "[directory]",
     "Directory to initialize (created if it doesn't exist)"
   )
   .option("-y, --yes", "Accept defaults without prompting")
-  .option("-n, --name <name>", "Preset name")
+  .option("-n, --name <name>", "Rule name")
   .option("-t, --title <title>", "Display title")
-  .option("--description <text>", "Preset description")
+  .option("--description <text>", "Rule description")
   .option(
     "-p, --platform <platform>",
     "Target platform (opencode, claude, cursor, codex)"
@@ -263,7 +266,7 @@ program
       const targetDir = directory ?? process.cwd();
 
       // If directory arg provided, use its basename as default name
-      // Otherwise fall back to generic "my-preset"
+      // Otherwise fall back to generic "my-rule"
       const defaultName = directory ? basename(directory) : undefined;
 
       // Use interactive mode if:
@@ -289,9 +292,9 @@ program
         }
 
         const nextSteps: string[] = [
-          "Add your config files to the platform directory",
+          "Add your rule files in this directory",
           "Add tags (required) and features (recommended) to agentrules.json",
-          `Run ${ui.command("agentrules publish")} to publish your preset`,
+          `Run ${ui.command("agentrules publish")} to publish your rule`,
         ];
 
         log.print(`\n${ui.header("Next steps")}`);
@@ -302,52 +305,19 @@ program
       // Validate platform option if provided
       if (options.platform && !isSupportedPlatform(options.platform)) {
         throw new Error(
-          `Unknown platform "${options.platform}". Supported: ${PLATFORM_IDS.join(", ")}`
+          `Unknown platform "${
+            options.platform
+          }". Supported: ${PLATFORM_IDS.join(", ")}`
         );
       }
       const platformOption = options.platform as PlatformId | undefined;
 
-      // Non-interactive mode - detect platform context
-      const ctx = await detectPlatformContext(targetDir);
-
-      let platformDir: string;
-      let platform: PlatformId;
-
-      if (ctx.insidePlatformDir) {
-        // Inside a platform directory - use it directly
-        platformDir = targetDir;
-        platform = platformOption ?? ctx.platform;
-      } else if (platformOption) {
-        // User specified platform - use it
-        platform = platformOption;
-        const detected = ctx.platforms.find((p) => p.id === platform);
-        platformDir = detected
-          ? join(targetDir, detected.path)
-          : join(targetDir, PLATFORMS[platform].platformDir);
-      } else if (ctx.platforms.length === 1) {
-        // Exactly one platform detected - use it
-        platform = ctx.platforms[0].id;
-        platformDir = join(targetDir, ctx.platforms[0].path);
-      } else if (ctx.platforms.length === 0) {
-        // No platforms detected - require --platform
-        throw new Error(
-          `No platform directory found in "${basename(targetDir)}". ` +
-            `Specify --platform (${PLATFORM_IDS.join(", ")})`
-        );
-      } else {
-        // Multiple platforms detected - require --platform
-        throw new Error(
-          `Multiple platform directories found (${ctx.platforms.map((p) => p.id).join(", ")}). ` +
-            "Specify --platform to choose one"
-        );
-      }
-
-      const result = await initPreset({
-        directory: platformDir,
+      const result = await initRule({
+        directory: targetDir,
         name: options.name ?? defaultName,
         title: options.title,
         description: options.description,
-        platform,
+        platform: platformOption,
         license: options.license,
         force: options.force,
       });
@@ -360,9 +330,9 @@ program
       }
 
       const nextSteps: string[] = [
-        "Add your config files to the platform directory",
+        "Add your rule files in this directory",
         "Add tags (required) and features (recommended) to agentrules.json",
-        `Run ${ui.command("agentrules publish")} to publish your preset`,
+        `Run ${ui.command("agentrules publish")} to publish your rule`,
       ];
 
       log.print(`\n${ui.header("Next steps")}`);
@@ -371,7 +341,7 @@ program
   );
 
 // =============================================================================
-// validate - Validate preset configuration
+// validate - Validate rule configuration
 // =============================================================================
 
 program
@@ -380,10 +350,10 @@ program
   .argument("[path]", "Path to agentrules.json or directory")
   .action(
     handle(async (path?: string) => {
-      const result = await validatePreset({ path });
+      const result = await validateRule({ path });
 
-      if (result.valid && result.preset) {
-        const p = result.preset;
+      if (result.valid && result.rule) {
+        const p = result.rule;
         const platforms = p.platforms.map((entry) => entry.platform).join(", ");
 
         log.success(p.title);
@@ -453,8 +423,8 @@ registry
 
 registry
   .command("build")
-  .description("Build registry from preset directories")
-  .requiredOption("-i, --input <path>", "Directory containing preset folders")
+  .description("Build registry from rule directories")
+  .requiredOption("-i, --input <path>", "Directory containing rule folders")
   .option("-o, --out <path>", "Output directory")
   .option(
     "-b, --bundle-base <base>",
@@ -474,8 +444,8 @@ registry
 
       if (result.validateOnly) {
         log.success(
-          `Validated ${result.presets} preset${
-            result.presets === 1 ? "" : "s"
+          `Validated ${result.rules} rule${
+            result.rules === 1 ? "" : "s"
           } ${ui.muted(`→ ${result.items} items`)}`
         );
         return;
@@ -483,7 +453,7 @@ registry
 
       if (!result.outputDir) {
         log.info(
-          `Found ${result.presets} preset${result.presets === 1 ? "" : "s"} → ${
+          `Found ${result.rules} rule${result.rules === 1 ? "" : "s"} → ${
             result.items
           } items`
         );
@@ -492,9 +462,9 @@ registry
       }
 
       log.success(
-        `Built ${result.presets} preset${
-          result.presets === 1 ? "" : "s"
-        } ${ui.muted(`→ ${result.items} items, ${result.bundles} bundles`)}`
+        `Built ${result.rules} rule${result.rules === 1 ? "" : "s"} ${ui.muted(
+          `→ ${result.items} items, ${result.bundles} bundles`
+        )}`
       );
       log.print(ui.keyValue("Output", ui.path(result.outputDir)));
     })
@@ -682,74 +652,58 @@ program
   );
 
 // =============================================================================
-// publish - Publish preset to registry
+// publish - Publish rule to registry
 // =============================================================================
 
 program
   .command("publish")
-  .description("Publish a preset to the registry")
-  .argument("[path]", "Path to agentrules.json or directory containing it")
+  .description("Publish a rule to the registry")
+  .argument(
+    "[path]",
+    "Path to agentrules.json, a directory containing it, or a single file"
+  )
   .option(
     "--version <major>",
     "Major version (overrides config)",
     Number.parseInt
   )
   .option("--dry-run", "Preview what would be published without publishing")
+  .option(
+    "-p, --platform <platform>",
+    "Publish specific platform variant(s). Repeatable, accepts comma-separated.",
+    (value: string, previous?: string[]) =>
+      previous ? [...previous, value] : [value]
+  )
+  .option(
+    "--type <type>",
+    "Override rule type, or set type when publishing a file"
+  )
+  .option(
+    "--name <name>",
+    "Override published name, or set name when publishing a file"
+  )
+  .option("-t, --title <title>", "Override published title")
+  .option("--description <text>", "Override published description")
+  .option("--tags <tags>", "Override published tags (comma-separated)")
+  .option("-l, --license <license>", "Override published license")
+  .option("-y, --yes", "Skip prompts (fail if required flags missing)")
   .action(
     handle(async (path: string | undefined, options) => {
       const result = await publish({
         path,
         version: options.version,
         dryRun: Boolean(options.dryRun),
-      });
-
-      if (!result.success) {
-        process.exitCode = 1;
-      }
-    })
-  );
-
-// =============================================================================
-// share - Share a rule to the registry
-// =============================================================================
-
-program
-  .command("share")
-  .description("Share a rule to the registry")
-  .argument("[file]", "Path to file containing rule content")
-  .requiredOption("-n, --name <name>", "Rule name (URL identifier)")
-  .requiredOption(
-    "-p, --platform <platform>",
-    "Target platform (opencode, codex, claude, cursor)"
-  )
-  .requiredOption(
-    "-t, --type <type>",
-    "Rule type (instruction, agent, command, tool, skill, rule)"
-  )
-  .requiredOption("--title <title>", "Display title")
-  .requiredOption(
-    "--tags <tags>",
-    "Comma-separated tags (e.g., typescript,react,testing)"
-  )
-  .option("--description <text>", "Optional description")
-  .option("-c, --content <content>", "Rule content (or provide file path)")
-  .action(
-    handle(async (file: string | undefined, options) => {
-      const platform = normalizePlatformInput(options.platform);
-      const tags = (options.tags as string)
-        .split(",")
-        .map((t: string) => t.trim())
-        .filter(Boolean);
-
-      const result = await share({
-        name: options.name,
-        platform,
+        yes: Boolean(options.yes),
+        platform: options.platform,
         type: options.type,
+        name: options.name,
         title: options.title,
         description: options.description,
-        content: options.content,
-        file,
-        tags,
+        tags: options.tags
+          ?.split(",")
+          .map((t: string) => t.trim().toLowerCase())
+          .filter((t: string) => t.length > 0),
+        license: options.license,
       });
 
       if (!result.success) {
@@ -759,38 +713,20 @@ program
   );
 
 // =============================================================================
-// unshare - Remove a rule from the registry
-// =============================================================================
-
-program
-  .command("unshare")
-  .description("Remove a rule from the registry")
-  .argument("<slug>", "Rule slug to unshare")
-  .action(
-    handle(async (slug: string) => {
-      const result = await unshare({ slug });
-
-      if (!result.success) {
-        process.exitCode = 1;
-      }
-    })
-  );
-
-// =============================================================================
-// unpublish - Remove preset version from registry
+// unpublish - Remove a rule from the registry
 // =============================================================================
 
 program
   .command("unpublish")
   .description(
-    "Remove a preset version from the registry (removes all platform variants)"
+    "Remove a rule version from the registry (removes all platform variants)"
   )
-  .argument("<preset>", "Preset to unpublish (e.g., my-preset@1.0.0)")
-  .option("--version <version>", "Version to unpublish (or use preset@version)")
+  .argument("<rule>", "Rule to unpublish (e.g., my-rule@1.0.0)")
+  .option("--version <version>", "Version to unpublish (or use rule@version)")
   .action(
-    handle(async (preset: string, options) => {
+    handle(async (rule: string, options) => {
       const result = await unpublish({
-        preset,
+        rule,
         version: options.version,
       });
 

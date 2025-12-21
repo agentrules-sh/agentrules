@@ -13,13 +13,9 @@
  * - POST {deviceToken} - RFC 8628 token exchange
  * - GET  {session} - Get current user/session info
  *
- * ### Presets (API_ENDPOINTS.presets)
- * - POST   {base} - Publish a preset bundle
- * - DELETE {unpublish(slug, version)} - Unpublish a preset version
- *
  * ### Rules (API_ENDPOINTS.rules)
- * - POST   {base} - Publish a rule (create or update)
- * - DELETE {bySlug(slug)} - Unshare (delete) a rule
+ * - POST   {base} - Publish a rule
+ * - DELETE {unpublish(slug, version)} - Unpublish a rule version
  * Note: GET is handled by the unified items endpoint (API_ENDPOINTS.items)
  */
 
@@ -37,25 +33,15 @@ export {
   requestDeviceCode,
   type TokenEndpointResponse,
 } from "./device-auth";
-// Preset endpoints
+// Rule publishing endpoints
 export {
   type ErrorResponse,
   type PublishResponse,
   type PublishResult,
-  publishPreset,
+  publishRule,
   type UnpublishResponse,
   type UnpublishResult,
-  unpublishPreset,
-} from "./presets";
-// Rule endpoints
-export {
-  type DeleteRuleResponse,
-  type DeleteRuleResult,
-  deleteRule,
-  type PublishRuleResult,
-  publishRule,
-  type RuleInput,
-  type RuleResponse,
+  unpublishRule,
 } from "./rules";
 // Session endpoint
 export {

@@ -1,30 +1,65 @@
 /**
  * CLI Publish Command
  *
- * Publishes a preset to the AGENT_RULES registry.
+ * Publishes a rule to the AGENT_RULES registry.
  * Requires authentication - run `agentrules login` first.
  */
 
 import {
-  buildPresetPublishInput,
-  type PresetInput,
-  type PresetPublishInput,
+  buildPublishInput,
+  getInstallPath,
+  getValidTypes,
+  inferInstructionPlatformsFromFileName,
+  inferPlatformFromPath,
+  inferTypeFromPath,
+  nameSchema,
+  normalizePlatformInput,
+  PLATFORM_IDS,
+  type PlatformId,
+  RULE_CONFIG_FILENAME,
+  RULE_SCHEMA_URL,
+  type RuleInput,
+  type RulePublishInput,
+  type RuleType,
+  supportsInstallPath,
+  tagsSchema,
+  validateRule as validateRuleConfig,
 } from "@agentrules/core";
-import { dirname } from "path";
-import { validatePreset } from "@/commands/preset/validate";
-import { publishPreset } from "@/lib/api/presets";
+import * as p from "@clack/prompts";
+import { readFile, stat } from "fs/promises";
+import { basename } from "path";
+import { z } from "zod";
+import { publishRule } from "@/lib/api/rules";
 import { useAppContext } from "@/lib/context";
 import { getErrorMessage } from "@/lib/errors";
 import { log } from "@/lib/log";
-import { loadPreset, resolveConfigPath } from "@/lib/preset-utils";
+import {
+  collectMetadata,
+  collectPlatformFiles,
+  type LoadConfigOverrides,
+  loadConfig,
+  normalizeName,
+  parsePlatformSelection,
+  resolveConfigPath,
+  toTitleCase,
+} from "@/lib/rule-utils";
 import { ui } from "@/lib/ui";
+import { check } from "@/lib/zod-validator";
 
 /** Maximum size per variant/platform bundle in bytes (1MB) */
 const MAX_VARIANT_SIZE_BYTES = 1 * 1024 * 1024;
 
-/**
- * Formats bytes as human-readable string
- */
+/** Schema for parsing comma-separated tags input */
+const tagsInputSchema = z
+  .string()
+  .transform((input) =>
+    input
+      .split(",")
+      .map((t) => t.trim().toLowerCase())
+      .filter((t) => t.length > 0)
+  )
+  .pipe(tagsSchema);
+
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -32,12 +67,33 @@ function formatBytes(bytes: number): string {
 }
 
 export type PublishOptions = {
-  /** Path to agentrules.json or directory containing it */
+  /** Path to agentrules.json, a directory containing it, or a single file to publish */
   path?: string;
   /** Major version. Defaults to 1 if not specified. */
   version?: number;
   /** Preview what would be published without actually publishing */
   dryRun?: boolean;
+  /** Skip prompts (fail if required flags missing for single-file publish) */
+  yes?: boolean;
+
+  /** Publish-time override: rule name/slug (kebab-case) */
+  name?: string;
+  /**
+   * Publish-time override:
+   * - config mode: select platform variant(s) (repeatable/comma-separated)
+   * - file mode: set platform (must resolve to exactly one)
+   */
+  platform?: string | string[];
+  /** Publish-time override: rule type */
+  type?: string;
+  /** Publish-time override: title */
+  title?: string;
+  /** Publish-time override: description */
+  description?: string;
+  /** Publish-time override: tags */
+  tags?: string[];
+  /** Publish-time override: license SPDX identifier */
+  license?: string;
 };
 
 export type PublishResult = {
@@ -45,21 +101,18 @@ export type PublishResult = {
   success: boolean;
   /** Error message if publish failed */
   error?: string;
-  /** Published preset info if successful */
-  preset?: {
+  /** Published rule info if successful */
+  rule?: {
     slug: string;
     title: string;
     version: string;
-    isNewPreset: boolean;
-    /** All published platform variants */
+    isNew: boolean;
     variants: Array<{ platform: string; bundleUrl: string }>;
-    /** URL to the preset page on the registry */
     url: string;
   };
   /** Dry run preview info */
   preview?: {
     slug: string;
-    /** Platforms included in preview */
     platforms: string[];
     title: string;
     totalSize: number;
@@ -68,15 +121,31 @@ export type PublishResult = {
 };
 
 /**
- * Publishes a preset to the registry
+ * Publishes a rule to the registry.
+ *
+ * Supports:
+ * - agentrules.json or a directory containing it
+ * - a single file path (quick publish)
  */
 export async function publish(
   options: PublishOptions = {}
 ): Promise<PublishResult> {
-  const { path, version, dryRun = false } = options;
+  const {
+    path,
+    version,
+    dryRun = false,
+    yes = false,
+    name,
+    platform,
+    type,
+    title,
+    description,
+    tags,
+    license,
+  } = options;
 
   log.debug(
-    `Publishing preset from path: ${path ?? process.cwd()}${
+    `Publishing rule from path: ${path ?? process.cwd()}${
       dryRun ? " (dry run)" : ""
     }`
   );
@@ -94,18 +163,96 @@ export async function publish(
     log.debug(`Authenticated as user, publishing to ${ctx.registry.url}`);
   }
 
-  const spinner = await log.spinner("Validating preset...");
+  const filePath = await getSingleFilePath(path);
 
-  // Resolve and validate preset first
+  // Build publish input (version is assigned by registry)
+  let publishInput: RulePublishInput;
+
+  if (filePath) {
+    // Quick publish: single file
+    let resolved: SingleFilePublishInputs;
+
+    try {
+      resolved = await resolveSingleFileInputs(
+        {
+          name,
+          platform,
+          type,
+          title,
+          description,
+          tags,
+          license,
+        },
+        filePath,
+        { dryRun, yes }
+      );
+    } catch (error) {
+      const message = getErrorMessage(error);
+      log.error(message);
+      return { success: false, error: message };
+    }
+
+    const fileSpinner = await log.spinner("Building bundle...");
+
+    try {
+      publishInput = await buildPublishInput({
+        rule: await buildRuleInputFromSingleFile(resolved),
+        version,
+      });
+      log.debug(
+        `Built publish input for platforms: ${publishInput.variants
+          .map((v) => v.platform)
+          .join(", ")}`
+      );
+    } catch (error) {
+      const message = getErrorMessage(error);
+      fileSpinner.fail("Failed to build bundle");
+      log.error(message);
+      return { success: false, error: message };
+    }
+
+    return await finalizePublish({
+      publishInput,
+      dryRun,
+      version,
+      spinner: fileSpinner,
+      ctx,
+    });
+  }
+
+  // Config publish: agentrules.json
+  const spinner = await log.spinner("Validating rule...");
+
   const configPath = await resolveConfigPath(path);
-  const presetDir = dirname(configPath);
   log.debug(`Resolved config path: ${configPath}`);
 
-  const validation = await validatePreset({ path: configPath });
+  const configOverrides = buildConfigPublishOverrides({
+    name,
+    platform,
+    type,
+    title,
+    description,
+    tags,
+    license,
+  });
+
+  spinner.update("Loading config...");
+
+  let loadedConfig: Awaited<ReturnType<typeof loadConfig>>;
+  try {
+    loadedConfig = await loadConfig(configPath, configOverrides);
+  } catch (error) {
+    const message = getErrorMessage(error);
+    spinner.fail("Validation failed");
+    log.error(message);
+    return { success: false, error: message };
+  }
+
+  const validation = validateRuleConfig(loadedConfig.config);
   if (!validation.valid) {
     spinner.fail("Validation failed");
-    for (const error of validation.errors) {
-      log.error(error);
+    for (const validationError of validation.errors) {
+      log.error(validationError);
     }
     return {
       success: false,
@@ -113,42 +260,421 @@ export async function publish(
     };
   }
 
-  spinner.update("Loading preset...");
+  spinner.update("Loading metadata...");
 
-  let presetInput: PresetInput;
+  let ruleInput: RuleInput;
   try {
-    presetInput = await loadPreset(presetDir);
-    const platforms = presetInput.config.platforms
-      .map((p) => p.platform)
+    const metadata = await collectMetadata(loadedConfig);
+
+    spinner.update("Collecting files...");
+    const platformFiles = await collectPlatformFiles(loadedConfig);
+
+    ruleInput = {
+      name: loadedConfig.config.name,
+      config: loadedConfig.config,
+      platformFiles,
+      ...metadata,
+    };
+
+    const rulePlatforms = ruleInput.config.platforms
+      .map((entry) => entry.platform)
       .join(", ");
     log.debug(
-      `Loaded preset "${presetInput.name}" for platforms: ${platforms}`
+      `Loaded rule "${ruleInput.name}" for platforms: ${rulePlatforms}`
     );
   } catch (error) {
     const message = getErrorMessage(error);
-    spinner.fail("Failed to load preset");
+    spinner.fail("Failed to load rule");
     log.error(message);
     return { success: false, error: message };
   }
 
-  // Build publish input (version is assigned by registry)
   spinner.update("Building platform bundles...");
 
-  let publishInput: PresetPublishInput;
-
   try {
-    publishInput = await buildPresetPublishInput({
-      preset: presetInput,
+    publishInput = await buildPublishInput({
+      rule: ruleInput,
       version,
     });
-    const platforms = publishInput.variants.map((v) => v.platform).join(", ");
-    log.debug(`Built publish input for platforms: ${platforms}`);
+    log.debug(
+      `Built publish input for platforms: ${publishInput.variants
+        .map((v) => v.platform)
+        .join(", ")}`
+    );
   } catch (error) {
     const message = getErrorMessage(error);
     spinner.fail("Failed to build platform bundles");
     log.error(message);
     return { success: false, error: message };
   }
+
+  return await finalizePublish({ publishInput, dryRun, version, spinner, ctx });
+}
+
+type SingleFilePublishOptions = {
+  name?: string;
+  platform?: string | string[];
+  type?: string;
+  title?: string;
+  description?: string;
+  tags?: string[];
+  license?: string;
+};
+
+type SingleFilePublishInputs = {
+  filePath: string;
+  name: string;
+  platform: PlatformId;
+  type: RuleType;
+  title: string;
+  description: string;
+  tags: string[];
+  license: string;
+  bundlePath: string;
+};
+
+async function getSingleFilePath(inputPath: string | undefined) {
+  if (!inputPath) return;
+  const fileStat = await stat(inputPath).catch(() => null);
+  if (!fileStat?.isFile()) return;
+  if (basename(inputPath) === RULE_CONFIG_FILENAME) return;
+  return inputPath;
+}
+
+function normalizePathForInference(value: string) {
+  return value.replace(/\\/g, "/");
+}
+
+function stripExtension(value: string) {
+  return value.replace(/\.[^/.]+$/, "");
+}
+
+function inferSingleFileDefaults(
+  filePath: string
+): Partial<Pick<SingleFilePublishInputs, "platform" | "type" | "name">> {
+  const normalized = normalizePathForInference(filePath);
+  const segments = normalized.split("/").filter(Boolean);
+  const fileName = segments.at(-1) ?? "";
+
+  const instructionPlatforms = inferInstructionPlatformsFromFileName(fileName);
+  if (instructionPlatforms.length > 0) {
+    return {
+      type: "instruction",
+      ...(instructionPlatforms.length === 1
+        ? { platform: instructionPlatforms[0] }
+        : {}),
+    };
+  }
+
+  const platform = inferPlatformFromPath(filePath);
+
+  if (!platform) {
+    return {
+      name: normalizeName(stripExtension(fileName)),
+    };
+  }
+
+  const inferredType = inferTypeFromPath(platform, filePath) as
+    | RuleType
+    | undefined;
+
+  const result: Partial<
+    Pick<SingleFilePublishInputs, "platform" | "type" | "name">
+  > = { platform };
+
+  if (inferredType) {
+    result.type = inferredType;
+    if (inferredType !== "instruction") {
+      result.name = normalizeName(stripExtension(fileName));
+    }
+  }
+
+  return result;
+}
+
+function buildConfigPublishOverrides(options: {
+  name?: string;
+  platform?: string | string[];
+  type?: string;
+  title?: string;
+  description?: string;
+  tags?: string[];
+  license?: string;
+}): LoadConfigOverrides | undefined {
+  const overrides: LoadConfigOverrides = {};
+
+  if (options.name !== undefined) overrides.name = options.name;
+  if (options.platform !== undefined) overrides.platform = options.platform;
+  if (options.type !== undefined) overrides.type = options.type;
+  if (options.title !== undefined) overrides.title = options.title;
+  if (options.description !== undefined) {
+    overrides.description = options.description;
+  }
+  if (options.license !== undefined) overrides.license = options.license;
+  if (options.tags !== undefined) overrides.tags = options.tags;
+
+  return Object.keys(overrides).length > 0 ? overrides : undefined;
+}
+
+async function resolveSingleFileInputs(
+  options: SingleFilePublishOptions,
+  filePath: string,
+  ctx: { dryRun: boolean; yes: boolean }
+): Promise<SingleFilePublishInputs> {
+  const inferred = inferSingleFileDefaults(filePath);
+  const isInteractive = !ctx.yes && process.stdin.isTTY;
+
+  const hasRequiredArgs =
+    options.name !== undefined &&
+    options.platform !== undefined &&
+    options.type !== undefined;
+  if (!(isInteractive || hasRequiredArgs)) {
+    throw new Error(
+      "Publishing a single file in non-interactive mode requires --name, --platform, and --type."
+    );
+  }
+
+  const selectedPlatforms = options.platform
+    ? parsePlatformSelection(options.platform)
+    : undefined;
+
+  if (selectedPlatforms && selectedPlatforms.length > 1) {
+    throw new Error(
+      "Publishing a single file requires exactly one --platform value."
+    );
+  }
+
+  let selectedPlatform: PlatformId | undefined = selectedPlatforms?.[0]
+    ? normalizePlatformInput(selectedPlatforms[0])
+    : inferred.platform;
+
+  if (!selectedPlatform) {
+    if (!isInteractive) {
+      throw new Error("Missing --platform");
+    }
+
+    const selection = await p.select({
+      message: "Platform",
+      options: PLATFORM_IDS.map((id) => ({ value: id, label: id })),
+    });
+
+    if (p.isCancel(selection)) {
+      throw new Error("Cancelled");
+    }
+
+    selectedPlatform = selection as PlatformId;
+  }
+
+  let selectedType: RuleType | undefined = (options.type ?? inferred.type) as
+    | RuleType
+    | undefined;
+
+  if (!selectedType) {
+    if (!isInteractive) {
+      throw new Error("Missing --type");
+    }
+
+    const candidates = getValidTypes(selectedPlatform).filter((t) =>
+      supportsInstallPath({
+        platform: selectedPlatform,
+        type: t,
+        scope: "project",
+      })
+    );
+
+    const selection = await p.select({
+      message: "Type",
+      options: candidates.map((t) => ({ value: t, label: t })),
+    });
+
+    if (p.isCancel(selection)) {
+      throw new Error("Cancelled");
+    }
+
+    selectedType = selection as RuleType;
+  }
+
+  const platform = selectedPlatform;
+  const type = selectedType as RuleType;
+
+  const nameValue =
+    options.name ??
+    (await (async () => {
+      if (!isInteractive) {
+        throw new Error("Missing --name");
+      }
+
+      const input = await p.text({
+        message: "Rule name",
+        placeholder: "my-rule",
+        validate: check(nameSchema),
+      });
+
+      if (p.isCancel(input)) {
+        throw new Error("Cancelled");
+      }
+
+      return input;
+    })());
+
+  const normalizedName = normalizeName(nameValue);
+  const nameCheck = nameSchema.safeParse(normalizedName);
+  if (!nameCheck.success) {
+    throw new Error(nameCheck.error.issues[0]?.message ?? "Invalid name");
+  }
+
+  const bundlePath = getInstallPath({
+    platform,
+    type,
+    name: normalizedName,
+    scope: "project",
+  });
+  if (!bundlePath) {
+    throw new Error(
+      `Type "${type}" is not supported for project installs on platform "${platform}".`
+    );
+  }
+
+  const defaultTitle = toTitleCase(normalizedName);
+  const finalTitle =
+    options.title ??
+    (await (async () => {
+      if (!isInteractive) {
+        return defaultTitle;
+      }
+
+      const input = await p.text({
+        message: "Title",
+        defaultValue: defaultTitle,
+        placeholder: defaultTitle,
+      });
+
+      if (p.isCancel(input)) {
+        throw new Error("Cancelled");
+      }
+
+      return input;
+    })());
+  const finalDescription =
+    options.description ??
+    (await (async () => {
+      if (!isInteractive) {
+        throw new Error("Missing --description");
+      }
+
+      const input = await p.text({
+        message: "Description",
+        placeholder: "Describe what this rule does...",
+        validate: (value) => {
+          if (!value?.trim()) return "Description is required";
+        },
+      });
+
+      if (p.isCancel(input)) {
+        throw new Error("Cancelled");
+      }
+
+      return input;
+    })());
+  const finalTags = await (async () => {
+    if (options.tags) {
+      return tagsSchema.parse(options.tags);
+    }
+
+    if (!isInteractive) {
+      throw new Error("Missing --tags (at least one required)");
+    }
+
+    const input = await p.text({
+      message: "Tags",
+      placeholder: "comma-separated, e.g. typescript, react",
+      validate: check(tagsInputSchema),
+    });
+
+    if (p.isCancel(input)) {
+      throw new Error("Cancelled");
+    }
+
+    return tagsInputSchema.parse(input);
+  })();
+  const finalLicense = options.license ?? "MIT";
+
+  if (isInteractive && !ctx.dryRun) {
+    log.print("");
+    log.print(ui.header("Quick publish"));
+    log.print(ui.keyValue("File", ui.path(filePath)));
+    log.print(ui.keyValue("Name", ui.code(normalizedName)));
+    log.print(ui.keyValue("Title", finalTitle));
+    log.print(ui.keyValue("Description", finalDescription));
+    log.print(ui.keyValue("Platform", platform));
+    log.print(ui.keyValue("Type", type));
+    log.print(ui.keyValue("Installs to", ui.path(bundlePath)));
+    log.print(ui.keyValue("Tags", finalTags.join(", ")));
+    log.print("");
+
+    const confirm = await p.confirm({
+      message: "Publish this file?",
+      initialValue: true,
+    });
+
+    if (p.isCancel(confirm) || !confirm) {
+      throw new Error("Cancelled");
+    }
+  }
+
+  return {
+    filePath,
+    name: normalizedName,
+    platform,
+    type,
+    title: finalTitle,
+    description: finalDescription,
+    tags: finalTags,
+    license: finalLicense,
+    bundlePath,
+  };
+}
+
+async function buildRuleInputFromSingleFile(
+  inputs: SingleFilePublishInputs
+): Promise<RuleInput> {
+  const content = await readFile(inputs.filePath);
+
+  const config: RuleInput["config"] = {
+    $schema: RULE_SCHEMA_URL,
+    name: inputs.name,
+    type: inputs.type,
+    title: inputs.title,
+    description: inputs.description,
+    license: inputs.license,
+    tags: inputs.tags,
+    platforms: [{ platform: inputs.platform }],
+  };
+
+  return {
+    name: inputs.name,
+    config,
+    platformFiles: [
+      {
+        platform: inputs.platform,
+        files: [{ path: inputs.bundlePath, content }],
+      },
+    ],
+  };
+}
+
+async function finalizePublish(options: {
+  publishInput: RulePublishInput;
+  dryRun: boolean;
+  version: number | undefined;
+  spinner: {
+    update: (message: string) => void;
+    fail: (message: string) => void;
+    success: (message: string) => void;
+  };
+  ctx: ReturnType<typeof useAppContext>;
+}): Promise<PublishResult> {
+  const { publishInput, dryRun, version, spinner, ctx } = options;
 
   // Calculate sizes for validation and display
   const totalFileCount = publishInput.variants.reduce(
@@ -165,13 +691,17 @@ export async function publish(
     totalSize += variantSize;
 
     log.debug(
-      `Variant ${variant.platform}: ${formatBytes(variantSize)}, ${variant.files.length} files`
+      `Variant ${variant.platform}: ${formatBytes(variantSize)}, ${
+        variant.files.length
+      } files`
     );
 
     if (variantSize > MAX_VARIANT_SIZE_BYTES) {
-      const errorMessage = `Files for "${variant.platform}" exceed maximum size (${formatBytes(
-        variantSize
-      )} > ${formatBytes(MAX_VARIANT_SIZE_BYTES)})`;
+      const errorMessage = `Files for "${
+        variant.platform
+      }" exceed maximum size (${formatBytes(variantSize)} > ${formatBytes(
+        MAX_VARIANT_SIZE_BYTES
+      )})`;
       spinner.fail("Platform bundle too large");
       log.error(errorMessage);
       return {
@@ -182,7 +712,9 @@ export async function publish(
   }
 
   log.debug(
-    `Total publish size: ${formatBytes(totalSize)}, files: ${totalFileCount}, platforms: ${platformList}`
+    `Total publish size: ${formatBytes(
+      totalSize
+    )}, files: ${totalFileCount}, platforms: ${platformList}`
   );
 
   // Dry run: show preview and exit
@@ -190,7 +722,7 @@ export async function publish(
     spinner.success("Dry run complete");
     log.print("");
     log.print(ui.header("Publish Preview"));
-    log.print(ui.keyValue("Preset", publishInput.title));
+    log.print(ui.keyValue("Rule", publishInput.title));
     log.print(ui.keyValue("Name", publishInput.name));
     log.print(ui.keyValue("Platforms", platformList));
     log.print(
@@ -224,7 +756,7 @@ export async function publish(
     return {
       success: true,
       preview: {
-        slug: publishInput.name, // Preview uses name (full slug assigned by registry)
+        slug: publishInput.name,
         platforms: publishInput.variants.map((v) => v.platform),
         title: publishInput.title,
         totalSize,
@@ -241,7 +773,7 @@ export async function publish(
     throw new Error("Credentials should exist at this point");
   }
 
-  const result = await publishPreset(
+  const result = await publishRule(
     ctx.registry.url,
     ctx.credentials.token,
     publishInput
@@ -275,10 +807,12 @@ export async function publish(
   }
 
   const { data } = result;
-  const action = data.isNewPreset ? "Published new preset" : "Published";
-  const platforms = data.variants.map((v) => v.platform).join(", ");
+  const action = data.isNew ? "Published new rule" : "Published";
+  const publishedPlatforms = data.variants.map((v) => v.platform).join(", ");
   spinner.success(
-    `${action} ${ui.code(data.slug)} ${ui.version(data.version)} (${platforms})`
+    `${action} ${ui.code(data.slug)} ${ui.version(
+      data.version
+    )} (${publishedPlatforms})`
   );
 
   // Show published files for each platform
@@ -299,11 +833,11 @@ export async function publish(
 
   return {
     success: true,
-    preset: {
+    rule: {
       slug: data.slug,
       title: data.title,
       version: data.version,
-      isNewPreset: data.isNewPreset,
+      isNew: data.isNew,
       variants: data.variants,
       url: data.url,
     },

@@ -4,9 +4,9 @@ import {
   licenseSchema,
   nameSchema,
   platformIdSchema,
-  presetBundleSchema,
-  presetConfigSchema,
   requiredDescriptionSchema,
+  ruleBundleSchema,
+  ruleConfigSchema,
   titleSchema,
 } from "./schema";
 
@@ -26,36 +26,36 @@ describe("platformIdSchema", () => {
 
 describe("nameSchema", () => {
   it("accepts valid names", () => {
-    expect(nameSchema.parse("my-preset")).toBe("my-preset");
-    expect(nameSchema.parse("preset")).toBe("preset");
-    expect(nameSchema.parse("my-cool-preset")).toBe("my-cool-preset");
-    expect(nameSchema.parse("preset123")).toBe("preset123");
-    expect(nameSchema.parse("123preset")).toBe("123preset");
+    expect(nameSchema.parse("my-rule")).toBe("my-rule");
+    expect(nameSchema.parse("rule")).toBe("rule");
+    expect(nameSchema.parse("my-cool-rule")).toBe("my-cool-rule");
+    expect(nameSchema.parse("rule123")).toBe("rule123");
+    expect(nameSchema.parse("123rule")).toBe("123rule");
   });
 
   it("rejects names with leading hyphen", () => {
-    expect(() => nameSchema.parse("-preset")).toThrow();
+    expect(() => nameSchema.parse("-rule")).toThrow();
   });
 
   it("rejects names with trailing hyphen", () => {
-    expect(() => nameSchema.parse("preset-")).toThrow();
+    expect(() => nameSchema.parse("rule-")).toThrow();
   });
 
   it("rejects names with consecutive hyphens", () => {
-    expect(() => nameSchema.parse("my--preset")).toThrow();
+    expect(() => nameSchema.parse("my--rule")).toThrow();
   });
 
   it("rejects names with uppercase", () => {
-    expect(() => nameSchema.parse("MyPreset")).toThrow();
+    expect(() => nameSchema.parse("MyRule")).toThrow();
   });
 
   it("rejects names with spaces", () => {
-    expect(() => nameSchema.parse("my preset")).toThrow();
+    expect(() => nameSchema.parse("my rule")).toThrow();
   });
 
   it("rejects names with special characters", () => {
-    expect(() => nameSchema.parse("my_preset")).toThrow();
-    expect(() => nameSchema.parse("my.preset")).toThrow();
+    expect(() => nameSchema.parse("my_rule")).toThrow();
+    expect(() => nameSchema.parse("my.rule")).toThrow();
   });
 
   it("rejects empty names", () => {
@@ -69,7 +69,7 @@ describe("nameSchema", () => {
 
 describe("titleSchema", () => {
   it("accepts valid titles", () => {
-    expect(titleSchema.parse("My Preset")).toBe("My Preset");
+    expect(titleSchema.parse("My Rule")).toBe("My Rule");
     expect(titleSchema.parse("A")).toBe("A");
     expect(titleSchema.parse("a".repeat(80))).toBe("a".repeat(80));
   });
@@ -132,16 +132,17 @@ describe("COMMON_LICENSES", () => {
 
 describe("tags validation", () => {
   const validConfig = {
-    name: "test-preset",
-    title: "Test Preset",
-    description: "A test preset",
+    name: "test-rule",
+    type: "instruction",
+    title: "Test Rule",
+    description: "A test rule",
     license: "MIT",
     platforms: ["opencode"],
     tags: ["test"],
   };
 
   it("accepts valid kebab-case tags", () => {
-    const result = presetConfigSchema.parse({
+    const result = ruleConfigSchema.parse({
       ...validConfig,
       tags: ["my-tag", "another-tag", "tag123", "123tag"],
     });
@@ -149,7 +150,7 @@ describe("tags validation", () => {
   });
 
   it("accepts single-word lowercase tags", () => {
-    const result = presetConfigSchema.parse({
+    const result = ruleConfigSchema.parse({
       ...validConfig,
       tags: ["test", "example", "typescript"],
     });
@@ -158,85 +159,85 @@ describe("tags validation", () => {
 
   it("rejects tags with uppercase", () => {
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, tags: ["MyTag"] })
+      ruleConfigSchema.parse({ ...validConfig, tags: ["MyTag"] })
     ).toThrow();
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, tags: ["UPPERCASE"] })
+      ruleConfigSchema.parse({ ...validConfig, tags: ["UPPERCASE"] })
     ).toThrow();
   });
 
   it("rejects tags with spaces", () => {
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, tags: ["my tag"] })
+      ruleConfigSchema.parse({ ...validConfig, tags: ["my tag"] })
     ).toThrow();
   });
 
   it("rejects tags with special characters", () => {
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, tags: ["my_tag"] })
+      ruleConfigSchema.parse({ ...validConfig, tags: ["my_tag"] })
     ).toThrow();
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, tags: ["my.tag"] })
+      ruleConfigSchema.parse({ ...validConfig, tags: ["my.tag"] })
     ).toThrow();
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, tags: ["my@tag"] })
+      ruleConfigSchema.parse({ ...validConfig, tags: ["my@tag"] })
     ).toThrow();
   });
 
   it("rejects tags with leading hyphen", () => {
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, tags: ["-tag"] })
+      ruleConfigSchema.parse({ ...validConfig, tags: ["-tag"] })
     ).toThrow();
   });
 
   it("rejects tags with trailing hyphen", () => {
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, tags: ["tag-"] })
+      ruleConfigSchema.parse({ ...validConfig, tags: ["tag-"] })
     ).toThrow();
   });
 
   it("rejects tags with consecutive hyphens", () => {
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, tags: ["my--tag"] })
+      ruleConfigSchema.parse({ ...validConfig, tags: ["my--tag"] })
     ).toThrow();
   });
 
   it("rejects empty tags", () => {
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, tags: [""] })
+      ruleConfigSchema.parse({ ...validConfig, tags: [""] })
     ).toThrow();
   });
 
   it("rejects tags over 35 characters", () => {
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, tags: ["a".repeat(36)] })
+      ruleConfigSchema.parse({ ...validConfig, tags: ["a".repeat(36)] })
     ).toThrow();
   });
 
   it("rejects more than 10 tags", () => {
     const tooManyTags = Array.from({ length: 11 }, (_, i) => `tag${i}`);
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, tags: tooManyTags })
+      ruleConfigSchema.parse({ ...validConfig, tags: tooManyTags })
     ).toThrow();
   });
 
   it("rejects platform IDs as tags (redundant)", () => {
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, tags: ["opencode"] })
+      ruleConfigSchema.parse({ ...validConfig, tags: ["opencode"] })
     ).toThrow();
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, tags: ["claude"] })
+      ruleConfigSchema.parse({ ...validConfig, tags: ["claude"] })
     ).toThrow();
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, tags: ["cursor"] })
+      ruleConfigSchema.parse({ ...validConfig, tags: ["cursor"] })
     ).toThrow();
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, tags: ["codex"] })
+      ruleConfigSchema.parse({ ...validConfig, tags: ["codex"] })
     ).toThrow();
   });
 
   it("allows tags that contain platform names as substrings", () => {
-    const result = presetConfigSchema.parse({
+    const result = ruleConfigSchema.parse({
       ...validConfig,
       tags: ["opencode-rules", "claude-tips", "for-cursor"],
     });
@@ -248,26 +249,27 @@ describe("tags validation", () => {
   });
 });
 
-describe("presetConfigSchema", () => {
+describe("ruleConfigSchema", () => {
   // Version is now optional in source config (auto-generated at build time)
   const validConfig = {
-    name: "test-preset",
-    title: "Test Preset",
-    description: "A test preset",
+    name: "test-rule",
+    type: "instruction",
+    title: "Test Rule",
+    description: "A test rule",
     license: "MIT",
     platforms: ["opencode"],
     tags: ["test"],
   };
 
-  it("accepts valid preset config without version", () => {
-    const result = presetConfigSchema.parse(validConfig);
-    expect(result.name).toBe("test-preset");
+  it("accepts valid rule config without version", () => {
+    const result = ruleConfigSchema.parse(validConfig);
+    expect(result.name).toBe("test-rule");
     expect(result.platforms).toEqual(["opencode"]);
     expect(result.version).toBeUndefined();
   });
 
   it("accepts config with major version", () => {
-    const result = presetConfigSchema.parse({
+    const result = ruleConfigSchema.parse({
       ...validConfig,
       version: 2,
     });
@@ -275,7 +277,7 @@ describe("presetConfigSchema", () => {
   });
 
   it("accepts config with optional fields", () => {
-    const result = presetConfigSchema.parse({
+    const result = ruleConfigSchema.parse({
       ...validConfig,
       tags: ["test", "example"],
       features: ["Feature 1", "Feature 2"],
@@ -286,7 +288,7 @@ describe("presetConfigSchema", () => {
   });
 
   it("accepts platforms with custom paths", () => {
-    const result = presetConfigSchema.parse({
+    const result = ruleConfigSchema.parse({
       ...validConfig,
       platforms: [{ platform: "opencode", path: "rules" }],
     });
@@ -294,7 +296,7 @@ describe("presetConfigSchema", () => {
   });
 
   it("accepts mixed platform entries (string and object)", () => {
-    const result = presetConfigSchema.parse({
+    const result = ruleConfigSchema.parse({
       ...validConfig,
       platforms: ["opencode", { platform: "claude", path: "my-claude" }],
     });
@@ -308,134 +310,146 @@ describe("presetConfigSchema", () => {
 
   it("rejects config without license", () => {
     const { license: _license, ...configWithoutLicense } = validConfig;
-    expect(() => presetConfigSchema.parse(configWithoutLicense)).toThrow();
+    expect(() => ruleConfigSchema.parse(configWithoutLicense)).toThrow();
   });
 
   it("rejects config without platforms", () => {
     const { platforms: _platforms, ...configWithoutPlatforms } = validConfig;
-    expect(() => presetConfigSchema.parse(configWithoutPlatforms)).toThrow();
+    expect(() => ruleConfigSchema.parse(configWithoutPlatforms)).toThrow();
   });
 
   it("rejects empty platforms array", () => {
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, platforms: [] })
+      ruleConfigSchema.parse({ ...validConfig, platforms: [] })
     ).toThrow();
   });
 
   it("rejects invalid name format", () => {
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, name: "Invalid Name" })
+      ruleConfigSchema.parse({ ...validConfig, name: "Invalid Name" })
     ).toThrow();
   });
 
   it("rejects invalid version format", () => {
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, version: "1.0" })
+      ruleConfigSchema.parse({ ...validConfig, version: "1.0" })
     ).toThrow(); // string not accepted
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, version: 0 })
+      ruleConfigSchema.parse({ ...validConfig, version: 0 })
     ).toThrow(); // zero not accepted
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, version: -1 })
+      ruleConfigSchema.parse({ ...validConfig, version: -1 })
     ).toThrow(); // negative not accepted
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, version: 1.5 })
+      ruleConfigSchema.parse({ ...validConfig, version: 1.5 })
     ).toThrow(); // decimal not accepted
   });
 
   it("rejects invalid platform in array", () => {
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, platforms: ["invalid"] })
+      ruleConfigSchema.parse({ ...validConfig, platforms: ["invalid"] })
     ).toThrow();
   });
 
   it("rejects extra properties", () => {
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, extra: "field" })
+      ruleConfigSchema.parse({ ...validConfig, extra: "field" })
     ).toThrow();
   });
 
   it("validates major version", () => {
     // Valid positive integers
     expect(
-      presetConfigSchema.parse({ ...validConfig, version: 1 })
+      ruleConfigSchema.parse({ ...validConfig, version: 1 })
     ).toBeDefined();
     expect(
-      presetConfigSchema.parse({ ...validConfig, version: 2 })
+      ruleConfigSchema.parse({ ...validConfig, version: 2 })
     ).toBeDefined();
     expect(
-      presetConfigSchema.parse({ ...validConfig, version: 100 })
+      ruleConfigSchema.parse({ ...validConfig, version: 100 })
     ).toBeDefined();
     // Invalid formats
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, version: 0 })
+      ruleConfigSchema.parse({ ...validConfig, version: 0 })
     ).toThrow(); // zero not allowed
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, version: -1 })
+      ruleConfigSchema.parse({ ...validConfig, version: -1 })
     ).toThrow(); // negative not allowed
     expect(() =>
-      presetConfigSchema.parse({ ...validConfig, version: "1" })
+      ruleConfigSchema.parse({ ...validConfig, version: "1" })
     ).toThrow(); // string not allowed
   });
 });
 
-describe("presetBundleSchema", () => {
-  const validVariant = {
-    platform: "opencode" as const,
-    files: [
-      {
-        path: "AGENT_RULES.md",
-        size: 10,
-        checksum: "a".repeat(64),
-        content: "# Rules\n",
-      },
-    ],
+describe("ruleBundleSchema", () => {
+  const validFile = {
+    path: "AGENT_RULES.md",
+    size: 10,
+    checksum: "a".repeat(64),
+    content: "# Rules\n",
   };
 
   const validBundle = {
-    slug: "test-preset",
-    title: "Test Preset",
+    name: "test-rule",
+    type: "instruction",
+    slug: "username/test-rule",
+    platform: "opencode" as const,
+    title: "Test Rule",
     version: "1.0",
-    description: "A test preset",
+    description: "A test rule",
     license: "MIT",
     tags: ["test"],
-    variants: [validVariant],
+    files: [validFile],
   };
 
   it("accepts valid bundle", () => {
-    const result = presetBundleSchema.parse(validBundle);
-    expect(result.slug).toBe("test-preset");
+    const result = ruleBundleSchema.parse(validBundle);
+    expect(result.name).toBe("test-rule");
+    expect(result.slug).toBe("username/test-rule");
+    expect(result.platform).toBe("opencode");
     expect(result.version).toBe("1.0");
-    expect(result.variants).toHaveLength(1);
-    expect(result.variants[0].files).toHaveLength(1);
+    expect(result.files).toHaveLength(1);
   });
 
-  it("rejects empty variants array", () => {
-    expect(() =>
-      presetBundleSchema.parse({ ...validBundle, variants: [] })
-    ).toThrow();
+  it("accepts bundle with optional fields", () => {
+    const result = ruleBundleSchema.parse({
+      ...validBundle,
+      features: ["Feature 1"],
+      readmeContent: "# README",
+      licenseContent: "MIT License",
+      installMessage: "Thanks for installing!",
+    });
+    expect(result.features).toEqual(["Feature 1"]);
+    expect(result.readmeContent).toBe("# README");
   });
 
-  it("rejects empty files array in variant", () => {
+  it("rejects empty files array", () => {
     expect(() =>
-      presetBundleSchema.parse({
-        ...validBundle,
-        variants: [{ ...validVariant, files: [] }],
-      })
+      ruleBundleSchema.parse({ ...validBundle, files: [] })
     ).toThrow();
   });
 
   it("rejects invalid checksum length", () => {
     expect(() =>
-      presetBundleSchema.parse({
+      ruleBundleSchema.parse({
         ...validBundle,
-        variants: [
-          {
-            ...validVariant,
-            files: [{ ...validVariant.files[0], checksum: "short" }],
-          },
-        ],
+        files: [{ ...validFile, checksum: "short" }],
       })
+    ).toThrow();
+  });
+
+  it("rejects invalid platform", () => {
+    expect(() =>
+      ruleBundleSchema.parse({ ...validBundle, platform: "invalid" })
+    ).toThrow();
+  });
+
+  it("rejects invalid version format", () => {
+    expect(() =>
+      ruleBundleSchema.parse({ ...validBundle, version: "1" })
+    ).toThrow();
+    expect(() =>
+      ruleBundleSchema.parse({ ...validBundle, version: "v1.0" })
     ).toThrow();
   });
 });

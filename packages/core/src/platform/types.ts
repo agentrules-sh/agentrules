@@ -19,16 +19,16 @@ export type TypeConfig = {
   /**
    * Install path template for project install.
    * Supports: {platformDir}, {name}
-   * Trailing / indicates directory type.
    * null if project install not supported.
    */
+
   project: string | null;
   /**
    * Install path template for global install.
-   * Supports: {globalDir}, {name}
-   * Trailing / indicates directory type.
+   * Supports: {platformDir}, {name}
    * null if global install not supported.
    */
+
   global: string | null;
 };
 
@@ -60,5 +60,18 @@ export type RuleTypeForPlatform<P extends PlatformId> = Extract<
   { platform: P }
 >["type"];
 
-/** Union of all valid rule types across all platforms */
+/**
+ * All valid rule types.
+ * When type is omitted, freeform file structure is used.
+ */
 export type RuleType = PlatformRuleType["type"];
+
+/** Tuple of all rule types for schema validation */
+export const RULE_TYPE_TUPLE = [
+  "instruction",
+  "rule",
+  "command",
+  "skill",
+  "agent",
+  "tool",
+] as const;

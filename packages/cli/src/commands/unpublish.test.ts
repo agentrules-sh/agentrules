@@ -45,11 +45,11 @@ describe("unpublish", () => {
     globalThis.fetch = originalFetch;
   });
 
-  it("fails when preset is empty", async () => {
+  it("fails when rule is empty", async () => {
     await setupLoggedInContext();
 
     const result = await unpublish({
-      preset: "",
+      rule: "",
     });
 
     expect(result.success).toBeFalse();
@@ -60,7 +60,7 @@ describe("unpublish", () => {
     await setupLoggedInContext();
 
     const result = await unpublish({
-      preset: "my-preset",
+      rule: "my-rule",
     });
 
     expect(result.success).toBeFalse();
@@ -71,91 +71,91 @@ describe("unpublish", () => {
     await setupLoggedOutContext();
 
     const result = await unpublish({
-      preset: "my-preset@1.0",
+      rule: "my-rule@1.0",
     });
 
     expect(result.success).toBeFalse();
     expect(result.error).toContain("Not logged in");
   });
 
-  it("unpublishes a preset using full format (slug@version)", async () => {
+  it("unpublishes a rule using full format (slug@version)", async () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("my-preset", "1.0")}`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.unpublish("my-rule", "1.0")}`,
       method: "DELETE",
       response: {
-        slug: "my-preset",
+        slug: "my-rule",
         version: "1.0",
       },
     });
 
     const result = await unpublish({
-      preset: "my-preset@1.0",
+      rule: "my-rule@1.0",
     });
 
     expect(result.success).toBeTrue();
-    expect(result.preset?.slug).toBe("my-preset");
-    expect(result.preset?.version).toBe("1.0");
+    expect(result.rule?.slug).toBe("my-rule");
+    expect(result.rule?.version).toBe("1.0");
   });
 
   it("unpublishes using --version flag", async () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("my-preset", "2.0")}`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.unpublish("my-rule", "2.0")}`,
       method: "DELETE",
       response: {
-        slug: "my-preset",
+        slug: "my-rule",
         version: "2.0",
       },
     });
 
     const result = await unpublish({
-      preset: "my-preset",
+      rule: "my-rule",
       version: "2.0",
     });
 
     expect(result.success).toBeTrue();
-    expect(result.preset?.version).toBe("2.0");
+    expect(result.rule?.version).toBe("2.0");
   });
 
-  it("--version flag overrides version in preset string", async () => {
+  it("--version flag overrides version in rule string", async () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("my-preset", "3.0")}`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.unpublish("my-rule", "3.0")}`,
       method: "DELETE",
       response: {
-        slug: "my-preset",
+        slug: "my-rule",
         version: "3.0",
       },
     });
 
-    // preset string has @1.0, but flag overrides to 3.0
+    // rule string has @1.0, but flag overrides to 3.0
     const result = await unpublish({
-      preset: "my-preset@1.0",
+      rule: "my-rule@1.0",
       version: "3.0",
     });
 
     expect(result.success).toBeTrue();
-    expect(result.preset?.version).toBe("3.0");
+    expect(result.rule?.version).toBe("3.0");
   });
 
-  it("handles 404 errors for non-existent presets", async () => {
+  it("handles 404 errors for non-existent rules", async () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("nonexistent", "1.0")}`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.unpublish("nonexistent", "1.0")}`,
       method: "DELETE",
       status: 404,
       response: {
-        error: "Preset not found",
+        error: "Rule not found",
       },
     });
 
     const result = await unpublish({
-      preset: "nonexistent@1.0",
+      rule: "nonexistent@1.0",
     });
 
     expect(result.success).toBeFalse();
@@ -166,16 +166,16 @@ describe("unpublish", () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("not-yours", "1.0")}`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.unpublish("not-yours", "1.0")}`,
       method: "DELETE",
       status: 403,
       response: {
-        error: "You do not have permission to unpublish this preset",
+        error: "You do not have permission to unpublish this rule",
       },
     });
 
     const result = await unpublish({
-      preset: "not-yours@1.0",
+      rule: "not-yours@1.0",
     });
 
     expect(result.success).toBeFalse();
@@ -188,7 +188,7 @@ describe("unpublish", () => {
     mockFetchError("Connection refused");
 
     const result = await unpublish({
-      preset: "my-preset@1.0",
+      rule: "my-rule@1.0",
     });
 
     expect(result.success).toBeFalse();
@@ -202,10 +202,10 @@ describe("unpublish", () => {
 
     let calledUrl = "";
     mockFetch({
-      url: `${customUrl}${API_ENDPOINTS.presets.unpublish("custom-preset", "1.0")}`,
+      url: `${customUrl}${API_ENDPOINTS.rules.unpublish("custom-rule", "1.0")}`,
       method: "DELETE",
       response: {
-        slug: "custom-preset",
+        slug: "custom-rule",
         version: "1.0",
       },
       onCall: (url) => {
@@ -214,7 +214,7 @@ describe("unpublish", () => {
     });
 
     const result = await unpublish({
-      preset: "custom-preset@1.0",
+      rule: "custom-rule@1.0",
     });
 
     expect(result.success).toBeTrue();
@@ -226,7 +226,7 @@ describe("unpublish", () => {
 
     let capturedHeaders: Headers | Record<string, string> | undefined;
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("auth-test", "1.0")}`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.unpublish("auth-test", "1.0")}`,
       method: "DELETE",
       response: {
         slug: "auth-test",
@@ -241,7 +241,7 @@ describe("unpublish", () => {
     });
 
     await unpublish({
-      preset: "auth-test@1.0",
+      rule: "auth-test@1.0",
     });
 
     const authHeader =
@@ -255,7 +255,7 @@ describe("unpublish", () => {
     await setupLoggedInContext();
 
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("error-preset", "1.0")}`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.unpublish("error-rule", "1.0")}`,
       method: "DELETE",
       status: 500,
       response: {
@@ -264,7 +264,7 @@ describe("unpublish", () => {
     });
 
     const result = await unpublish({
-      preset: "error-preset@1.0",
+      rule: "error-rule@1.0",
     });
 
     expect(result.success).toBeFalse();
@@ -276,10 +276,10 @@ describe("unpublish", () => {
 
     let calledUrl = "";
     mockFetch({
-      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.presets.unpublish("username/my-preset", "1.0")}`,
+      url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.unpublish("username/my-rule", "1.0")}`,
       method: "DELETE",
       response: {
-        slug: "username/my-preset",
+        slug: "username/my-rule",
         version: "1.0",
       },
       onCall: (url) => {
@@ -288,12 +288,12 @@ describe("unpublish", () => {
     });
 
     const result = await unpublish({
-      preset: "username/my-preset@1.0",
+      rule: "username/my-rule@1.0",
     });
 
     expect(result.success).toBeTrue();
     // Slug is NOT encoded - slashes flow through as path segments
-    expect(calledUrl).toContain("username/my-preset");
+    expect(calledUrl).toContain("username/my-rule");
   });
 });
 

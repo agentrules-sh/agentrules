@@ -2,10 +2,9 @@
  * Types for the unified items endpoint.
  *
  * The items endpoint returns all versions and platform variants for a slug.
- * Use `kind` to discriminate between presets and rules.
  */
 
-import type { PlatformId } from "../platform";
+import type { PlatformId, RuleType } from "../platform";
 
 // =============================================================================
 // Variants (per-platform content within a version)
@@ -16,44 +15,31 @@ type BaseVariant = {
   platform: PlatformId;
 };
 
-/** Preset variant with bundle URL (for larger presets) */
-type PresetVariantBundle = BaseVariant & {
+/** Rule variant with bundle URL (for larger rules) */
+type RuleVariantBundle = BaseVariant & {
   bundleUrl: string;
   fileCount: number;
   totalSize: number;
 };
 
-/** Preset variant with inline content (for smaller presets) */
-type PresetVariantInline = BaseVariant & {
+/** Rule variant with inline content (for smaller rules) */
+type RuleVariantInline = BaseVariant & {
   content: string;
   fileCount: number;
   totalSize: number;
 };
 
-/** Preset variant - registry decides bundleUrl vs inline content */
-export type PresetVariant = PresetVariantBundle | PresetVariantInline;
-
-/** Rule variant - always inline (rules are small text files) */
-export type RuleVariant = BaseVariant & {
-  type: string; // "instruction", "agent", "command", etc.
-  content: string;
-};
+/** Rule variant - registry decides bundleUrl vs inline content */
+export type RuleVariant = RuleVariantBundle | RuleVariantInline;
 
 // =============================================================================
 // Versions (contains variants for all platforms)
 // =============================================================================
 
-export type PresetVersion = {
+export type RuleVersion = {
   version: string; // "1.0", "2.3", etc.
   isLatest: boolean;
   publishedAt?: string; // ISO timestamp
-  variants: PresetVariant[];
-};
-
-export type RuleVersion = {
-  version: string;
-  isLatest: boolean;
-  publishedAt?: string;
   variants: RuleVariant[];
 };
 
@@ -61,27 +47,18 @@ export type RuleVersion = {
 // Top-level resolved items
 // =============================================================================
 
-export type ResolvedPreset = {
-  kind: "preset";
+export type ResolvedRule = {
   slug: string;
   name: string;
+  /** Rule type - optional, defaults to freeform file structure */
+  type?: RuleType;
   title: string;
   description: string;
   tags: string[];
   license: string;
   features: string[];
-  versions: PresetVersion[];
-};
-
-export type ResolvedRule = {
-  kind: "rule";
-  slug: string;
-  name: string;
-  title: string;
-  description: string;
-  tags: string[];
   versions: RuleVersion[];
 };
 
-/** Discriminated union for items endpoint response */
-export type ResolveResponse = ResolvedPreset | ResolvedRule;
+/** Response from items endpoint */
+export type ResolveResponse = ResolvedRule;

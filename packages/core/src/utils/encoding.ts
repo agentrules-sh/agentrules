@@ -14,7 +14,9 @@ export function decodeUtf8(payload: ArrayBuffer | ArrayBufferView) {
   if (typeof Buffer !== "undefined") {
     return Buffer.from(bytes).toString("utf8");
   }
-  return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+  return new TextDecoder("utf-8", { fatal: false, ignoreBOM: false }).decode(
+    bytes
+  );
 }
 
 export function toUint8Array(payload: ArrayBuffer | ArrayBufferView) {

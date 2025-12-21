@@ -1,6 +1,6 @@
 {
   "name": "agentrules",
-  "description": "Presets for agentic tools",
+  "description": "Rules for agentic tools",
   "version": "0.0.0",
   "type": "module",
   "workspaces": [

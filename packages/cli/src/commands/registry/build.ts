@@ -1,16 +1,16 @@
 import {
   API_ENDPOINTS,
-  buildPresetRegistry,
+  buildRegistry as buildRegistryCore,
   LATEST_VERSION,
-  PRESET_CONFIG_FILENAME,
-  type PresetInput,
+  RULE_CONFIG_FILENAME,
+  type RuleInput,
   STATIC_BUNDLE_DIR,
 } from "@agentrules/core";
 import { mkdir, readdir, writeFile } from "fs/promises";
 import { basename, join } from "path";
 import { fileExists } from "@/lib/fs";
 import { log } from "@/lib/log";
-import { loadPreset } from "@/lib/preset-utils";
+import { loadRule } from "@/lib/rule-utils";
 
 export type BuildOptions = {
   input: string;
@@ -21,7 +21,7 @@ export type BuildOptions = {
 };
 
 export type BuildResult = {
-  presets: number;
+  rules: number;
   items: number;
   bundles: number;
   outputDir: string | null;
@@ -36,34 +36,34 @@ export async function buildRegistry(
   const compact = Boolean(options.compact);
   const validateOnly = Boolean(options.validateOnly);
 
-  log.debug(`Discovering presets in ${inputDir}`);
-  const presetDirs = await discoverPresetDirs(inputDir);
+  log.debug(`Discovering rules in ${inputDir}`);
+  const ruleDirs = await discoverRuleDirs(inputDir);
 
-  if (presetDirs.length === 0) {
+  if (ruleDirs.length === 0) {
     throw new Error(
-      `No presets found in "${inputDir}". Each preset needs an ${PRESET_CONFIG_FILENAME} file.`
+      `No rules found in "${inputDir}". Each rule needs an ${RULE_CONFIG_FILENAME} file.`
     );
   }
 
-  log.debug(`Found ${presetDirs.length} preset(s)`);
+  log.debug(`Found ${ruleDirs.length} rule(s)`);
 
-  const presets: PresetInput[] = [];
+  const rules: RuleInput[] = [];
 
-  for (const presetDir of presetDirs) {
-    const slug = basename(presetDir);
-    log.debug(`Loading preset: ${slug}`);
-    const preset = await loadPreset(presetDir);
-    presets.push(preset);
+  for (const ruleDir of ruleDirs) {
+    const slug = basename(ruleDir);
+    log.debug(`Loading rule: ${slug}`);
+    const rule = await loadRule(ruleDir);
+    rules.push(rule);
   }
 
-  const result = await buildPresetRegistry({
-    presets,
+  const result = await buildRegistryCore({
+    rules,
     bundleBase: options.bundleBase,
   });
 
   if (validateOnly || !outputDir) {
     return {
-      presets: presets.length,
+      rules: rules.length,
       items: result.items.length,
       bundles: result.bundles.length,
       outputDir: null,
@@ -117,7 +117,7 @@ export async function buildRegistry(
   await writeFile(join(outputDir, "registry.json"), registryJson);
 
   return {
-    presets: presets.length,
+    rules: rules.length,
     items: result.items.length,
     bundles: result.bundles.length,
     outputDir,
@@ -125,8 +125,8 @@ export async function buildRegistry(
   };
 }
 
-async function discoverPresetDirs(inputDir: string): Promise<string[]> {
-  const presetDirs: string[] = [];
+async function discoverRuleDirs(inputDir: string): Promise<string[]> {
+  const ruleDirs: string[] = [];
 
   async function searchDir(dir: string, depth: number): Promise<void> {
     if (depth > 3) return; // Limit recursion depth
@@ -137,10 +137,10 @@ async function discoverPresetDirs(inputDir: string): Promise<string[]> {
       if (!entry.isDirectory()) continue;
 
       const subDir = join(dir, entry.name);
-      const configPath = join(subDir, PRESET_CONFIG_FILENAME);
+      const configPath = join(subDir, RULE_CONFIG_FILENAME);
 
       if (await fileExists(configPath)) {
-        presetDirs.push(subDir);
+        ruleDirs.push(subDir);
       } else {
         await searchDir(subDir, depth + 1);
       }
@@ -148,5 +148,5 @@ async function discoverPresetDirs(inputDir: string): Promise<string[]> {
   }
 
   await searchDir(inputDir, 0);
-  return presetDirs.sort();
+  return ruleDirs.sort();
 }

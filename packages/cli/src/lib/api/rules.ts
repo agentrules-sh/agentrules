@@ -1,57 +1,60 @@
 /**
- * Registry API - Rule Endpoints
+ * Registry API - Rule Publishing
  *
- * Publish and delete rules from the registry.
+ * Publish and unpublish multi-file rules to the registry.
  */
 
-import { API_ENDPOINTS } from "@agentrules/core";
+import { API_ENDPOINTS, type RulePublishInput } from "@agentrules/core";
 import { getErrorMessage } from "@/lib/errors";
 import { log } from "@/lib/log";
 
-export type RuleInput = {
-  name: string;
-  platform: string;
-  type: string;
-  title: string;
-  description?: string;
-  content: string;
-  tags: string[];
-};
+// =============================================================================
+// Types
+// =============================================================================
 
-export type RuleResponse = {
-  id: string;
+/** Response from POST {API_ENDPOINTS.rules.base} (publish). */
+export type PublishResponse = {
+  ruleId: string;
+  versionId: string;
   slug: string;
-  platform: string;
-  type: string;
   title: string;
-  description: string | null;
-  content: string;
-  tags: string[];
-  authorId: string;
-  /** Whether this was a new rule (true) or an update (false) */
+  version: string;
   isNew: boolean;
+  /** All published platform variants */
+  variants: Array<{ platform: string; bundleUrl: string }>;
   /** URL to the rule page on the registry */
   url: string;
 };
 
+/** Response from DELETE {API_ENDPOINTS.rules.unpublish()} (unpublish). */
+export type UnpublishResponse = {
+  slug: string;
+  version: string;
+};
+
+/** Error response from the API. */
 export type ErrorResponse = {
   error: string;
   issues?: Array<{ path: string; message: string }>;
 };
 
-export type PublishRuleResult =
-  | { success: true; data: RuleResponse }
+// =============================================================================
+// Client
+// =============================================================================
+
+export type PublishResult =
+  | { success: true; data: PublishResponse }
   | { success: false; error: string; issues?: ErrorResponse["issues"] };
 
 /**
- * Publish a rule (create or update).
- * The registry handles create vs update automatically.
+ * Publishes a rule to the registry.
+ * Sends RulePublishInput (no version) - registry assigns version.
  */
 export async function publishRule(
   baseUrl: string,
   token: string,
-  input: RuleInput
-): Promise<PublishRuleResult> {
+  input: RulePublishInput
+): Promise<PublishResult> {
   const url = `${baseUrl}${API_ENDPOINTS.rules.base}`;
 
   log.debug(`POST ${url}`);
@@ -77,7 +80,7 @@ export async function publishRule(
       };
     }
 
-    const data = (await response.json()) as RuleResponse;
+    const data = (await response.json()) as PublishResponse;
     return { success: true, data };
   } catch (error) {
     return {
@@ -87,20 +90,21 @@ export async function publishRule(
   }
 }
 
-export type DeleteRuleResponse = {
-  slug: string;
-};
-
-export type DeleteRuleResult =
-  | { success: true; data: DeleteRuleResponse }
+export type UnpublishResult =
+  | { success: true; data: UnpublishResponse }
   | { success: false; error: string };
 
-export async function deleteRule(
+/**
+ * Unpublishes a rule version from the registry.
+ * This unpublishes all platform variants for the specified version.
+ */
+export async function unpublishRule(
   baseUrl: string,
   token: string,
-  slug: string
-): Promise<DeleteRuleResult> {
-  const url = `${baseUrl}${API_ENDPOINTS.rules.bySlug(slug)}`;
+  slug: string,
+  version: string
+): Promise<UnpublishResult> {
+  const url = `${baseUrl}${API_ENDPOINTS.rules.unpublish(slug, version)}`;
 
   log.debug(`DELETE ${url}`);
 
@@ -122,7 +126,7 @@ export async function deleteRule(
       };
     }
 
-    const data = (await response.json()) as DeleteRuleResponse;
+    const data = (await response.json()) as UnpublishResponse;
     return { success: true, data };
   } catch (error) {
     return {

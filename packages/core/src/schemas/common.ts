@@ -1,5 +1,5 @@
 /**
- * Common schemas shared across presets and rules.
+ * Common schemas shared across the rule system.
  */
 
 import { z } from "zod";
@@ -49,10 +49,10 @@ export const tagsSchema = z
 // Name: lowercase alphanumeric with hyphens, no leading/trailing/consecutive hyphens
 const NAME_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const NAME_ERROR =
-  "Must be lowercase alphanumeric with hyphens (e.g., my-preset)";
+  "Must be lowercase alphanumeric with hyphens (e.g., my-rule)";
 
 /**
- * Schema for preset/rule name.
+ * Schema for rule name.
  * - Max 64 characters
  * - Lowercase alphanumeric with hyphens
  */

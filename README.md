@@ -32,19 +32,19 @@ npx @agentrules/cli add agentic-dev-starter --platform opencode
 
 AGENT_RULES is a CLI for installing pre-built configurations for AI coding assistants like OpenCode, Claude Code, Cursor, and Codex.
 
-Unlike plugins that are managed for you, AGENT_RULES presets are **copied directly into your project**. They're just files — view them, edit them, evolve them as your workflow changes.
+Unlike plugins that are managed for you, AGENT_RULES rules are **copied directly into your project**. They're just files — view them, edit them, evolve them as your workflow changes.
 
-- **Browse** presets at [agentrules.directory](https://agentrules.directory)
+- **Browse** rules at [agentrules.directory](https://agentrules.directory)
 - **Install** with one command
 - **Own** the files — modify freely, no updates overwriting your changes
 
-## Quick Start: Install a Preset
+## Quick Start: Install a Rule
 
 ```bash
-# Install a preset to your project
-npx @agentrules/cli add <preset-name> --platform <platform>
+# Install a rule to your project
+npx @agentrules/cli add <rule-name> --platform <platform>
 
-# Example: Install the agentic-dev-starter preset for OpenCode
+# Example: Install the agentic-dev-starter rule for OpenCode
 npx @agentrules/cli add agentic-dev-starter --platform opencode
 ```
 
@@ -63,20 +63,20 @@ Files are copied to the platform's config directory (e.g., `.opencode/` for Open
 
 ```bash
 # Install globally (for all projects)
-npx @agentrules/cli add <preset> --platform <platform> --global
+npx @agentrules/cli add <rule> --platform <platform> --global
 
 # Install a specific version
-npx @agentrules/cli add <preset> --platform <platform> --version 1.0
+npx @agentrules/cli add <rule> --platform <platform> --version 1.0
 
 # See what would be installed without writing files
-npx @agentrules/cli add <preset> --platform <platform> --dry-run
+npx @agentrules/cli add <rule> --platform <platform> --dry-run
 ```
 
 See the [CLI documentation](./packages/cli) for all options.
 
-## Quick Start: Create & Publish a Preset
+## Quick Start: Create & Publish a Rule
 
-Share your agentic workflow and get discovered. Publishing to [agentrules.directory](https://agentrules.directory) gives you a profile page, puts your work in front of developers, and popular presets get featured in trending.
+Share your agentic workflow and get discovered. Publishing to [agentrules.directory](https://agentrules.directory) gives you a profile page, puts your work in front of developers, and popular rules get featured in trending.
 
 ### 1. Add config to your platform directory
 
@@ -87,11 +87,11 @@ cd .opencode
 npx @agentrules/cli init
 ```
 
-The `init` command guides you through the required fields. Your preset structure is simply:
+The `init` command guides you through the required fields. Your rule structure is simply:
 
 ```
 .opencode/
-├── agentrules.json    # Preset config
+├── agentrules.json    # Rule config
 ├── AGENTS.md          # Your existing files
 └── commands/
     └── review.md
@@ -111,18 +111,18 @@ This opens a browser for authentication.
 npx @agentrules/cli publish .opencode
 ```
 
-That's it! Your preset is now discoverable at [agentrules.directory](https://agentrules.directory). You'll get a profile page showcasing all your published presets, and popular presets get featured in trending.
+That's it! Your rule is now discoverable at [agentrules.directory](https://agentrules.directory). You'll get a profile page showcasing all your published rules, and popular rules get featured in trending.
 
-## Preset Format
+## Rule Format
 
-Presets use `agentrules.json` for configuration:
+Rules use `agentrules.json` for configuration:
 
 ```json
 {
   "$schema": "https://agentrules.directory/schema/agentrules.json",
-  "name": "my-preset",
-  "title": "My Preset",
-  "description": "A helpful preset for...",
+  "name": "my-rule",
+  "title": "My Rule",
+  "description": "A helpful rule for...",
   "license": "MIT",
   "platforms": ["opencode"],
   "tags": ["productivity", "typescript"],
@@ -144,19 +144,20 @@ Presets use `agentrules.json` for configuration:
 | `features` | No | Up to 5 key features to highlight |
 | `ignore` | No | Additional patterns to exclude from bundle |
 
-### Preset Structure
+### Rule Structure
 
 ```
-.opencode/
-├── agentrules.json       # Preset config
-├── AGENTS.md             # Your config files (included in bundle)
-├── commands/
-│   └── review.md
-└── .agentrules/          # Metadata folder (not included in bundle)
-    ├── README.md         # Shown on registry page
-    ├── LICENSE.md        # License text
-    └── INSTALL.txt       # Shown after install
+.
+├── agentrules.json       # Rule config
+├── README.md             # Shown on registry page (optional, not bundled)
+├── LICENSE.md            # License text (optional, not bundled)
+├── INSTALL.txt           # Shown after install (optional, not bundled)
+├── AGENTS.md             # Instruction file (optional)
+└── command/
+    └── review.md
 ```
+
+By default, files are collected from the config directory and bundled under the platform prefix (e.g. `command/review.md` → `.opencode/command/review.md`).
 
 ### Auto-Excluded Files
 
@@ -170,7 +171,7 @@ Use the `ignore` field for additional patterns (e.g., `["*.log", "tmp"]`).
 
 | Package | Description |
 |---------|-------------|
-| [`@agentrules/cli`](./packages/cli) | CLI for installing and publishing presets |
+| [`@agentrules/cli`](./packages/cli) | CLI for installing and publishing rules |
 | [`@agentrules/core`](./packages/core) | Shared types and utilities for building tools |
 
 ## Development
@@ -193,7 +194,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for development guidelines.
 
 ## Links
 
-- [agentrules.directory](https://agentrules.directory) — Browse and discover presets
+- [agentrules.directory](https://agentrules.directory) — Browse and discover rules
 - [CLI Documentation](./packages/cli) — Full command reference
 - [Core Library](./packages/core) — For building custom tools
 

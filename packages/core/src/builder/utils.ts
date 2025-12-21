@@ -1,5 +1,5 @@
 import { ZodError } from "zod";
-import { presetConfigSchema, type RawPresetConfig } from "../preset";
+import { type RawRuleConfig, ruleConfigSchema } from "../rule";
 
 export function cleanInstallMessage(value: unknown) {
   if (typeof value !== "string") {
@@ -10,15 +10,12 @@ export function cleanInstallMessage(value: unknown) {
 }
 
 /**
- * Validate raw preset config from JSON.
+ * Validate raw rule config from JSON.
  * Returns the raw config shape (before normalization).
  */
-export function validatePresetConfig(
-  config: unknown,
-  slug: string
-): RawPresetConfig {
+export function validateConfig(config: unknown, slug: string): RawRuleConfig {
   try {
-    return presetConfigSchema.parse(config);
+    return ruleConfigSchema.parse(config);
   } catch (e) {
     if (e instanceof ZodError) {
       const messages = e.issues.map((issue) => {
@@ -26,7 +23,7 @@ export function validatePresetConfig(
         return `${path}${issue.message}`;
       });
       throw new Error(
-        `Invalid preset config for ${slug}:\n  - ${messages.join("\n  - ")}`
+        `Invalid rule config for ${slug}:\n  - ${messages.join("\n  - ")}`
       );
     }
     throw e;

@@ -8,32 +8,32 @@ description: Version pinning, global installs, conflicts, and more.
 Use the `--platform` (or `-p`) flag to specify the target platform:
 
 ```bash
-npx @agentrules/cli add my-preset --platform opencode
-npx @agentrules/cli add my-preset -p opencode
+npx @agentrules/cli add my-rule --platform opencode
+npx @agentrules/cli add my-rule -p opencode
 ```
 
 ## Installing a Specific Version
 
-Presets use `MAJOR.MINOR` versioning. By default, the latest version is installed.
+Rules use `MAJOR.MINOR` versioning. By default, the latest version is installed.
 
 ```bash
 # With --version flag
-npx @agentrules/cli add my-preset -p opencode --version 1.0
+npx @agentrules/cli add my-rule -p opencode --version 1.0
 
 # Or use @ syntax
-npx @agentrules/cli add my-preset@1.0 -p opencode
+npx @agentrules/cli add my-rule@1.0 -p opencode
 ```
 
 ## Global vs Project Install
 
-By default, presets install to your current project directory.
+By default, rules install to your current project directory.
 
 ```bash
 # Project install (default) - writes to .opencode/
-npx @agentrules/cli add my-preset -p opencode
+npx @agentrules/cli add my-rule -p opencode
 
 # Global install - writes to ~/.config/opencode
-npx @agentrules/cli add my-preset -p opencode --global
+npx @agentrules/cli add my-rule -p opencode --global
 ```
 
 | Install Type | OpenCode | Claude | Cursor | Codex |
@@ -46,7 +46,7 @@ npx @agentrules/cli add my-preset -p opencode --global
 See what files would be installed without writing anything:
 
 ```bash
-npx @agentrules/cli add my-preset -p opencode --dry-run
+npx @agentrules/cli add my-rule -p opencode --dry-run
 ```
 
 ## Handling Conflicts
@@ -55,13 +55,13 @@ When a file already exists:
 
 ```bash
 # Overwrite (backs up existing files to .bak)
-npx @agentrules/cli add my-preset -p opencode --force
+npx @agentrules/cli add my-rule -p opencode --force
 
 # Overwrite without backups
-npx @agentrules/cli add my-preset -p opencode --force --no-backup
+npx @agentrules/cli add my-rule -p opencode --force --no-backup
 
 # Skip conflicting files, only add new ones
-npx @agentrules/cli add my-preset -p opencode --skip-conflicts
+npx @agentrules/cli add my-rule -p opencode --skip-conflicts
 ```
 
 Without these flags, the CLI shows you what conflicts exist and lets you decide.
@@ -71,19 +71,19 @@ Without these flags, the CLI shows you what conflicts exist and lets you decide.
 Install to a specific directory instead of the default:
 
 ```bash
-npx @agentrules/cli add my-preset -p opencode --dir ./custom/path
+npx @agentrules/cli add my-rule -p opencode --dir ./custom/path
 ```
 
 ## Using Custom Registries
 
-By default, presets come from `agentrules.directory`. You can add other registries:
+By default, rules come from `agentrules.directory`. You can add other registries:
 
 ```bash
 # Add a registry
 npx @agentrules/cli registry add company https://registry.company.com
 
 # Install from it
-npx @agentrules/cli add my-preset -p opencode --registry company
+npx @agentrules/cli add my-rule -p opencode --registry company
 
 # Set as default
 npx @agentrules/cli registry use company
@@ -102,4 +102,4 @@ npx @agentrules/cli registry use company
 | `-y, --yes` | Alias for `--force` |
 | `--no-backup` | Don't backup when using `--force` |
 | `--dry-run` | Preview without writing |
-| `--skip-conflicts` | Skip files that already exist (presets only) |
+| `--skip-conflicts` | Skip files that already exist |

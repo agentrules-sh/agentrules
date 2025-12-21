@@ -5,26 +5,19 @@ import {
   licenseSchema,
   nameSchema,
   PLATFORM_IDS,
-  PLATFORMS,
   type PlatformId,
-  PRESET_CONFIG_FILENAME,
+  RULE_CONFIG_FILENAME,
   tagsSchema,
   titleSchema,
 } from "@agentrules/core";
 import * as p from "@clack/prompts";
 import { join } from "path";
 import { fileExists } from "@/lib/fs";
-import { normalizeName, toTitleCase } from "@/lib/preset-utils";
+import { normalizeName, toTitleCase } from "@/lib/rule-utils";
 import { check } from "@/lib/zod-validator";
-import {
-  type DetectedPlatform,
-  detectPlatformContext,
-  type InitOptions,
-  type InitResult,
-  initPreset,
-} from "./init";
+import { type InitOptions, type InitResult, initRule } from "./init";
 
-const DEFAULT_PRESET_NAME = "my-preset";
+const DEFAULT_RULE_NAME = "my-rule";
 
 /**
  * Parse comma-separated tags string into array
@@ -73,9 +66,9 @@ export async function initInteractive(
     license: licenseOption,
   } = options;
   let { force } = options;
-  const defaultName = nameOption ?? DEFAULT_PRESET_NAME;
+  const defaultName = nameOption ?? DEFAULT_RULE_NAME;
 
-  p.intro("Create a new preset");
+  p.intro("Create a new rule");
 
   // Validate platform option if provided
   if (platformOption && !isSupportedPlatform(platformOption)) {
@@ -84,69 +77,27 @@ export async function initInteractive(
   }
   const validatedPlatform = platformOption as PlatformId | undefined;
 
-  // Detect platform context
-  const ctx = await detectPlatformContext(directory);
+  const selectedPlatform: PlatformId =
+    validatedPlatform ??
+    (await (async () => {
+      const platformChoice = await p.select({
+        message: "Platform",
+        options: PLATFORM_IDS.map((id) => ({ value: id, label: id })),
+      });
 
-  let targetPlatformDir: string;
-  let selectedPlatform: PlatformId;
+      if (p.isCancel(platformChoice)) {
+        p.cancel("Cancelled");
+        process.exit(0);
+      }
 
-  if (ctx.insidePlatformDir) {
-    // Already in a platform directory - use it directly
-    targetPlatformDir = directory;
-    selectedPlatform = validatedPlatform ?? ctx.platform;
+      return platformChoice as PlatformId;
+    })());
 
-    p.note(
-      `Detected platform directory: ${ctx.platform}`,
-      "Using current directory"
-    );
-  } else {
-    // Show detected platforms and prompt for selection
-    const detectedMap = new Map<PlatformId, DetectedPlatform>(
-      ctx.platforms.map((d) => [d.id, d])
-    );
-
-    if (ctx.platforms.length > 0) {
-      p.note(
-        ctx.platforms.map((d) => `${d.id} → ${d.path}`).join("\n"),
-        "Detected platform directories"
-      );
-    }
-
-    // Determine initial value for prompt (only if we have a hint)
-    const initialPlatform: PlatformId | undefined =
-      validatedPlatform ??
-      (ctx.platforms.length > 0 ? ctx.platforms[0].id : undefined);
-
-    // Prompt for platform selection
-    const platformChoice = await p.select({
-      message: "Platform",
-      options: PLATFORM_IDS.map((id) => ({
-        value: id,
-        label: detectedMap.has(id) ? `${id} (detected)` : id,
-        hint: detectedMap.get(id)?.path,
-      })),
-      ...(initialPlatform && { initialValue: initialPlatform }),
-    });
-
-    if (p.isCancel(platformChoice)) {
-      p.cancel("Cancelled");
-      process.exit(0);
-    }
-
-    selectedPlatform = platformChoice as PlatformId;
-
-    // Determine target directory based on selection
-    const detected = detectedMap.get(selectedPlatform);
-    targetPlatformDir = detected
-      ? join(directory, detected.path)
-      : join(directory, PLATFORMS[selectedPlatform].platformDir);
-  }
-
-  // Check if config already exists in target platform dir
-  const configPath = join(targetPlatformDir, PRESET_CONFIG_FILENAME);
+  // Check if config already exists in target directory
+  const configPath = join(directory, RULE_CONFIG_FILENAME);
   if (!force && (await fileExists(configPath))) {
     const overwrite = await p.confirm({
-      message: `${PRESET_CONFIG_FILENAME} already exists in ${targetPlatformDir}. Overwrite?`,
+      message: `${RULE_CONFIG_FILENAME} already exists in ${directory}. Overwrite?`,
       initialValue: false,
     });
 
@@ -163,7 +114,7 @@ export async function initInteractive(
     {
       name: () =>
         p.text({
-          message: "Preset name",
+          message: "Rule name",
           placeholder: normalizeName(defaultName),
           defaultValue: normalizeName(defaultName),
           validate: check(nameSchema),
@@ -181,8 +132,7 @@ export async function initInteractive(
       },
 
       description: ({ results }) => {
-        const defaultDescription =
-          descriptionOption ?? `${results.title} preset`;
+        const defaultDescription = descriptionOption ?? `${results.title} rule`;
         return p.text({
           message: "Description",
           placeholder: defaultDescription,
@@ -241,7 +191,7 @@ export async function initInteractive(
   );
 
   const initOptions: InitOptions = {
-    directory: targetPlatformDir,
+    directory,
     name: result.name,
     title: result.title as string,
     description: result.description as string,
@@ -251,7 +201,7 @@ export async function initInteractive(
     force,
   };
 
-  const initResult = await initPreset(initOptions);
+  const initResult = await initRule(initOptions);
 
   // Show success
   p.outro(`Created ${initResult.configPath}`);

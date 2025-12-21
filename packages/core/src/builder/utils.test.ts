@@ -1,9 +1,10 @@
 import { describe, expect, it } from "bun:test";
-import { cleanInstallMessage, validatePresetConfig } from "./utils";
+import { cleanInstallMessage, validateConfig } from "./utils";
 
-// Version is now optional in source preset config
-const MINIMAL_PRESET = {
+// Version is now optional in source rule config
+const MINIMAL_CONFIG = {
   name: "starter",
+  type: "instruction" as const,
   title: "Starter",
   description: "Desc",
   license: "MIT",
@@ -19,34 +20,32 @@ describe("cleanInstallMessage", () => {
   });
 });
 
-describe("validatePresetConfig", () => {
-  it("accepts valid presets without version", () => {
-    expect(validatePresetConfig(MINIMAL_PRESET, "starter")).toEqual(
-      MINIMAL_PRESET
-    );
+describe("validateConfig", () => {
+  it("accepts valid rules without version", () => {
+    expect(validateConfig(MINIMAL_CONFIG, "starter")).toEqual(MINIMAL_CONFIG);
   });
 
-  it("accepts presets with optional version", () => {
-    const withVersion = { ...MINIMAL_PRESET, version: 2 };
-    expect(validatePresetConfig(withVersion, "starter")).toEqual(withVersion);
+  it("accepts rules with optional version", () => {
+    const withVersion = { ...MINIMAL_CONFIG, version: 2 };
+    expect(validateConfig(withVersion, "starter")).toEqual(withVersion);
   });
 
   it("throws for missing required data", () => {
-    expect(() => validatePresetConfig({}, "oops")).toThrow(
-      /Invalid preset config for oops/i
+    expect(() => validateConfig({}, "oops")).toThrow(
+      /Invalid rule config for oops/i
     );
-    expect(() => validatePresetConfig({ name: "oops" }, "oops")).toThrow(
-      /Invalid preset config for oops/i
+    expect(() => validateConfig({ name: "oops" }, "oops")).toThrow(
+      /Invalid rule config for oops/i
     );
   });
 
   it("throws for unknown platform", () => {
     const withUnknownPlatform = {
-      ...MINIMAL_PRESET,
+      ...MINIMAL_CONFIG,
       platforms: ["windsurf"],
     };
-    expect(() => validatePresetConfig(withUnknownPlatform, "starter")).toThrow(
-      /Invalid preset config for starter/i
+    expect(() => validateConfig(withUnknownPlatform, "starter")).toThrow(
+      /Invalid rule config for starter/i
     );
   });
 
@@ -58,27 +57,27 @@ describe("validatePresetConfig", () => {
       license: "MIT",
       tags: ["test"],
     };
-    expect(() => validatePresetConfig(withoutPlatforms, "starter")).toThrow(
-      /Invalid preset config for starter/i
+    expect(() => validateConfig(withoutPlatforms, "starter")).toThrow(
+      /Invalid rule config for starter/i
     );
   });
 
   it("accepts platforms with custom paths", () => {
     const withPath = {
-      ...MINIMAL_PRESET,
+      ...MINIMAL_CONFIG,
       platforms: [{ platform: "opencode" as const, path: "rules" }],
     };
-    expect(validatePresetConfig(withPath, "starter")).toEqual(withPath);
+    expect(validateConfig(withPath, "starter")).toEqual(withPath);
   });
 
   it("accepts mixed platform entries", () => {
     const mixed = {
-      ...MINIMAL_PRESET,
+      ...MINIMAL_CONFIG,
       platforms: [
         "opencode" as const,
         { platform: "claude" as const, path: "my-claude" },
       ],
     };
-    expect(validatePresetConfig(mixed, "starter")).toEqual(mixed);
+    expect(validateConfig(mixed, "starter")).toEqual(mixed);
   });
 });

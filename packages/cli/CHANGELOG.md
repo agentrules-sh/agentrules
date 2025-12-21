@@ -29,10 +29,10 @@
 
   - Centralize platform config with rule types and install paths
   - Add `name` field to rule update input schema
-  - Use `name` consistently in PresetInput and PresetPublishInput
+  - Use `name` consistently in RuleInput and RulePublishInput
   - Allow namespaced slugs (e.g., `username/name`)
   - Rename static bundle directory from "r" to "registry"
-  - Rename api/presets route to api/preset
+  - Rename api/rules route to api/rule
 
   ### CLI
 
@@ -56,7 +56,7 @@
 
   ### Core
 
-  - Make tags required in preset config schema
+  - Make tags required in rule config schema
 
 - Updated dependencies [52e73a6]
   - @agentrules/core@0.0.10
@@ -72,7 +72,7 @@
 
   ### Improvements
 
-  - Change `unpublish` command to use single preset argument format (`my-preset.claude@1.0`)
+  - Change `unpublish` command to use single rule argument format (`my-rule.claude@1.0`)
   - Support `--platform` and `--version` flags for explicit overrides on unpublish
 
   ### Fixes
@@ -84,10 +84,10 @@
 
 ### Patch Changes
 
-- 6f637c6: Support simpler preset structure for in-project presets:
+- 6f637c6: Support simpler rule structure for in-project rules:
 
   - Config can now live inside platform directory (e.g., `.opencode/agentrules.json`)
-  - When config is inside platform dir, preset files are siblings (no `path` needed)
+  - When config is inside platform dir, rule files are siblings (no `path` needed)
   - Standalone layout still supported: config at repo root with `path` field
   - Metadata (README, LICENSE, INSTALL) goes in `.agentrules/` subfolder
 
@@ -125,8 +125,8 @@
 
 - 35cf1ff: Improve init and publish command UX
 
-  - `agentrules init my-preset` now creates directory and initializes in one step
-  - Publish now shows the registry URL where your preset is live
+  - `agentrules init my-rule` now creates directory and initializes in one step
+  - Publish now shows the registry URL where your rule is live
 
 ## 0.0.7
 

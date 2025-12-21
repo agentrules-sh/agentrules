@@ -170,7 +170,7 @@ export function line(width = 40): string {
 
 /**
  * Section header with optional count
- * e.g., "Agents (10)" or "Featured Presets [1]"
+ * e.g., "Agents (10)" or "Featured Rules [1]"
  */
 export function header(
   title: string,
@@ -386,9 +386,9 @@ ${theme.subtitle("The AI Agent Directory")}
 // =============================================================================
 
 /**
- * Format a preset name for display (like the copy button)
+ * Format a rule name for display (like the copy button)
  */
-export function presetName(name: string): string {
+export function ruleName(name: string): string {
   return theme.code(name);
 }
 
@@ -635,7 +635,7 @@ export const ui = {
   banner,
 
   // Special
-  presetName,
+  ruleName,
   fileCounts,
   hint,
   link,

@@ -60,7 +60,7 @@ function Page() {
                   navigator.clipboard.writeText(
                     "npx @agentrules/cli add agentic-dev-starter.opencode"
                   );
-                  toast.success("Copied! Run in terminal to install preset.");
+                  toast.success("Copied! Run in terminal to install rule.");
                 }}
                 type="button"
               >
@@ -80,7 +80,7 @@ function Page() {
                 className="border border-border px-5 py-2 font-medium text-sm no-underline transition-colors hover:bg-accent"
                 href="https://agentrules.directory"
               >
-                Browse Presets
+                Browse Rules
               </a>
             </div>
           </div>
@@ -137,7 +137,7 @@ function Page() {
                 title="Multi-Platform"
               />
               <ValueProp
-                description="Discover presets. Publish your own workflows."
+                description="Discover rules. Publish your own workflows."
                 title="Community"
               />
             </div>
@@ -156,7 +156,7 @@ function Page() {
                 <pre className="font-mono text-[0.8125rem]">
                   <code>
                     <span className="text-[#6a737d] dark:text-[#6a737d]">
-                      # Install a preset
+                      # Install a rule
                     </span>
                     {"\n"}
                     <span className="text-[#6f42c1] dark:text-[#b392f0]">

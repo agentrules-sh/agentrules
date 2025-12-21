@@ -7,8 +7,7 @@
     "install-options",
     "---Publishing---",
     "publishing",
-    "preset-configuration",
-    "sharing-rules",
+    "rule-configuration",
     "---Reference---",
     "cli"
   ]

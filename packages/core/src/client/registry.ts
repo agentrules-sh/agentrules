@@ -1,11 +1,11 @@
 import { API_ENDPOINTS } from "../constants";
-import type { PresetBundle } from "../preset";
 import type { ResolveResponse } from "../resolve";
+import type { RuleBundle } from "../rule";
 
 /**
  * Fetches a bundle from an absolute URL.
  */
-export async function fetchBundle(bundleUrl: string): Promise<PresetBundle> {
+export async function fetchBundle(bundleUrl: string): Promise<RuleBundle> {
   const response = await fetch(bundleUrl);
 
   if (!response.ok) {
@@ -15,7 +15,7 @@ export async function fetchBundle(bundleUrl: string): Promise<PresetBundle> {
   }
 
   try {
-    return (await response.json()) as PresetBundle;
+    return (await response.json()) as RuleBundle;
   } catch (error) {
     throw new Error(`Unable to parse bundle JSON: ${(error as Error).message}`);
   }
@@ -29,7 +29,7 @@ export async function fetchBundle(bundleUrl: string): Promise<PresetBundle> {
  * Resolves a slug to get all versions and platform variants.
  *
  * @param baseUrl - Registry base URL
- * @param slug - Content slug (may contain slashes, e.g., "username/my-preset")
+ * @param slug - Content slug (may contain slashes, e.g., "username/my-rule")
  * @param version - Optional version filter (server may ignore for static registries)
  * @returns Resolved data, or null if not found
  * @throws Error on network/server errors
@@ -78,12 +78,10 @@ export async function resolveSlug(
   const data = (await response.json()) as ResolveResponse;
 
   // Resolve relative bundle URLs to absolute URLs
-  if (data.kind === "preset") {
-    for (const ver of data.versions) {
-      for (const variant of ver.variants) {
-        if ("bundleUrl" in variant) {
-          variant.bundleUrl = new URL(variant.bundleUrl, baseUrl).toString();
-        }
+  for (const ver of data.versions) {
+    for (const variant of ver.variants) {
+      if ("bundleUrl" in variant) {
+        variant.bundleUrl = new URL(variant.bundleUrl, baseUrl).toString();
       }
     }
   }

@@ -1,28 +1,28 @@
 ---
-title: Publishing Presets
+title: Publishing Rules
 description: Share your agentic workflow with the community.
 ---
 
-Presets are bundles of configuration files. To share a single file (one agent, command, or instruction), see [Sharing Rules](/sharing-rules) instead.
+Rules are bundles of configuration files copied into your project.
 
 ## Why Publish?
 
-- **Showcase your setup** — All your presets on your personal profile page
-- **Reach developers** — Put your work in front of developers browsing for presets
-- **Get featured** — Popular presets appear in trending and get more visibility
+- **Showcase your setup** — All your rules on your personal profile page
+- **Reach developers** — Put your work in front of developers browsing for rules
+- **Get featured** — Popular rules appear in trending and get more visibility
 - **Drop your links** — Users see your custom message on install (tips, links, whatever you want)
 
 ## How to Publish
 
-Already have configurations in `.opencode/`, `.claude/`, or another platform directory? Three commands:
+Already have a repo with your rule files? Three commands:
 
 ### 1. Initialize
 
 ```bash
-npx @agentrules/cli init .opencode
+npx @agentrules/cli init
 ```
 
-Run this in (or pass the path to) your platform directory. It creates `agentrules.json` with your preset's metadata.
+Run this in the directory you want to publish (the same directory that will contain `agentrules.json`).
 
 ### 2. Login
 
@@ -35,23 +35,34 @@ Opens a browser for authentication.
 ### 3. Publish
 
 ```bash
-npx @agentrules/cli publish .opencode
+npx @agentrules/cli publish
 ```
 
-Your preset is now live.
+Your rule is now live.
+
+## Quick publish (single file)
+
+If you just want to share one file (like a Claude command), you can publish it directly:
+
+```bash
+npx @agentrules/cli publish .claude/commands/deploy.md --platform claude --type command --name deploy
+```
+
+Use `--dry-run` to preview before publishing.
 
 ## What Gets Published
 
-Everything in your platform directory becomes your preset:
+Everything in your rule directory becomes your rule (except config + metadata):
 
 ```
-.opencode/
-├── agentrules.json    <- Config (not included in preset)
-├── AGENTS.md          <- Included
-├── commands/          <- Included
-│   └── review.md
-└── .agentrules/       <- Metadata for registry (not included)
-    └── README.md
+my-rule/
+├── agentrules.json    <- Config (not included)
+├── README.md          <- Metadata (not bundled)
+├── LICENSE.md         <- Metadata (not bundled)
+├── INSTALL.txt        <- Metadata (not bundled)
+├── AGENTS.md          <- Included (optional)
+└── command/
+    └── review.md      <- Included
 ```
 
 ## Updating
@@ -59,11 +70,11 @@ Everything in your platform directory becomes your preset:
 Made changes? Just publish again:
 
 ```bash
-npx @agentrules/cli publish .opencode
+npx @agentrules/cli publish
 ```
 
-The version auto-increments. Users installing your preset get your latest changes.
+The version auto-increments. Users installing your rule get your latest changes.
 
 ## Learn More
 
-See [Preset Configuration](/preset-configuration) for config fields, metadata files, versioning, and more.
+See [Rule Configuration](/rule-configuration) for config fields, metadata files, versioning, and more.

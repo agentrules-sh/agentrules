@@ -2,21 +2,22 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir, mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
-import { validatePreset } from "./validate";
+import { validateRule } from "./validate";
 
 let testDir: string;
 
 const VALID_CONFIG = {
   $schema: "https://agentrules.directory/schema/agentrules.json",
-  name: "test-preset",
-  title: "Test Preset",
-  description: "A test preset",
+  name: "test-rule",
+  type: "instruction",
+  title: "Test Rule",
+  description: "A test rule",
   license: "MIT",
   tags: ["test"],
   platforms: [{ platform: "opencode", path: "files" }],
 };
 
-describe("validatePreset", () => {
+describe("validateRule", () => {
   beforeEach(async () => {
     testDir = await mkdtemp(join(tmpdir(), "cli-validate-"));
   });
@@ -25,24 +26,24 @@ describe("validatePreset", () => {
     await rm(testDir, { recursive: true, force: true });
   });
 
-  it("validates a correct preset", async () => {
-    const presetDir = join(testDir, "test-preset");
-    await mkdir(presetDir, { recursive: true });
-    await mkdir(join(presetDir, "files"), { recursive: true });
+  it("validates a correct rule", async () => {
+    const ruleDir = join(testDir, "test-rule");
+    await mkdir(ruleDir, { recursive: true });
+    await mkdir(join(ruleDir, "files"), { recursive: true });
     await writeFile(
-      join(presetDir, "agentrules.json"),
+      join(ruleDir, "agentrules.json"),
       JSON.stringify(VALID_CONFIG)
     );
 
-    const result = await validatePreset({ path: presetDir });
+    const result = await validateRule({ path: ruleDir });
 
     expect(result.valid).toBeTrue();
     expect(result.errors).toHaveLength(0);
-    expect(result.preset?.name).toBe("test-preset");
+    expect(result.rule?.name).toBe("test-rule");
   });
 
   it("reports error for missing config file", async () => {
-    const result = await validatePreset({
+    const result = await validateRule({
       path: join(testDir, "nonexistent"),
     });
 
@@ -51,49 +52,49 @@ describe("validatePreset", () => {
   });
 
   it("reports error for invalid JSON", async () => {
-    const presetDir = join(testDir, "bad-json");
-    await mkdir(presetDir, { recursive: true });
-    await writeFile(join(presetDir, "agentrules.json"), "{ invalid json }");
+    const ruleDir = join(testDir, "bad-json");
+    await mkdir(ruleDir, { recursive: true });
+    await writeFile(join(ruleDir, "agentrules.json"), "{ invalid json }");
 
-    const result = await validatePreset({ path: presetDir });
+    const result = await validateRule({ path: ruleDir });
 
     expect(result.valid).toBeFalse();
     expect(result.errors[0]).toContain("Invalid JSON");
   });
 
   it("reports error for missing required fields", async () => {
-    const presetDir = join(testDir, "missing-fields");
-    await mkdir(presetDir, { recursive: true });
+    const ruleDir = join(testDir, "missing-fields");
+    await mkdir(ruleDir, { recursive: true });
     await writeFile(
-      join(presetDir, "agentrules.json"),
+      join(ruleDir, "agentrules.json"),
       JSON.stringify({ name: "test" })
     );
 
-    const result = await validatePreset({ path: presetDir });
+    const result = await validateRule({ path: ruleDir });
 
     expect(result.valid).toBeFalse();
     expect(result.errors.length).toBeGreaterThan(0);
   });
 
-  it("reports error for missing files directory", async () => {
-    const presetDir = join(testDir, "missing-files-dir");
-    await mkdir(presetDir, { recursive: true });
+  it("does not check filesystem paths", async () => {
+    const ruleDir = join(testDir, "missing-files-dir");
+    await mkdir(ruleDir, { recursive: true });
     await writeFile(
-      join(presetDir, "agentrules.json"),
+      join(ruleDir, "agentrules.json"),
       JSON.stringify(VALID_CONFIG)
     );
     // Don't create the files directory
 
-    const result = await validatePreset({ path: presetDir });
+    const result = await validateRule({ path: ruleDir });
 
-    expect(result.valid).toBeFalse();
-    expect(result.errors.some((e) => e.includes("not found"))).toBeTrue();
+    expect(result.valid).toBeTrue();
+    expect(result.errors).toHaveLength(0);
   });
 
   it("requires at least one tag", async () => {
-    const presetDir = join(testDir, "no-tags");
-    await mkdir(presetDir, { recursive: true });
-    await mkdir(join(presetDir, "files"), { recursive: true });
+    const ruleDir = join(testDir, "no-tags");
+    await mkdir(ruleDir, { recursive: true });
+    await mkdir(join(ruleDir, "files"), { recursive: true });
 
     const configWithoutTags = {
       name: "no-tags",
@@ -103,20 +104,20 @@ describe("validatePreset", () => {
       platforms: [{ platform: "opencode", path: "files" }],
     };
     await writeFile(
-      join(presetDir, "agentrules.json"),
+      join(ruleDir, "agentrules.json"),
       JSON.stringify(configWithoutTags)
     );
 
-    const result = await validatePreset({ path: presetDir });
+    const result = await validateRule({ path: ruleDir });
 
     expect(result.valid).toBeFalse();
     expect(result.errors.some((e) => e.includes("tag"))).toBeTrue();
   });
 
   it("reports error for missing license", async () => {
-    const presetDir = join(testDir, "no-license");
-    await mkdir(presetDir, { recursive: true });
-    await mkdir(join(presetDir, "files"), { recursive: true });
+    const ruleDir = join(testDir, "no-license");
+    await mkdir(ruleDir, { recursive: true });
+    await mkdir(join(ruleDir, "files"), { recursive: true });
 
     const configWithoutLicense = {
       name: "no-license",
@@ -125,38 +126,39 @@ describe("validatePreset", () => {
       platforms: [{ platform: "opencode", path: "files" }],
     };
     await writeFile(
-      join(presetDir, "agentrules.json"),
+      join(ruleDir, "agentrules.json"),
       JSON.stringify(configWithoutLicense)
     );
 
-    const result = await validatePreset({ path: presetDir });
+    const result = await validateRule({ path: ruleDir });
 
     expect(result.valid).toBeFalse();
     expect(result.errors.length).toBeGreaterThan(0);
   });
 
   it("accepts direct path to agentrules.json", async () => {
-    const presetDir = join(testDir, "direct-path");
-    await mkdir(presetDir, { recursive: true });
-    await mkdir(join(presetDir, "files"), { recursive: true });
+    const ruleDir = join(testDir, "direct-path");
+    await mkdir(ruleDir, { recursive: true });
+    await mkdir(join(ruleDir, "files"), { recursive: true });
     await writeFile(
-      join(presetDir, "agentrules.json"),
+      join(ruleDir, "agentrules.json"),
       JSON.stringify(VALID_CONFIG)
     );
 
-    const result = await validatePreset({
-      path: join(presetDir, "agentrules.json"),
+    const result = await validateRule({
+      path: join(ruleDir, "agentrules.json"),
     });
 
     expect(result.valid).toBeTrue();
   });
 
-  describe("in-project preset (config inside platform dir)", () => {
+  describe("in-project rule (config inside platform dir)", () => {
     const IN_PROJECT_CONFIG = {
       $schema: "https://agentrules.directory/schema/agentrules.json",
-      name: "test-preset",
-      title: "Test Preset",
-      description: "A test preset",
+      name: "test-rule",
+      type: "instruction",
+      title: "Test Rule",
+      description: "A test rule",
       license: "MIT",
       tags: ["test"],
       platforms: ["opencode"],
@@ -172,10 +174,10 @@ describe("validatePreset", () => {
         JSON.stringify(IN_PROJECT_CONFIG)
       );
 
-      const result = await validatePreset({ path: platformDir });
+      const result = await validateRule({ path: platformDir });
 
       expect(result.valid).toBeTrue();
-      expect(result.preset?.name).toBe("test-preset");
+      expect(result.rule?.name).toBe("test-rule");
     });
 
     it("validates .claude directory", async () => {
@@ -186,12 +188,12 @@ describe("validatePreset", () => {
         JSON.stringify({ ...IN_PROJECT_CONFIG, platforms: ["claude"] })
       );
 
-      const result = await validatePreset({ path: platformDir });
+      const result = await validateRule({ path: platformDir });
 
       expect(result.valid).toBeTrue();
     });
 
-    it("does not require files directory for in-project preset", async () => {
+    it("does not require files directory for in-project rule", async () => {
       // In-project mode doesn't need a separate files directory
       const platformDir = join(testDir, ".opencode");
       await mkdir(platformDir, { recursive: true });
@@ -201,7 +203,7 @@ describe("validatePreset", () => {
       );
       // No files directory created - that's fine for in-project
 
-      const result = await validatePreset({ path: platformDir });
+      const result = await validateRule({ path: platformDir });
 
       expect(result.valid).toBeTrue();
     });

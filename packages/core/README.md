@@ -2,7 +2,7 @@
 
 Shared types and utilities for the AGENT_RULES ecosystem.
 
-**This package is for developers building custom registries or alternative clients.** If you just want to install or publish presets, use the [CLI](../cli) instead.
+**This package is for developers building custom registries or alternative clients.** If you just want to install or publish rules, use the [CLI](../cli) instead.
 
 ## Installation
 
@@ -14,9 +14,9 @@ npm install @agentrules/core
 
 | Module | Description |
 |--------|-------------|
-| **Types & Schemas** | TypeScript types and Zod schemas for presets, bundles, configs |
-| **Registry Builder** | Build registry artifacts from preset inputs |
-| **Registry Client** | Fetch and resolve presets from registries |
+| **Types & Schemas** | TypeScript types and Zod schemas for rules, bundles, configs |
+| **Registry Builder** | Build registry artifacts from rule inputs |
+| **Registry Client** | Fetch and resolve rules from registries |
 | **Bundle Utilities** | Encode/decode bundles, verify checksums |
 | **Platform Config** | Platform IDs and directory paths |
 
@@ -24,35 +24,35 @@ This package contains **pure functions with no environment assumptions**. It doe
 
 ## Usage
 
-### Validating Preset Config
+### Validating Rule Config
 
 ```ts
-import { presetConfigSchema, validatePresetConfig } from "@agentrules/core";
+import { ruleConfigSchema, validateRuleConfig } from "@agentrules/core";
 
 // Using Zod schema directly
-const result = presetConfigSchema.safeParse(jsonData);
+const result = ruleConfigSchema.safeParse(jsonData);
 if (!result.success) {
   console.error(result.error.issues);
 }
 
 // Or use the helper (throws on error)
-const config = validatePresetConfig(jsonData, "my-preset");
+const config = validateRuleConfig(jsonData, "my-rule");
 ```
 
 ### Building Registry Artifacts
 
 ```ts
-import { buildPresetRegistry } from "@agentrules/core";
+import { buildRuleRegistry } from "@agentrules/core";
 
-const result = await buildPresetRegistry({
-  presets: [
+const result = await buildRuleRegistry({
+  rules: [
     {
-      slug: "my-preset",
+      slug: "my-rule",
       config: {
-        name: "my-preset",
-        title: "My Preset",
+        name: "my-rule",
+        title: "My Rule",
         version: 1,
-        description: "A helpful preset",
+        description: "A helpful rule",
         tags: ["starter"],
         license: "MIT",
         platforms: ["opencode", "claude"], // or use `platform: "opencode"` for single platform
@@ -65,20 +65,20 @@ const result = await buildPresetRegistry({
   ],
 });
 
-// result.entries  → Preset[] for registry listing
-// result.index    → PresetIndex for lookups
-// result.bundles  → PresetBundle[] with encoded files
+// result.entries  → Rule[] for registry listing
+// result.index    → RuleIndex for lookups
+// result.bundles  → RuleBundle[] with encoded files
 ```
 
 ### Fetching from a Registry
 
 ```ts
-import { resolvePreset, fetchBundle } from "@agentrules/core";
+import { resolveRule, fetchBundle } from "@agentrules/core";
 
-// Resolve a preset (gets metadata and bundle URL)
-const { preset, bundleUrl } = await resolvePreset(
+// Resolve a rule (gets metadata and bundle URL)
+const { rule, bundleUrl } = await resolveRule(
   "https://agentrules.directory/",
-  "my-preset",
+  "my-rule",
   "opencode"
 );
 
@@ -129,16 +129,16 @@ Key types exported:
 
 ```ts
 import type {
-  // Preset configuration (agentrules.json)
-  PresetConfig,
+  // Rule configuration (agentrules.json)
+  RuleConfig,
   
   // What clients send to publish
-  PresetPublishInput,
+  RulePublishInput,
   
   // What registries store and return
-  PresetBundle,
-  Preset,
-  PresetIndex,
+  RuleBundle,
+  Rule,
+  RuleIndex,
   
   // Bundle file structure
   BundledFile,
@@ -155,9 +155,9 @@ Zod schemas for validation:
 
 ```ts
 import {
-  presetConfigSchema,
-  presetBundleSchema,
-  presetPublishInputSchema,
+  ruleConfigSchema,
+  ruleBundleSchema,
+  rulePublishInputSchema,
   platformIdSchema,
   nameSchema,
   titleSchema,

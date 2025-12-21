@@ -3,7 +3,6 @@ import {
   getInstallPath,
   getTypeConfig,
   getValidTypes,
-  isDirectoryType,
   isValidType,
   PLATFORM_IDS,
   PLATFORMS,
@@ -73,72 +72,129 @@ describe("getTypeConfig", () => {
     // Codex command has no project support
     const codexConfig = getTypeConfig("codex", "command");
     expect(codexConfig?.project).toBeNull();
-    expect(codexConfig?.global).toBe("{globalDir}/prompts/{name}.md");
-  });
-});
-
-describe("isDirectoryType", () => {
-  it("returns true for skill type", () => {
-    expect(isDirectoryType("claude", "skill")).toBe(true);
-  });
-
-  it("returns false for single-file types", () => {
-    expect(isDirectoryType("claude", "rule")).toBe(false);
-    expect(isDirectoryType("opencode", "instruction")).toBe(false);
-    expect(isDirectoryType("cursor", "rule")).toBe(false);
-  });
-
-  it("returns false for invalid type", () => {
-    expect(isDirectoryType("opencode", "invalid")).toBe(false);
+    expect(codexConfig?.global).toBe("{platformDir}/prompts/{name}.md");
   });
 });
 
 describe("getInstallPath", () => {
   it("replaces {name} and {platformDir} placeholders", () => {
-    expect(getInstallPath("opencode", "agent", "my-agent", "project")).toBe(
-      ".opencode/agent/my-agent.md"
-    );
-    expect(getInstallPath("cursor", "rule", "my-rule", "project")).toBe(
-      ".cursor/rules/my-rule.mdc"
-    );
-    expect(getInstallPath("claude", "rule", "my-rule", "project")).toBe(
-      ".claude/rules/my-rule.md"
-    );
+    expect(
+      getInstallPath({
+        platform: "opencode",
+        type: "agent",
+        name: "my-agent",
+        scope: "project",
+      })
+    ).toBe(".opencode/agent/my-agent.md");
+
+    expect(
+      getInstallPath({
+        platform: "cursor",
+        type: "rule",
+        name: "my-rule",
+        scope: "project",
+      })
+    ).toBe(".cursor/rules/my-rule.mdc");
+
+    expect(
+      getInstallPath({
+        platform: "claude",
+        type: "rule",
+        name: "my-rule",
+        scope: "project",
+      })
+    ).toBe(".claude/rules/my-rule.md");
   });
 
-  it("replaces {globalDir} placeholder", () => {
-    expect(getInstallPath("opencode", "agent", "my-agent", "global")).toBe(
-      "~/.config/opencode/agent/my-agent.md"
-    );
-    expect(getInstallPath("claude", "rule", "my-rule", "global")).toBe(
-      "~/.claude/rules/my-rule.md"
-    );
+  it("uses {platformDir} placeholder for global scope", () => {
+    expect(
+      getInstallPath({
+        platform: "opencode",
+        type: "agent",
+        name: "my-agent",
+        scope: "global",
+      })
+    ).toBe("~/.config/opencode/agent/my-agent.md");
+
+    expect(
+      getInstallPath({
+        platform: "claude",
+        type: "rule",
+        name: "my-rule",
+        scope: "global",
+      })
+    ).toBe("~/.claude/rules/my-rule.md");
   });
 
   it("returns path without {name} for instruction type", () => {
-    expect(getInstallPath("claude", "instruction", "ignored", "project")).toBe(
-      "CLAUDE.md"
-    );
+    expect(
+      getInstallPath({
+        platform: "claude",
+        type: "instruction",
+        scope: "project",
+      })
+    ).toBe("CLAUDE.md");
+  });
+
+  it("throws when {name} is required but missing", () => {
+    expect(() =>
+      getInstallPath({
+        platform: "claude",
+        type: "rule",
+        scope: "project",
+      })
+    ).toThrow("Missing name for install path");
   });
 
   it("returns null for invalid type", () => {
-    expect(getInstallPath("opencode", "invalid", "name", "project")).toBeNull();
+    expect(
+      getInstallPath({
+        platform: "opencode",
+        type: "invalid",
+        name: "name",
+        scope: "project",
+      })
+    ).toBeNull();
   });
 
   it("returns null for unsupported location", () => {
-    expect(getInstallPath("cursor", "rule", "my-rule", "global")).toBeNull();
-    expect(getInstallPath("codex", "command", "my-cmd", "project")).toBeNull();
+    expect(
+      getInstallPath({
+        platform: "cursor",
+        type: "rule",
+        name: "my-rule",
+        scope: "global",
+      })
+    ).toBeNull();
+
+    expect(
+      getInstallPath({
+        platform: "codex",
+        type: "command",
+        name: "my-cmd",
+        scope: "project",
+      })
+    ).toBeNull();
   });
 
   it("defaults to project scope", () => {
-    expect(getInstallPath("opencode", "agent", "my-agent")).toBe(
-      ".opencode/agent/my-agent.md"
-    );
+    expect(
+      getInstallPath({
+        platform: "opencode",
+        type: "agent",
+        name: "my-agent",
+      })
+    ).toBe(".opencode/agent/my-agent.md");
   });
 
-  it("returns path with trailing slash for directory types", () => {
-    expect(getInstallPath("claude", "skill", "my-skill", "project")).toBe(
-      ".claude/skills/my-skill/"
-    );
+  it("returns skill main file path", () => {
+    expect(
+      getInstallPath({
+        platform: "claude",
+        type: "skill",
+        name: "my-skill",
+        scope: "project",
+      })
+    ).toBe(".claude/skills/my-skill/SKILL.md");
   });
 });
