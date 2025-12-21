@@ -1,14 +1,13 @@
 import {
   COMMON_LICENSES,
-  descriptionSchema,
   isSupportedPlatform,
   licenseSchema,
   nameSchema,
   PLATFORM_IDS,
   type PlatformId,
   RULE_CONFIG_FILENAME,
+  requiredDescriptionSchema,
   tagsSchema,
-  titleSchema,
 } from "@agentrules/core";
 import * as p from "@clack/prompts";
 import { join } from "path";
@@ -132,22 +131,19 @@ export async function initInteractive(
         const defaultTitle =
           titleOption ?? toTitleCase(results.name ?? defaultName);
         return p.text({
-          message: "Display name",
-          placeholder: defaultTitle,
+          message: "Title",
           defaultValue: defaultTitle,
-          validate: check(titleSchema),
+          placeholder: defaultTitle,
         });
       },
 
-      description: ({ results }) => {
-        const defaultDescription = descriptionOption ?? `${results.title} rule`;
-        return p.text({
+      description: () =>
+        p.text({
           message: "Description",
-          placeholder: defaultDescription,
-          defaultValue: defaultDescription,
-          validate: check(descriptionSchema),
-        });
-      },
+          placeholder: "Describe what this rule does...",
+          defaultValue: descriptionOption,
+          validate: check(requiredDescriptionSchema),
+        }),
 
       tags: () =>
         p.text({

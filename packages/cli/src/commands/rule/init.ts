@@ -67,7 +67,7 @@ export async function initRule(options: InitOptions): Promise<InitResult> {
   // Validate/normalize inputs
   const name = normalizeName(options.name ?? DEFAULT_RULE_NAME);
   const title = options.title ?? toTitleCase(name);
-  const description = options.description ?? `${title} rule`;
+  const description = options.description ?? "";
   const license = options.license ?? "MIT";
 
   log.debug(`Rule name: ${name}, platforms: ${platforms.join(", ")}`);

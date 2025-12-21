@@ -21,6 +21,7 @@ import {
   type RuleInput,
   type RulePublishInput,
   type RuleType,
+  requiredDescriptionSchema,
   supportsInstallPath,
   tagsSchema,
   validateRule as validateRuleConfig,
@@ -565,9 +566,7 @@ async function resolveSingleFileInputs(
       const input = await p.text({
         message: "Description",
         placeholder: "Describe what this rule does...",
-        validate: (value) => {
-          if (!value?.trim()) return "Description is required";
-        },
+        validate: check(requiredDescriptionSchema),
       });
 
       if (p.isCancel(input)) {
