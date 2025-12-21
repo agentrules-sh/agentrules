@@ -32,9 +32,9 @@ describe("buildRegistry", () => {
       ],
     });
 
-    expect(result.items).toHaveLength(1);
+    expect(result.rules).toHaveLength(1);
 
-    const item = result.items[0];
+    const item = result.rules[0];
     expect(item?.slug).toBe("starter");
     expect(item?.name).toBe("starter");
     expect(item?.versions).toHaveLength(1);
@@ -86,7 +86,7 @@ describe("buildRegistry", () => {
       ],
     });
 
-    const item = result.items[0];
+    const item = result.rules[0];
     const version = item?.versions[0];
     const variant = version?.variants[0];
 
@@ -126,9 +126,9 @@ describe("buildRegistry", () => {
     });
 
     // Should produce one item with two variants
-    expect(result.items).toHaveLength(1);
+    expect(result.rules).toHaveLength(1);
 
-    const item = result.items[0];
+    const item = result.rules[0];
     expect(item?.slug).toBe("multi-platform");
     expect(item?.versions).toHaveLength(1);
 
@@ -186,11 +186,11 @@ describe("buildRegistry", () => {
     });
 
     // Each rule is separate - no grouping by name
-    expect(result.items).toHaveLength(2);
+    expect(result.rules).toHaveLength(2);
     expect(result.bundles).toHaveLength(2);
 
-    expect(result.items[0]?.slug).toBe("rule-a");
-    expect(result.items[1]?.slug).toBe("rule-b");
+    expect(result.rules[0]?.slug).toBe("rule-a");
+    expect(result.rules[1]?.slug).toBe("rule-b");
   });
 
   it("rejects binary files", async () => {

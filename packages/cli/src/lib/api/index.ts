@@ -14,9 +14,9 @@
  * - GET  {session} - Get current user/session info
  *
  * ### Rules (API_ENDPOINTS.rules)
+ * - GET    {slug}?version=X - Resolve rule by slug
  * - POST   {base} - Publish a rule
  * - DELETE {unpublish(slug, version)} - Unpublish a rule version
- * Note: GET is handled by the unified items endpoint (API_ENDPOINTS.items)
  */
 
 // Re-export API_ENDPOINTS from core for convenience

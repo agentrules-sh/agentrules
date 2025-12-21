@@ -484,26 +484,26 @@ registry
 
       if (result.validateOnly) {
         log.success(
-          `Validated ${result.rules} rule${
-            result.rules === 1 ? "" : "s"
-          } ${ui.muted(`→ ${result.items} items`)}`
+          `Validated ${result.ruleInputs} rule${
+            result.ruleInputs === 1 ? "" : "s"
+          } ${ui.muted(`→ ${result.rules} resolved`)}`
         );
         return;
       }
 
       if (!result.outputDir) {
         log.info(
-          `Found ${result.rules} rule${result.rules === 1 ? "" : "s"} → ${
-            result.items
-          } items`
+          `Found ${result.ruleInputs} rule${result.ruleInputs === 1 ? "" : "s"} → ${
+            result.rules
+          } resolved`
         );
         log.print(ui.hint(`Use ${ui.command("--out <path>")} to write files`));
         return;
       }
 
       log.success(
-        `Built ${result.rules} rule${result.rules === 1 ? "" : "s"} ${ui.muted(
-          `→ ${result.items} items, ${result.bundles} bundles`
+        `Built ${result.ruleInputs} rule${result.ruleInputs === 1 ? "" : "s"} ${ui.muted(
+          `→ ${result.rules} resolved, ${result.bundles} bundles`
         )}`
       );
       log.print(ui.keyValue("Output", ui.path(result.outputDir)));

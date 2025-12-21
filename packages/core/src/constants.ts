@@ -27,6 +27,8 @@ export const API_ENDPOINTS = {
   rules: {
     /** Base path for rule operations (POST to publish) */
     base: `${API_PATH}/rules`,
+    /** Get rule by slug (GET) */
+    get: (slug: string) => `${API_PATH}/rules/${slug}`,
     /** Unpublish rule version (DELETE) */
     unpublish: (slug: string, version: string) =>
       `${API_PATH}/rules/${slug}/${version}`,
@@ -39,14 +41,5 @@ export const API_ENDPOINTS = {
     deviceCode: `${API_PATH}/auth/device/code`,
     /** Device token exchange */
     deviceToken: `${API_PATH}/auth/device/token`,
-  },
-  /** Items endpoint - unified content retrieval */
-  items: {
-    /**
-     * Get unified content for a slug (defaults to latest).
-     * Optional version filtering via query param (static registries may ignore).
-     * @param slug - Content slug (may contain slashes, e.g., "username/my-rule")
-     */
-    get: (slug: string) => `${API_PATH}/items/${slug}`,
   },
 } as const;

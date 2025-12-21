@@ -445,7 +445,7 @@ describe("add", () => {
     mockFetchSequence([
       {
         expectUrl: new URL(
-          API_ENDPOINTS.items.get(RULE_SLUG),
+          API_ENDPOINTS.rules.get(RULE_SLUG),
           DEFAULT_BASE_URL
         ).toString(),
         status: 404,
@@ -494,7 +494,7 @@ function mockResolveRequests(
   const steps: MockStep[] = [
     {
       expectUrl: new URL(
-        API_ENDPOINTS.items.get(fixture.resolveResponse.slug),
+        API_ENDPOINTS.rules.get(fixture.resolveResponse.slug),
         baseUrl
       ).toString(),
       body: fixture.resolveResponse,

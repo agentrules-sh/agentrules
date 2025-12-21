@@ -39,7 +39,7 @@ export async function resolveSlug(
   slug: string,
   version?: string
 ): Promise<ResolveResponse | null> {
-  const url = new URL(API_ENDPOINTS.items.get(slug), baseUrl);
+  const url = new URL(API_ENDPOINTS.rules.get(slug), baseUrl);
   if (version) {
     url.searchParams.set("version", version);
   }

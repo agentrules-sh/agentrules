@@ -94,8 +94,8 @@ describe("buildRegistry", () => {
       out: outputDir,
     });
 
+    expect(result.ruleInputs).toBe(1);
     expect(result.rules).toBe(1);
-    expect(result.items).toBe(1);
     expect(result.bundles).toBe(1);
     expect(result.outputDir).toBe(outputDir);
 
@@ -110,17 +110,17 @@ describe("buildRegistry", () => {
     const bundle = JSON.parse(bundleContent);
     expect(bundle.files).toHaveLength(2);
 
-    // Check API item file exists (one file per slug with all versions/variants)
-    const apiItemContent = await readFile(
-      join(outputDir, API_ENDPOINTS.items.get("test-rule")),
+    // Check API rule file exists (one file per slug with all versions/variants)
+    const apiRuleContent = await readFile(
+      join(outputDir, API_ENDPOINTS.rules.get("test-rule")),
       "utf8"
     );
-    const apiItem = JSON.parse(apiItemContent);
-    expect(apiItem.slug).toBe("test-rule");
-    expect(apiItem.versions).toHaveLength(1);
-    expect(apiItem.versions[0].variants).toHaveLength(1);
+    const apiRule = JSON.parse(apiRuleContent);
+    expect(apiRule.slug).toBe("test-rule");
+    expect(apiRule.versions).toHaveLength(1);
+    expect(apiRule.versions[0].variants).toHaveLength(1);
     // bundleUrl is on the variant
-    expect(apiItem.versions[0].variants[0].bundleUrl).toBe(
+    expect(apiRule.versions[0].variants[0].bundleUrl).toBe(
       `${STATIC_BUNDLE_DIR}/test-rule/opencode/1.0`
     );
 
@@ -133,8 +133,8 @@ describe("buildRegistry", () => {
     expect(registry.$schema).toBe(
       "https://agentrules.directory/schema/registry.json"
     );
-    expect(registry.items).toHaveLength(1);
-    expect(registry.items[0].slug).toBe("test-rule");
+    expect(registry.rules).toHaveLength(1);
+    expect(registry.rules[0].slug).toBe("test-rule");
   });
 
   it("validates without writing when --validate-only", async () => {
@@ -205,7 +205,7 @@ describe("buildRegistry", () => {
     });
 
     const content = await readFile(
-      join(outputDir, API_ENDPOINTS.items.get("test-rule")),
+      join(outputDir, API_ENDPOINTS.rules.get("test-rule")),
       "utf8"
     );
     expect(content).not.toContain("\n  ");
@@ -223,7 +223,7 @@ describe("buildRegistry", () => {
     });
 
     const content = await readFile(
-      join(outputDir, API_ENDPOINTS.items.get("test-rule")),
+      join(outputDir, API_ENDPOINTS.rules.get("test-rule")),
       "utf8"
     );
     const item = JSON.parse(content);
@@ -245,7 +245,7 @@ describe("buildRegistry", () => {
     });
 
     const content = await readFile(
-      join(outputDir, API_ENDPOINTS.items.get("test-rule")),
+      join(outputDir, API_ENDPOINTS.rules.get("test-rule")),
       "utf8"
     );
     const item = JSON.parse(content);
@@ -276,8 +276,8 @@ describe("buildRegistry", () => {
       out: outputDir,
     });
 
+    expect(result.ruleInputs).toBe(2);
     expect(result.rules).toBe(2);
-    expect(result.items).toBe(2);
 
     // Verify registry.json contains all rules
     const registryContent = await readFile(
@@ -285,7 +285,7 @@ describe("buildRegistry", () => {
       "utf8"
     );
     const registry = JSON.parse(registryContent);
-    expect(registry.items).toHaveLength(2);
+    expect(registry.rules).toHaveLength(2);
   });
 
   describe("README.md support", () => {

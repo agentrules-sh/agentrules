@@ -88,7 +88,7 @@ const rules: RuleInput[] = [
 
 const result = await buildRegistry({ rules, bundleBase: "https://example.com" });
 
-// result.items   → ResolvedRule[] (metadata + bundle URLs)
+// result.rules   → ResolvedRule[] (metadata + bundle URLs)
 // result.bundles → RuleBundle[] (per-platform bundles)
 ```
 

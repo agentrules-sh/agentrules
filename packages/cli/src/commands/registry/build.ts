@@ -21,8 +21,10 @@ export type BuildOptions = {
 };
 
 export type BuildResult = {
+  /** Number of rule directories found */
+  ruleInputs: number;
+  /** Number of resolved rules in output */
   rules: number;
-  items: number;
   bundles: number;
   outputDir: string | null;
   validateOnly: boolean;
@@ -63,8 +65,8 @@ export async function buildRegistry(
 
   if (validateOnly || !outputDir) {
     return {
-      rules: rules.length,
-      items: result.items.length,
+      ruleInputs: rules.length,
+      rules: result.rules.length,
       bundles: result.bundles.length,
       outputDir: null,
       validateOnly,
@@ -95,21 +97,21 @@ export async function buildRegistry(
     await writeFile(join(bundleDir, LATEST_VERSION), bundleJson);
   }
 
-  // Write items to api/items/{slug} (one file per slug with all versions/variants)
-  for (const item of result.items) {
-    const itemJson = JSON.stringify(item, null, indent);
+  // Write rules to api/rules/{slug} (one file per slug with all versions/variants)
+  for (const rule of result.rules) {
+    const ruleJson = JSON.stringify(rule, null, indent);
 
-    // Write item file
-    const itemPath = join(outputDir, API_ENDPOINTS.items.get(item.slug));
-    await mkdir(join(itemPath, ".."), { recursive: true });
-    await writeFile(itemPath, itemJson);
+    // Write rule file
+    const rulePath = join(outputDir, API_ENDPOINTS.rules.get(rule.slug));
+    await mkdir(join(rulePath, ".."), { recursive: true });
+    await writeFile(rulePath, ruleJson);
   }
 
-  // Write registry.json (array of all items wrapped in schema-compliant format)
+  // Write registry.json
   const registryJson = JSON.stringify(
     {
       $schema: "https://agentrules.directory/schema/registry.json",
-      items: result.items,
+      rules: result.rules,
     },
     null,
     indent
@@ -117,8 +119,8 @@ export async function buildRegistry(
   await writeFile(join(outputDir, "registry.json"), registryJson);
 
   return {
-    rules: rules.length,
-    items: result.items.length,
+    ruleInputs: rules.length,
+    rules: result.rules.length,
     bundles: result.bundles.length,
     outputDir,
     validateOnly: false,

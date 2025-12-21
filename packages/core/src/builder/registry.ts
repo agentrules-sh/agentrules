@@ -156,7 +156,7 @@ export type BuildRegistryOptions = {
 
 export type BuildRegistryResult = {
   /** Resolved rules in the unified format (one per slug with all versions/variants) */
-  items: ResolvedRule[];
+  rules: ResolvedRule[];
   /** Bundles for each platform variant (used to write individual bundle files) */
   bundles: RuleBundle[];
 };
@@ -172,7 +172,7 @@ export async function buildRegistry(
   options: BuildRegistryOptions
 ): Promise<BuildRegistryResult> {
   const bundleBase = normalizeBundleBase(options.bundleBase);
-  const items: ResolvedRule[] = [];
+  const rules: ResolvedRule[] = [];
   const bundles: RuleBundle[] = [];
 
   for (const ruleInput of options.rules) {
@@ -197,7 +197,7 @@ export async function buildRegistry(
     ruleVariants.sort((a, b) => a.platform.localeCompare(b.platform));
 
     // Create ResolvedRule (one version with all variants)
-    const item: ResolvedRule = {
+    const rule: ResolvedRule = {
       slug,
       name: publishInput.name,
       ...(publishInput.type && { type: publishInput.type }),
@@ -215,7 +215,7 @@ export async function buildRegistry(
       ],
     };
 
-    items.push(item);
+    rules.push(rule);
 
     // Create bundles for each platform variant
     for (const variant of publishInput.variants) {
@@ -239,8 +239,8 @@ export async function buildRegistry(
     }
   }
 
-  // Sort items by slug
-  items.sort((a, b) => a.slug.localeCompare(b.slug));
+  // Sort rules by slug
+  rules.sort((a, b) => a.slug.localeCompare(b.slug));
 
   // Sort bundles by slug and platform
   bundles.sort((a, b) => {
@@ -250,7 +250,7 @@ export async function buildRegistry(
     return a.slug.localeCompare(b.slug);
   });
 
-  return { items, bundles };
+  return { rules, bundles };
 }
 
 // =============================================================================
