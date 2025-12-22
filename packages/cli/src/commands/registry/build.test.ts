@@ -103,7 +103,7 @@ describe("buildRegistry", () => {
     const bundleContent = await readFile(
       join(
         outputDir,
-        `${STATIC_BUNDLE_DIR}/test-rule/opencode/${LATEST_VERSION}`
+        `${STATIC_BUNDLE_DIR}/test-rule/${LATEST_VERSION}/opencode.json`
       ),
       "utf8"
     );
@@ -121,7 +121,7 @@ describe("buildRegistry", () => {
     expect(apiRule.versions[0].variants).toHaveLength(1);
     // bundleUrl is on the variant
     expect(apiRule.versions[0].variants[0].bundleUrl).toBe(
-      `${STATIC_BUNDLE_DIR}/test-rule/opencode/1.0`
+      `${STATIC_BUNDLE_DIR}/test-rule/1.0/opencode.json`
     );
 
     // Check registry.json exists with schema and items array
@@ -227,9 +227,9 @@ describe("buildRegistry", () => {
       "utf8"
     );
     const item = JSON.parse(content);
-    // bundleBase + STATIC_BUNDLE_DIR + slug/platform/version
+    // bundleBase + STATIC_BUNDLE_DIR + slug/version/platform.json
     expect(item.versions[0].variants[0].bundleUrl).toBe(
-      `my-registry/${STATIC_BUNDLE_DIR}/test-rule/opencode/1.0`
+      `my-registry/${STATIC_BUNDLE_DIR}/test-rule/1.0/opencode.json`
     );
   });
 
@@ -249,9 +249,9 @@ describe("buildRegistry", () => {
       "utf8"
     );
     const item = JSON.parse(content);
-    // bundleBase + STATIC_BUNDLE_DIR + slug/platform/version
+    // bundleBase + STATIC_BUNDLE_DIR + slug/version/platform.json
     expect(item.versions[0].variants[0].bundleUrl).toBe(
-      `https://cdn.example.com/bundles/${STATIC_BUNDLE_DIR}/test-rule/opencode/1.0`
+      `https://cdn.example.com/bundles/${STATIC_BUNDLE_DIR}/test-rule/1.0/opencode.json`
     );
   });
 
@@ -308,7 +308,7 @@ describe("buildRegistry", () => {
       const bundleContent = await readFile(
         join(
           outputDir,
-          `${STATIC_BUNDLE_DIR}/test-rule/opencode/${LATEST_VERSION}`
+          `${STATIC_BUNDLE_DIR}/test-rule/${LATEST_VERSION}/opencode.json`
         ),
         "utf8"
       );
@@ -329,7 +329,7 @@ describe("buildRegistry", () => {
       const bundleContent = await readFile(
         join(
           outputDir,
-          `${STATIC_BUNDLE_DIR}/test-rule/opencode/${LATEST_VERSION}`
+          `${STATIC_BUNDLE_DIR}/test-rule/${LATEST_VERSION}/opencode.json`
         ),
         "utf8"
       );
@@ -358,7 +358,7 @@ describe("buildRegistry", () => {
       const bundleContent = await readFile(
         join(
           outputDir,
-          `${STATIC_BUNDLE_DIR}/test-rule/opencode/${LATEST_VERSION}`
+          `${STATIC_BUNDLE_DIR}/test-rule/${LATEST_VERSION}/opencode.json`
         ),
         "utf8"
       );
@@ -379,7 +379,7 @@ describe("buildRegistry", () => {
       const bundleContent = await readFile(
         join(
           outputDir,
-          `${STATIC_BUNDLE_DIR}/test-rule/opencode/${LATEST_VERSION}`
+          `${STATIC_BUNDLE_DIR}/test-rule/${LATEST_VERSION}/opencode.json`
         ),
         "utf8"
       );
@@ -408,7 +408,7 @@ describe("buildRegistry", () => {
       const bundleContent = await readFile(
         join(
           outputDir,
-          `${STATIC_BUNDLE_DIR}/in-project-rule/opencode/${LATEST_VERSION}`
+          `${STATIC_BUNDLE_DIR}/in-project-rule/${LATEST_VERSION}/opencode.json`
         ),
         "utf8"
       );
@@ -436,7 +436,7 @@ describe("buildRegistry", () => {
       const bundleContent = await readFile(
         join(
           outputDir,
-          `${STATIC_BUNDLE_DIR}/metadata-rule/opencode/${LATEST_VERSION}`
+          `${STATIC_BUNDLE_DIR}/metadata-rule/${LATEST_VERSION}/opencode.json`
         ),
         "utf8"
       );
@@ -465,7 +465,7 @@ describe("buildRegistry", () => {
       const bundleContent = await readFile(
         join(
           outputDir,
-          `${STATIC_BUNDLE_DIR}/exclude-test/opencode/${LATEST_VERSION}`
+          `${STATIC_BUNDLE_DIR}/exclude-test/${LATEST_VERSION}/opencode.json`
         ),
         "utf8"
       );

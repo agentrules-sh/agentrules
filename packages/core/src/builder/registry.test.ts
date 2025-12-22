@@ -48,7 +48,7 @@ describe("buildRegistry", () => {
     expect(variant?.platform).toBe("opencode");
     expect(
       variant && "bundleUrl" in variant ? variant.bundleUrl : undefined
-    ).toBe(`${STATIC_BUNDLE_DIR}/starter/opencode/1.0`);
+    ).toBe(`${STATIC_BUNDLE_DIR}/starter/1.0/opencode.json`);
     expect(variant?.fileCount).toBe(2);
 
     expect(result.bundles).toHaveLength(1);
@@ -93,7 +93,7 @@ describe("buildRegistry", () => {
     expect(version?.version).toBe("2.0");
     expect(
       variant && "bundleUrl" in variant ? variant.bundleUrl : undefined
-    ).toBe(`${STATIC_BUNDLE_DIR}/versioned/claude/2.0`);
+    ).toBe(`${STATIC_BUNDLE_DIR}/versioned/2.0/claude.json`);
     expect(result.bundles[0]?.version).toBe("2.0");
   });
 

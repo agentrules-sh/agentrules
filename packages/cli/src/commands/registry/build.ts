@@ -78,23 +78,29 @@ export async function buildRegistry(
 
   const indent = compact ? undefined : 2;
 
-  // Write bundles to r/{slug}/{platform}/{version} and r/{slug}/{platform}/latest
+  // Write bundles to r/{slug}/{version}/{platform}.json and r/{slug}/latest/{platform}.json
   for (const bundle of result.bundles) {
-    const bundleDir = join(
+    const bundleJson = JSON.stringify(bundle, null, indent);
+
+    // Write versioned bundle: r/{slug}/{version}/{platform}.json
+    const versionedDir = join(
       outputDir,
       STATIC_BUNDLE_DIR,
       bundle.slug,
-      bundle.platform
+      bundle.version
     );
-    await mkdir(bundleDir, { recursive: true });
+    await mkdir(versionedDir, { recursive: true });
+    await writeFile(join(versionedDir, `${bundle.platform}.json`), bundleJson);
 
-    const bundleJson = JSON.stringify(bundle, null, indent);
-
-    // Write versioned bundle
-    await writeFile(join(bundleDir, bundle.version), bundleJson);
-
-    // Write latest bundle (copy of current version)
-    await writeFile(join(bundleDir, LATEST_VERSION), bundleJson);
+    // Write latest bundle: r/{slug}/latest/{platform}.json
+    const latestDir = join(
+      outputDir,
+      STATIC_BUNDLE_DIR,
+      bundle.slug,
+      LATEST_VERSION
+    );
+    await mkdir(latestDir, { recursive: true });
+    await writeFile(join(latestDir, `${bundle.platform}.json`), bundleJson);
   }
 
   // Write rules to api/rules/{slug} (one file per slug with all versions/variants)

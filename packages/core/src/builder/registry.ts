@@ -316,7 +316,7 @@ function getBundlePath(
   version: string
 ) {
   const prefix = base ? `${base}/` : "";
-  return `${prefix}${STATIC_BUNDLE_DIR}/${slug}/${platform}/${version}`;
+  return `${prefix}${STATIC_BUNDLE_DIR}/${slug}/${version}/${platform}.json`;
 }
 
 function ensureKnownPlatform(platform: string, slug: string) {
