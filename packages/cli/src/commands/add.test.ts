@@ -302,7 +302,7 @@ describe("add", () => {
     expect(result.targetRoot).toContain(".config/opencode");
     expect(result.targetRoot).toStartWith(homeDir);
     // All files should be created:
-    // - AGENTS.md (root) → uses getInstallPath → ~/.config/opencode/AGENTS.md
+    // - AGENTS.md (root) → uses getRelativeInstallPath → ~/.config/opencode/AGENTS.md
     // - .opencode/README.md → transforms platformDir → ~/.config/opencode/README.md
     const filesCreated = result.files.filter((f) => f.status === "created");
     expect(filesCreated.length).toBe(2);
@@ -310,6 +310,26 @@ describe("add", () => {
     const filePaths = result.files.map((f) => f.path);
     expect(filePaths.some((p) => p.endsWith("AGENTS.md"))).toBeTrue();
     expect(filePaths.some((p) => p.endsWith("README.md"))).toBeTrue();
+  });
+
+  it("global install paths do not contain literal tilde", async () => {
+    const fixture = await createFixturesWithRootFiles(
+      "# Config\n",
+      "# README\n"
+    );
+    mockResolveRequests(DEFAULT_BASE_URL, fixture);
+    const result = await addRule({
+      slug: RULE_SLUG,
+      platform: PLATFORM,
+      global: true,
+    });
+
+    // Verify no file paths contain literal ~ (should be expanded)
+    for (const file of result.files) {
+      expect(file.path).not.toContain("~");
+    }
+    // Verify target root is fully expanded (no ~)
+    expect(result.targetRoot).not.toContain("~");
   });
 
   it("installs all files to platform directory during project install", async () => {

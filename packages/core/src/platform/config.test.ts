@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import {
   getInstallPath,
+  getRelativeInstallPath,
   getTypeConfig,
   getValidTypes,
   isValidType,
@@ -196,5 +197,58 @@ describe("getInstallPath", () => {
         scope: "project",
       })
     ).toBe(".claude/skills/my-skill/SKILL.md");
+  });
+});
+
+describe("getRelativeInstallPath", () => {
+  it("returns path without platformDir prefix for global scope", () => {
+    expect(
+      getRelativeInstallPath({
+        platform: "codex",
+        type: "instruction",
+        scope: "global",
+      })
+    ).toBe("AGENTS.md");
+  });
+
+  it("returns path without platformDir prefix for project scope", () => {
+    expect(
+      getRelativeInstallPath({
+        platform: "opencode",
+        type: "instruction",
+        scope: "project",
+      })
+    ).toBe("AGENTS.md");
+  });
+
+  it("returns relative path with subdirectory for commands", () => {
+    expect(
+      getRelativeInstallPath({
+        platform: "codex",
+        type: "command",
+        name: "deploy",
+        scope: "global",
+      })
+    ).toBe("prompts/deploy.md");
+  });
+
+  it("returns null for unsupported type", () => {
+    expect(
+      getRelativeInstallPath({
+        platform: "codex",
+        type: "nonexistent",
+        scope: "global",
+      })
+    ).toBeNull();
+  });
+
+  it("returns null when global template is null", () => {
+    expect(
+      getRelativeInstallPath({
+        platform: "cursor",
+        type: "instruction",
+        scope: "global",
+      })
+    ).toBeNull();
   });
 });

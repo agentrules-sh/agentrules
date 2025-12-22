@@ -198,6 +198,38 @@ export function getPlatformConfig(platform: PlatformId): PlatformConfig {
 }
 
 /**
+ * Get the relative install path for a type (without the root directory prefix).
+ * Returns the path relative to the platform's root directory.
+ *
+ * Example: For codex instruction with scope="global", returns "AGENTS.md"
+ * (not "~/.codex/AGENTS.md")
+ */
+export function getRelativeInstallPath({
+  platform,
+  type,
+  name,
+  scope = "project",
+}: GetInstallPathInput): string | null {
+  const typeConfig = getTypeConfig(platform, type);
+  if (!typeConfig) return null;
+
+  const template = scope === "project" ? typeConfig.project : typeConfig.global;
+  if (!template) return null;
+
+  if (template.includes("{name}") && !name) {
+    throw new Error(
+      `Missing name for install path: platform="${platform}" type="${type}" scope="${scope}"`
+    );
+  }
+
+  // Strip {platformDir}/ prefix and replace {name}
+  return template
+    .replace("{platformDir}/", "")
+    .replace("{platformDir}", "")
+    .replace("{name}", name ?? "");
+}
+
+/**
  * Platform-specific type tuples for zod schema validation.
  * Must be kept in sync with PLATFORMS types above.
  */

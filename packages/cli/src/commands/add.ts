@@ -15,8 +15,8 @@ import {
   createDiffPreview,
   decodeBundledFile,
   fetchBundle,
-  getInstallPath,
   getLatestVersion,
+  getRelativeInstallPath,
   getVariant,
   getVersion,
   hasBundle,
@@ -395,7 +395,7 @@ function resolveInstallTarget(
       mode: "global",
       platform,
       platformDir,
-      globalDir,
+      globalDir: globalRoot,
       type,
       name,
       label: `global path ${globalRoot}`,
@@ -427,34 +427,37 @@ function resolveInstallTarget(
  *
  * - Project scope: use file.path directly
  * - Global scope:
- *   - If path starts with platformDir: transform to globalDir
- *   - If type is "multi" and path doesn't start with platformDir: skip (return null)
- *   - Otherwise: use getInstallPath for root-level files (e.g., instruction)
+ *   - If path starts with platformDir: strip prefix (target.root is already globalDir)
+ *   - If typed bundle and root file: use type template to get relative path
+ *   - If freeform bundle and root file: use path as-is (relative to globalDir)
+ *
+ * IMPORTANT: For global scope, this returns RELATIVE paths only.
+ * The caller combines with target.root (which is the expanded globalDir).
  */
 function resolvePath(filePath: string, target: InstallTarget): string | null {
-  const { platform, platformDir, globalDir, type, name, mode } = target;
+  const { platform, platformDir, type, name, mode } = target;
 
   // Project scope: use bundle path directly
   if (mode === "project") {
     return filePath;
   }
 
-  // Global scope
+  // Global scope - return RELATIVE paths only (target.root is already expanded globalDir)
   const platformDirPrefix = `${platformDir}/`;
 
-  // If path starts with platformDir, transform to globalDir
+  // If path starts with platformDir, strip it (target.root already points to globalDir)
   if (filePath.startsWith(platformDirPrefix)) {
-    return `${globalDir}/${filePath.slice(platformDirPrefix.length)}`;
+    return filePath.slice(platformDirPrefix.length);
   }
 
-  // Path doesn't start with platformDir
+  // Path doesn't start with platformDir - it's a root-level file
   if (!type) {
-    // Freeform (no type): skip non-platformDir files for global install
-    return null;
+    // Freeform bundle: install root files relative to globalDir
+    return filePath;
   }
 
-  // Named types (like instruction): use getInstallPath for root-level files
-  return getInstallPath({
+  // Typed bundle: get relative path from type template
+  return getRelativeInstallPath({
     platform,
     type,
     name,
@@ -474,6 +477,9 @@ function computeDestinationPath(
     );
   }
 
+  // Security: reject dangerous path patterns early
+  validateBundlePath(normalized, pathInput);
+
   const resolvedPath = resolvePath(normalized, target);
 
   // null means file should be skipped (e.g., multi type global install)
@@ -484,6 +490,33 @@ function computeDestinationPath(
   const destination = resolve(target.root, resolvedPath);
   ensureWithinRoot(destination, target.root);
   return destination;
+}
+
+/**
+ * Validate bundle path for dangerous patterns.
+ * Throws if path contains traversal or home directory references.
+ */
+function validateBundlePath(normalized: string, original: string): void {
+  // Reject paths containing parent directory traversal
+  if (normalized.includes("..")) {
+    throw new Error(
+      `Refusing to install file with path traversal: ${original}`
+    );
+  }
+
+  // Reject paths starting with ~ (home directory reference)
+  if (normalized.startsWith("~")) {
+    throw new Error(
+      `Refusing to install file with home directory reference: ${original}`
+    );
+  }
+
+  // Reject paths containing ~ anywhere (could be malicious like "foo/~/bar")
+  if (normalized.includes("/~/") || normalized.includes("\\~\\")) {
+    throw new Error(
+      `Refusing to install file with embedded home directory reference: ${original}`
+    );
+  }
 }
 
 // =============================================================================
