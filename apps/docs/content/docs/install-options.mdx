@@ -32,14 +32,16 @@ By default, rules install to your current project directory.
 # Project install (default) - writes to .opencode/
 npx @agentrules/cli add my-rule -p opencode
 
-# Global install - writes to ~/.config/opencode
-npx @agentrules/cli add my-rule -p opencode --global
+# Global install (-g or --global) - writes to ~/.config/opencode
+npx @agentrules/cli add my-rule -p opencode -g
 ```
 
-| Install Type | OpenCode | Claude | Cursor | Codex |
-|--------------|----------|--------|--------|-------|
-| Project | `.opencode/` | `.claude/` | `.cursor/` | `.codex/` |
-| Global | `~/.config/opencode` | `~/.claude` | `~/.cursor` | `~/.codex` |
+| Platform | Project | Global |
+|----------|---------|--------|
+| OpenCode | `.opencode/` | `~/.config/opencode` |
+| Claude | `.claude/` | `~/.claude` |
+| Cursor | `.cursor/` | `~/.cursor` |
+| Codex | `.codex/` | `~/.codex` |
 
 ## Preview Before Installing
 

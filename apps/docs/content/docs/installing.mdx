@@ -34,8 +34,23 @@ Browse [agentrules.directory](https://agentrules.directory) to discover rules. E
 | Cursor | `cursor` | `.cursor/` |
 | Codex | `codex` | `.codex/` |
 
+## Global Install
+
+By default, rules install to your current project. Use `-g` or `--global` to install to your global config directory:
+
+```bash
+npx @agentrules/cli add agentic-dev-starter --platform opencode --global
+```
+
+| Platform | Project | Global |
+|----------|---------|--------|
+| OpenCode | `.opencode/` | `~/.config/opencode` |
+| Claude | `.claude/` | `~/.claude` |
+| Cursor | `.cursor/` | `~/.cursor` |
+| Codex | `.codex/` | `~/.codex` |
+
 ## Next Steps
 
 The files are now yours. Edit them, remove what you don't need, and evolve them as your workflow changes.
 
-Need more control? See [Install Options](/install-options) for version pinning, global installs, handling conflicts, and more.
+Need more control? See [Install Options](/install-options) for version pinning, handling conflicts, and more.
