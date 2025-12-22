@@ -1,5 +1,12 @@
 # @agentrules/core
 
+## 0.2.1
+
+### Patch Changes
+
+- 5e32c15: - Fix global path install: expand ~ in global install paths correctly
+  - Align static registry bundle path format to {slug}/{version}/{platform}.json
+
 ## 0.2.0
 
 ### Minor Changes
