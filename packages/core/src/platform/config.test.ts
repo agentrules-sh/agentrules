@@ -50,7 +50,7 @@ describe("isValidType", () => {
 
   it("returns false for invalid platform/type combinations", () => {
     expect(isValidType("opencode", "rule")).toBe(false);
-    expect(isValidType("cursor", "skill")).toBe(false);
+    expect(isValidType("cursor", "agent")).toBe(false);
   });
 
   it("returns false for unknown types", () => {

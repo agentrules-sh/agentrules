@@ -48,6 +48,11 @@ export const PLATFORMS = {
         project: "{platformDir}/tool/{name}.ts",
         global: "{platformDir}/tool/{name}.ts",
       },
+      skill: {
+        description: "Agent skill",
+        project: "{platformDir}/skill/{name}/SKILL.md",
+        global: "{platformDir}/skill/{name}/SKILL.md",
+      },
     },
   },
   claude: {
@@ -97,6 +102,11 @@ export const PLATFORMS = {
         project: "{platformDir}/commands/{name}.md",
         global: "{platformDir}/commands/{name}.md",
       },
+      skill: {
+        description: "Agent skill",
+        project: "{platformDir}/skills/{name}/SKILL.md",
+        global: "{platformDir}/skills/{name}/SKILL.md",
+      },
     },
   },
   codex: {
@@ -113,6 +123,11 @@ export const PLATFORMS = {
         description: "Custom prompt",
         project: null,
         global: "{platformDir}/prompts/{name}.md",
+      },
+      skill: {
+        description: "Agent skill",
+        project: "{platformDir}/skills/{name}/SKILL.md",
+        global: "{platformDir}/skills/{name}/SKILL.md",
       },
     },
   },
@@ -234,8 +249,8 @@ export function getRelativeInstallPath({
  * Must be kept in sync with PLATFORMS types above.
  */
 export const PLATFORM_RULE_TYPES = {
-  opencode: ["instruction", "agent", "command", "tool"] as const,
+  opencode: ["instruction", "agent", "command", "tool", "skill"] as const,
   claude: ["instruction", "rule", "command", "skill"] as const,
-  cursor: ["instruction", "rule", "command"] as const,
-  codex: ["instruction", "command"] as const,
+  cursor: ["instruction", "rule", "command", "skill"] as const,
+  codex: ["instruction", "command", "skill"] as const,
 } as const satisfies Record<PlatformId, readonly string[]>;
