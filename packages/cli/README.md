@@ -105,7 +105,7 @@ A typical single-platform rule structure is:
 .
 ├── agentrules.json       # Rule config (created by init)
 ├── README.md             # Shown on registry page (optional, not bundled)
-├── LICENSE.md            # Full license text (optional, not bundled)
+├── LICENSE.md            # Full license text (optional, not bundled; LICENSE.txt also supported)
 ├── INSTALL.txt           # Shown after install (optional, not bundled)
 ├── AGENTS.md             # Instruction file (optional)
 └── command/
