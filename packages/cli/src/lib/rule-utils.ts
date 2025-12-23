@@ -17,9 +17,11 @@ import { log } from "./log";
 // Re-export types for consumers
 export type { RuleConfig } from "@agentrules/core";
 
-const INSTALL_FILENAME = "INSTALL.txt";
-const README_FILENAME = "README.md";
-const LICENSE_FILENAME = "LICENSE.md";
+const METADATA_FILES = {
+  install: ["INSTALL.txt"],
+  readme: ["README.md"],
+  license: ["LICENSE.md", "LICENSE.txt"],
+} as const;
 
 /**
  * Files/directories that are always excluded from rules.
@@ -277,14 +279,14 @@ export async function collectMetadata(
 ): Promise<RuleMetadata> {
   const { configDir } = loaded;
 
-  const installMessage = await readFileIfExists(
-    join(configDir, INSTALL_FILENAME)
+  const installMessage = await readFirstMatch(
+    configDir,
+    METADATA_FILES.install
   );
-  const readmeContent = await readFileIfExists(
-    join(configDir, README_FILENAME)
-  );
-  const licenseContent = await readFileIfExists(
-    join(configDir, LICENSE_FILENAME)
+  const readmeContent = await readFirstMatch(configDir, METADATA_FILES.readme);
+  const licenseContent = await readFirstMatch(
+    configDir,
+    METADATA_FILES.license
   );
 
   return { installMessage, readmeContent, licenseContent };
@@ -334,7 +336,11 @@ export async function collectPlatformFiles(
 
     // Config directory is the default metadata location.
     if (filesDir === configDir) {
-      rootExclude.push(README_FILENAME, LICENSE_FILENAME, INSTALL_FILENAME);
+      rootExclude.push(
+        ...METADATA_FILES.readme,
+        ...METADATA_FILES.license,
+        ...METADATA_FILES.install
+      );
     }
 
     const collectedFiles = filesDirExists
@@ -469,6 +475,22 @@ async function collectFiles(
 async function readFileIfExists(path: string): Promise<string | undefined> {
   if (await fileExists(path)) {
     return await readFile(path, "utf8");
+  }
+  return;
+}
+
+/**
+ * Try reading files from a list of candidates, return first match.
+ */
+async function readFirstMatch(
+  dir: string,
+  filenames: readonly string[]
+): Promise<string | undefined> {
+  for (const filename of filenames) {
+    const content = await readFileIfExists(join(dir, filename));
+    if (content !== undefined) {
+      return content;
+    }
   }
   return;
 }

@@ -188,6 +188,63 @@ describe("loadRule", () => {
       expect(loaded.installMessage).toBe("Install instructions");
       expect(loaded.licenseContent).toBe("MIT License");
     });
+
+    it("reads LICENSE.txt when LICENSE.md is not present", async () => {
+      const platformDir = join(testDir, ".opencode");
+      await mkdir(platformDir, { recursive: true });
+      await writeFile(
+        join(platformDir, "agentrules.json"),
+        JSON.stringify({
+          ...VALID_CONFIG,
+          platforms: ["opencode"],
+        })
+      );
+      await writeFile(join(platformDir, "rules.md"), "# Rules");
+      await writeFile(join(platformDir, "LICENSE.txt"), "MIT License TXT");
+
+      const loaded = await loadRule(platformDir);
+
+      expect(loaded.licenseContent).toBe("MIT License TXT");
+    });
+
+    it("prefers LICENSE.md over LICENSE.txt when both exist", async () => {
+      const platformDir = join(testDir, ".opencode");
+      await mkdir(platformDir, { recursive: true });
+      await writeFile(
+        join(platformDir, "agentrules.json"),
+        JSON.stringify({
+          ...VALID_CONFIG,
+          platforms: ["opencode"],
+        })
+      );
+      await writeFile(join(platformDir, "rules.md"), "# Rules");
+      await writeFile(join(platformDir, "LICENSE.md"), "MIT License MD");
+      await writeFile(join(platformDir, "LICENSE.txt"), "MIT License TXT");
+
+      const loaded = await loadRule(platformDir);
+
+      expect(loaded.licenseContent).toBe("MIT License MD");
+    });
+
+    it("excludes LICENSE.txt from bundle", async () => {
+      const platformDir = join(testDir, ".opencode");
+      await mkdir(platformDir, { recursive: true });
+      await writeFile(
+        join(platformDir, "agentrules.json"),
+        JSON.stringify({
+          ...VALID_CONFIG,
+          platforms: ["opencode"],
+        })
+      );
+      await writeFile(join(platformDir, "rules.md"), "# Rules");
+      await writeFile(join(platformDir, "LICENSE.txt"), "MIT License");
+
+      const loaded = await loadRule(platformDir);
+
+      const paths = getFiles(loaded).map((f) => f.path);
+      expect(paths).toContain(".opencode/rules.md");
+      expect(paths.some((p) => p.includes("LICENSE.txt"))).toBeFalse();
+    });
   });
 
   describe("standalone rule (config at repo root)", () => {
