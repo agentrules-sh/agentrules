@@ -14,7 +14,12 @@ import { join } from "path";
 import { directoryExists, fileExists } from "@/lib/fs";
 import { normalizeName, toTitleCase } from "@/lib/rule-utils";
 import { check } from "@/lib/zod-validator";
-import { type InitOptions, type InitResult, initRule } from "./init";
+import {
+  detectSkillDirectory,
+  type InitOptions,
+  type InitResult,
+  initRule,
+} from "./init";
 
 const DEFAULT_RULE_NAME = "my-rule";
 
@@ -72,9 +77,36 @@ export async function initInteractive(
     license: licenseOption,
   } = options;
   let { force } = options;
-  const defaultName = nameOption ?? DEFAULT_RULE_NAME;
 
   p.intro("Create a new rule");
+
+  // Detect skill directory and prompt
+  const skillInfo = await detectSkillDirectory(directory);
+  let useSkillDefaults = false;
+
+  if (skillInfo) {
+    const confirm = await p.confirm({
+      message: `Detected SKILL.md${skillInfo.name ? ` (${skillInfo.name})` : ""}. Initialize as skill?`,
+      initialValue: true,
+    });
+
+    if (p.isCancel(confirm)) {
+      p.cancel("Cancelled");
+      process.exit(0);
+    }
+
+    useSkillDefaults = confirm;
+  }
+
+  const defaultName =
+    useSkillDefaults && skillInfo?.name
+      ? skillInfo.name
+      : (nameOption ?? DEFAULT_RULE_NAME);
+
+  const defaultLicense =
+    useSkillDefaults && skillInfo?.license
+      ? skillInfo.license
+      : (licenseOption ?? "MIT");
 
   // Validate platform options if provided
   const validatedPlatforms: PlatformId[] = [];
@@ -111,6 +143,11 @@ export async function initInteractive(
   > = await (async () => {
     if (selectedPlatforms.length === 0) {
       return [];
+    }
+
+    // Skills generate paths automatically on publish - skip path prompts
+    if (useSkillDefaults) {
+      return selectedPlatforms;
     }
 
     const hasCompletePathMapping = selectedPlatforms.every((platform) => {
@@ -182,13 +219,19 @@ export async function initInteractive(
   // Prompt for remaining values
   const result = await p.group(
     {
-      name: () =>
-        p.text({
+      name: () => {
+        const normalizedDefault = normalizeName(defaultName);
+        return p.text({
           message: "Rule name",
-          placeholder: normalizeName(defaultName),
-          defaultValue: normalizeName(defaultName),
-          validate: check(nameSchema),
-        }),
+          placeholder: normalizedDefault,
+          defaultValue: normalizedDefault,
+          validate: (value) => {
+            // Allow empty to use defaultValue
+            if (!value || value.trim() === "") return;
+            return check(nameSchema)(value);
+          },
+        });
+      },
 
       title: ({ results }: { results: { name?: string } }) => {
         const defaultTitle =
@@ -217,7 +260,6 @@ export async function initInteractive(
         }),
 
       license: async () => {
-        const defaultLicense = licenseOption ?? "MIT";
         const choice = await p.select({
           message: "License",
           options: [
@@ -261,6 +303,7 @@ export async function initInteractive(
   const initOptions: InitOptions = {
     directory,
     name: result.name,
+    type: useSkillDefaults ? "skill" : undefined,
     title: result.title.trim() || undefined,
     description: result.description,
     tags: parseTags(result.tags),
