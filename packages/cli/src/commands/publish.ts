@@ -48,6 +48,7 @@ import {
 } from "@/lib/rule-utils";
 import { ui } from "@/lib/ui";
 import { check } from "@/lib/zod-validator";
+import { detectSkillDirectory } from "./rule/init";
 
 /** Maximum size per variant/platform bundle in bytes (1MB) */
 const MAX_VARIANT_SIZE_BYTES = 1 * 1024 * 1024;
@@ -388,7 +389,7 @@ type QuickPublishSource =
 type QuickPublishInputs = {
   source: QuickPublishSource;
   name: string;
-  platform: PlatformId;
+  platforms: PlatformId[];
   ruleType: RuleType;
   title: string;
   description: string;
@@ -546,14 +547,46 @@ async function resolveQuickPublishInputs(
   source: QuickPublishSource,
   ctx: { dryRun: boolean; yes: boolean }
 ): Promise<QuickPublishInputs> {
+  const isInteractive = !ctx.yes && process.stdin.isTTY;
+  const isDirectory = source.type === "directory";
+
+  // Detect skill directory and prompt (like init-interactive)
+  let useSkillDefaults = false;
+  let skillInfo: Awaited<ReturnType<typeof detectSkillDirectory>> | undefined;
+
+  if (isDirectory) {
+    skillInfo = await detectSkillDirectory(source.path);
+
+    if (skillInfo && isInteractive) {
+      const confirm = await p.confirm({
+        message: `Detected SKILL.md${skillInfo.name ? ` (${skillInfo.name})` : ""}. Publish as skill?`,
+        initialValue: true,
+      });
+
+      if (p.isCancel(confirm)) {
+        throw new Error("Cancelled");
+      }
+
+      if (!confirm) {
+        throw new Error(
+          "Directory contains SKILL.md but no agentrules.json. Use `agentrules init` to create a config, or publish as a skill."
+        );
+      }
+
+      useSkillDefaults = true;
+    } else if (skillInfo) {
+      // Non-interactive with skill detected - use skill defaults
+      useSkillDefaults = true;
+    }
+  }
+
   // Get inferred defaults based on source type
   const inferred =
     source.type === "file"
       ? inferFileDefaults(source.path)
-      : await inferDirectoryDefaults(source.path, source.entryFile, "skill");
-
-  const isInteractive = !ctx.yes && process.stdin.isTTY;
-  const isDirectory = source.type === "directory";
+      : useSkillDefaults
+        ? await inferDirectoryDefaults(source.path, source.entryFile, "skill")
+        : {};
 
   // For directories, type is inferred from entry file (e.g., SKILL.md → skill)
   // For files, we may need name/platform/type from CLI args
@@ -575,33 +608,33 @@ async function resolveQuickPublishInputs(
     );
   }
 
-  const selectedPlatforms = options.platform
-    ? parsePlatformSelection(options.platform)
+  const parsedPlatforms = options.platform
+    ? parsePlatformSelection(options.platform).map(normalizePlatformInput)
     : undefined;
 
-  if (selectedPlatforms && selectedPlatforms.length > 1) {
-    throw new Error("Quick publish requires exactly one --platform value.");
-  }
+  let selectedPlatforms: PlatformId[] =
+    parsedPlatforms && parsedPlatforms.length > 0
+      ? parsedPlatforms
+      : inferred.platform
+        ? [inferred.platform]
+        : [];
 
-  let selectedPlatform: PlatformId | undefined = selectedPlatforms?.[0]
-    ? normalizePlatformInput(selectedPlatforms[0])
-    : inferred.platform;
-
-  if (!selectedPlatform) {
+  if (selectedPlatforms.length === 0) {
     if (!isInteractive) {
       throw new Error("Missing --platform");
     }
 
-    const selection = await p.select({
-      message: "Platform",
+    const selection = await p.multiselect({
+      message: "Platforms (select one or more)",
       options: PLATFORM_IDS.map((id) => ({ value: id, label: id })),
+      required: true,
     });
 
     if (p.isCancel(selection)) {
       throw new Error("Cancelled");
     }
 
-    selectedPlatform = selection as PlatformId;
+    selectedPlatforms = selection as PlatformId[];
   }
 
   // For directories, type is already inferred; for files, check options/inferred
@@ -613,13 +646,29 @@ async function resolveQuickPublishInputs(
       throw new Error("Missing --type");
     }
 
-    const candidates = getValidTypes(selectedPlatform).filter((t) =>
-      supportsInstallPath({
-        platform: selectedPlatform,
-        type: t,
-        scope: "project",
-      })
+    // Find types valid for all selected platforms
+    const candidateSets = selectedPlatforms.map((plat) =>
+      getValidTypes(plat).filter((t) =>
+        supportsInstallPath({
+          platform: plat,
+          type: t,
+          scope: "project",
+        })
+      )
     );
+
+    const candidates =
+      candidateSets.length === 1
+        ? candidateSets[0]
+        : candidateSets.reduce((acc, set) =>
+            acc.filter((t) => set.includes(t))
+          );
+
+    if (candidates.length === 0) {
+      throw new Error(
+        `No common type supports all selected platforms: ${selectedPlatforms.join(", ")}`
+      );
+    }
 
     const selection = await p.select({
       message: "Type",
@@ -633,8 +682,21 @@ async function resolveQuickPublishInputs(
     selectedType = selection as RuleType;
   }
 
-  const platform = selectedPlatform;
+  const platforms = selectedPlatforms;
   const ruleType = selectedType as RuleType;
+
+  // Validate CLI-provided type works for all platforms
+  if (options.type) {
+    for (const platform of platforms) {
+      if (
+        !supportsInstallPath({ platform, type: ruleType, scope: "project" })
+      ) {
+        throw new Error(
+          `Type "${ruleType}" is not supported for project installs on platform "${platform}".`
+        );
+      }
+    }
+  }
 
   // Name: CLI option > inferred (from frontmatter or filename) > prompt
   const nameValue =
@@ -739,7 +801,7 @@ async function resolveQuickPublishInputs(
     log.print(ui.keyValue("Name", ui.code(normalizedName)));
     log.print(ui.keyValue("Title", finalTitle));
     log.print(ui.keyValue("Description", finalDescription));
-    log.print(ui.keyValue("Platform", platform));
+    log.print(ui.keyValue("Platforms", platforms.join(", ")));
     log.print(ui.keyValue("Type", ruleType));
     if (finalTags.length > 0) {
       log.print(ui.keyValue("Tags", finalTags.join(", ")));
@@ -759,7 +821,7 @@ async function resolveQuickPublishInputs(
   return {
     source,
     name: normalizedName,
-    platform,
+    platforms,
     ruleType,
     title: finalTitle,
     description: finalDescription,
@@ -779,34 +841,39 @@ async function buildRuleInputFromQuickPublish(
     description: inputs.description,
     license: inputs.license,
     tags: inputs.tags,
-    platforms: [{ platform: inputs.platform }],
+    platforms: inputs.platforms.map((platform) => ({ platform })),
   };
 
   if (inputs.source.type === "file") {
-    // Single file quick publish
+    // Single file quick publish - same content for all platforms
     const content = await readFile(inputs.source.path);
-    const bundlePath = getInstallPath({
-      platform: inputs.platform,
-      type: inputs.ruleType,
-      name: inputs.name,
-      scope: "project",
-    });
 
-    if (!bundlePath) {
-      throw new Error(
-        `Type "${inputs.ruleType}" is not supported for project installs on platform "${inputs.platform}".`
-      );
+    const platformFiles: RuleInput["platformFiles"] = [];
+
+    for (const platform of inputs.platforms) {
+      const bundlePath = getInstallPath({
+        platform,
+        type: inputs.ruleType,
+        name: inputs.name,
+        scope: "project",
+      });
+
+      if (!bundlePath) {
+        throw new Error(
+          `Type "${inputs.ruleType}" is not supported for project installs on platform "${platform}".`
+        );
+      }
+
+      platformFiles.push({
+        platform,
+        files: [{ path: bundlePath, content }],
+      });
     }
 
     return {
       name: inputs.name,
       config,
-      platformFiles: [
-        {
-          platform: inputs.platform,
-          files: [{ path: bundlePath, content }],
-        },
-      ],
+      platformFiles,
     };
   }
 
@@ -815,7 +882,7 @@ async function buildRuleInputFromQuickPublish(
     configPath: `${inputs.source.path}/agentrules.json`, // Virtual path
     config: {
       ...config,
-      platforms: [{ platform: inputs.platform }],
+      platforms: inputs.platforms.map((platform) => ({ platform })),
     },
     configDir: inputs.source.path,
   };

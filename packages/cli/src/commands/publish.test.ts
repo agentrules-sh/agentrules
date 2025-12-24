@@ -222,7 +222,7 @@ describe("publish", () => {
       expect(result.error).toContain("requires --name, --platform, and --type");
     });
 
-    it("rejects multiple platforms for single-file publish", async () => {
+    it("publishes to multiple platforms for single-file publish", async () => {
       await setupLoggedOutContext();
 
       const filePath = join(testDir, "deploy.md");
@@ -234,10 +234,32 @@ describe("publish", () => {
         type: "command",
         name: "deploy",
         dryRun: true,
+        yes: true,
+      });
+
+      expect(result.success).toBeTrue();
+      expect(result.preview?.platforms).toEqual(["claude", "opencode"]);
+      expect(result.preview?.fileCount).toBe(2);
+    });
+
+    it("fails when type is not supported on all platforms", async () => {
+      await setupLoggedOutContext();
+
+      const filePath = join(testDir, "prompt.md");
+      await writeFile(filePath, "# Prompt\n");
+
+      // codex doesn't support 'command' for project scope
+      const result = await publish({
+        path: filePath,
+        platform: ["claude", "codex"],
+        type: "command",
+        name: "my-prompt",
+        dryRun: true,
+        yes: true,
       });
 
       expect(result.success).toBeFalse();
-      expect(result.error).toContain("requires exactly one --platform");
+      expect(result.error).toContain("not supported");
     });
 
     it("publishes a claude skill as a single file", async () => {
