@@ -1,5 +1,24 @@
 # @agentrules/cli
 
+## 0.3.0
+
+### Minor Changes
+
+- bad65b2: Add skill type support for multi-file skill bundles
+
+  - Add `skill` type for opencode, codex, and cursor platforms (claude already supported)
+  - Add `getInstallDir` and `normalizeSkillFiles` utilities for SKILL.md anchor-based bundling
+  - Support LICENSE.txt as metadata file alongside LICENSE.md
+  - Enable config-based skill publishing with proper path normalization
+  - Add skill directory quick publish: `agentrules publish ./my-skill --platform claude`
+  - Parse SKILL.md frontmatter for name/license defaults
+  - Auto-detect skill directories in `agentrules init` and prompt to use frontmatter defaults
+
+### Patch Changes
+
+- Updated dependencies [bad65b2]
+  - @agentrules/core@0.3.0
+
 ## 0.2.1
 
 ### Patch Changes
