@@ -779,14 +779,13 @@ async function resolveQuickPublishInputs(
     const input = await p.text({
       message: "Tags (optional)",
       placeholder: "comma-separated, e.g. typescript, react",
-      validate: check(tagsInputSchema),
     });
 
     if (p.isCancel(input)) {
       throw new Error("Cancelled");
     }
 
-    return tagsInputSchema.parse(input);
+    return tagsInputSchema.parse(input ?? "");
   })();
 
   // License: CLI option > inferred (from frontmatter) > default MIT
