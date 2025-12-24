@@ -41,7 +41,9 @@ import {
   loadConfig,
   normalizeName,
   parsePlatformSelection,
+  parseSkillFrontmatter,
   resolveConfigPath,
+  SKILL_FILENAME,
   toTitleCase,
 } from "@/lib/rule-utils";
 import { ui } from "@/lib/ui";
@@ -165,16 +167,17 @@ export async function publish(
   }
 
   const filePath = await getSingleFilePath(path);
+  const quickDir = await getQuickPublishDirectory(path);
 
   // Build publish input (version is assigned by registry)
   let publishInput: RulePublishInput;
 
   if (filePath) {
     // Quick publish: single file
-    let resolved: SingleFilePublishInputs;
+    let resolved: QuickPublishInputs;
 
     try {
-      resolved = await resolveSingleFileInputs(
+      resolved = await resolveQuickPublishInputs(
         {
           name,
           platform,
@@ -184,7 +187,7 @@ export async function publish(
           tags,
           license,
         },
-        filePath,
+        { type: "file", path: filePath },
         { dryRun, yes }
       );
     } catch (error) {
@@ -197,7 +200,7 @@ export async function publish(
 
     try {
       publishInput = await buildPublishInput({
-        rule: await buildRuleInputFromSingleFile(resolved),
+        rule: await buildRuleInputFromQuickPublish(resolved),
         version,
       });
       log.debug(
@@ -217,6 +220,62 @@ export async function publish(
       dryRun,
       version,
       spinner: fileSpinner,
+      ctx,
+    });
+  }
+
+  if (quickDir) {
+    // Quick publish: directory (skill, etc.)
+    let resolved: QuickPublishInputs;
+
+    try {
+      resolved = await resolveQuickPublishInputs(
+        {
+          name,
+          platform,
+          type,
+          title,
+          description,
+          tags,
+          license,
+        },
+        {
+          type: "directory",
+          path: quickDir.path,
+          entryFile: quickDir.entryFile,
+        },
+        { dryRun, yes }
+      );
+    } catch (error) {
+      const message = getErrorMessage(error);
+      log.error(message);
+      return { success: false, error: message };
+    }
+
+    const dirSpinner = await log.spinner("Building bundle...");
+
+    try {
+      publishInput = await buildPublishInput({
+        rule: await buildRuleInputFromQuickPublish(resolved),
+        version,
+      });
+      log.debug(
+        `Built publish input for platforms: ${publishInput.variants
+          .map((v) => v.platform)
+          .join(", ")}`
+      );
+    } catch (error) {
+      const message = getErrorMessage(error);
+      dirSpinner.fail("Failed to build bundle");
+      log.error(message);
+      return { success: false, error: message };
+    }
+
+    return await finalizePublish({
+      publishInput,
+      dryRun,
+      version,
+      spinner: dirSpinner,
       ctx,
     });
   }
@@ -312,7 +371,7 @@ export async function publish(
   return await finalizePublish({ publishInput, dryRun, version, spinner, ctx });
 }
 
-type SingleFilePublishOptions = {
+type QuickPublishOptions = {
   name?: string;
   platform?: string | string[];
   type?: string;
@@ -322,16 +381,19 @@ type SingleFilePublishOptions = {
   license?: string;
 };
 
-type SingleFilePublishInputs = {
-  filePath: string;
+type QuickPublishSource =
+  | { type: "file"; path: string }
+  | { type: "directory"; path: string; entryFile: string };
+
+type QuickPublishInputs = {
+  source: QuickPublishSource;
   name: string;
   platform: PlatformId;
-  type: RuleType;
+  ruleType: RuleType;
   title: string;
   description: string;
   tags: string[];
   license: string;
-  bundlePath: string;
 };
 
 async function getSingleFilePath(inputPath: string | undefined) {
@@ -342,6 +404,40 @@ async function getSingleFilePath(inputPath: string | undefined) {
   return inputPath;
 }
 
+type QuickPublishDirectory = {
+  path: string;
+  type: "skill";
+  entryFile: string;
+};
+
+async function getQuickPublishDirectory(
+  inputPath: string | undefined
+): Promise<QuickPublishDirectory | undefined> {
+  if (!inputPath) return;
+
+  const pathStat = await stat(inputPath).catch(() => null);
+  if (!pathStat?.isDirectory()) return;
+
+  // Check if directory has agentrules.json - if so, use config publish
+  const configStat = await stat(`${inputPath}/${RULE_CONFIG_FILENAME}`).catch(
+    () => null
+  );
+  if (configStat?.isFile()) return;
+
+  // Check for SKILL.md - skill directory quick publish
+  const skillPath = `${inputPath}/${SKILL_FILENAME}`;
+  const skillStat = await stat(skillPath).catch(() => null);
+  if (skillStat?.isFile()) {
+    return {
+      path: inputPath,
+      type: "skill",
+      entryFile: skillPath,
+    };
+  }
+
+  return;
+}
+
 function normalizePathForInference(value: string) {
   return value.replace(/\\/g, "/");
 }
@@ -350,9 +446,14 @@ function stripExtension(value: string) {
   return value.replace(/\.[^/.]+$/, "");
 }
 
-function inferSingleFileDefaults(
-  filePath: string
-): Partial<Pick<SingleFilePublishInputs, "platform" | "type" | "name">> {
+type InferredDefaults = {
+  platform?: PlatformId;
+  ruleType?: RuleType;
+  name?: string;
+  license?: string;
+};
+
+function inferFileDefaults(filePath: string): InferredDefaults {
   const normalized = normalizePathForInference(filePath);
   const segments = normalized.split("/").filter(Boolean);
   const fileName = segments.at(-1) ?? "";
@@ -360,7 +461,7 @@ function inferSingleFileDefaults(
   const instructionPlatforms = inferInstructionPlatformsFromFileName(fileName);
   if (instructionPlatforms.length > 0) {
     return {
-      type: "instruction",
+      ruleType: "instruction",
       ...(instructionPlatforms.length === 1
         ? { platform: instructionPlatforms[0] }
         : {}),
@@ -379,14 +480,37 @@ function inferSingleFileDefaults(
     | RuleType
     | undefined;
 
-  const result: Partial<
-    Pick<SingleFilePublishInputs, "platform" | "type" | "name">
-  > = { platform };
+  const result: InferredDefaults = { platform };
 
   if (inferredType) {
-    result.type = inferredType;
+    result.ruleType = inferredType;
     if (inferredType !== "instruction") {
       result.name = normalizeName(stripExtension(fileName));
+    }
+  }
+
+  return result;
+}
+
+async function inferDirectoryDefaults(
+  _dirPath: string,
+  entryFile: string,
+  dirType: "skill"
+): Promise<InferredDefaults> {
+  const result: InferredDefaults = {};
+
+  if (dirType === "skill") {
+    result.ruleType = "skill";
+
+    // Parse frontmatter for name and license
+    const content = await readFile(entryFile, "utf8");
+    const frontmatter = parseSkillFrontmatter(content);
+
+    if (frontmatter.name) {
+      result.name = normalizeName(frontmatter.name);
+    }
+    if (frontmatter.license) {
+      result.license = frontmatter.license;
     }
   }
 
@@ -417,19 +541,35 @@ function buildConfigPublishOverrides(options: {
   return Object.keys(overrides).length > 0 ? overrides : undefined;
 }
 
-async function resolveSingleFileInputs(
-  options: SingleFilePublishOptions,
-  filePath: string,
+async function resolveQuickPublishInputs(
+  options: QuickPublishOptions,
+  source: QuickPublishSource,
   ctx: { dryRun: boolean; yes: boolean }
-): Promise<SingleFilePublishInputs> {
-  const inferred = inferSingleFileDefaults(filePath);
-  const isInteractive = !ctx.yes && process.stdin.isTTY;
+): Promise<QuickPublishInputs> {
+  // Get inferred defaults based on source type
+  const inferred =
+    source.type === "file"
+      ? inferFileDefaults(source.path)
+      : await inferDirectoryDefaults(source.path, source.entryFile, "skill");
 
-  const hasRequiredArgs =
-    options.name !== undefined &&
-    options.platform !== undefined &&
-    options.type !== undefined;
+  const isInteractive = !ctx.yes && process.stdin.isTTY;
+  const isDirectory = source.type === "directory";
+
+  // For directories, type is inferred from entry file (e.g., SKILL.md → skill)
+  // For files, we may need name/platform/type from CLI args
+  const hasRequiredArgs = isDirectory
+    ? options.platform !== undefined &&
+      (options.name !== undefined || inferred.name !== undefined)
+    : options.name !== undefined &&
+      options.platform !== undefined &&
+      options.type !== undefined;
+
   if (!(isInteractive || hasRequiredArgs)) {
+    if (isDirectory) {
+      throw new Error(
+        "Publishing a directory in non-interactive mode requires --platform (and --name if not in frontmatter)."
+      );
+    }
     throw new Error(
       "Publishing a single file in non-interactive mode requires --name, --platform, and --type."
     );
@@ -440,9 +580,7 @@ async function resolveSingleFileInputs(
     : undefined;
 
   if (selectedPlatforms && selectedPlatforms.length > 1) {
-    throw new Error(
-      "Publishing a single file requires exactly one --platform value."
-    );
+    throw new Error("Quick publish requires exactly one --platform value.");
   }
 
   let selectedPlatform: PlatformId | undefined = selectedPlatforms?.[0]
@@ -466,9 +604,9 @@ async function resolveSingleFileInputs(
     selectedPlatform = selection as PlatformId;
   }
 
-  let selectedType: RuleType | undefined = (options.type ?? inferred.type) as
-    | RuleType
-    | undefined;
+  // For directories, type is already inferred; for files, check options/inferred
+  let selectedType: RuleType | undefined = (options.type ??
+    inferred.ruleType) as RuleType | undefined;
 
   if (!selectedType) {
     if (!isInteractive) {
@@ -496,10 +634,12 @@ async function resolveSingleFileInputs(
   }
 
   const platform = selectedPlatform;
-  const type = selectedType as RuleType;
+  const ruleType = selectedType as RuleType;
 
+  // Name: CLI option > inferred (from frontmatter or filename) > prompt
   const nameValue =
     options.name ??
+    inferred.name ??
     (await (async () => {
       if (!isInteractive) {
         throw new Error("Missing --name");
@@ -524,18 +664,6 @@ async function resolveSingleFileInputs(
     throw new Error(nameCheck.error.issues[0]?.message ?? "Invalid name");
   }
 
-  const bundlePath = getInstallPath({
-    platform,
-    type,
-    name: normalizedName,
-    scope: "project",
-  });
-  if (!bundlePath) {
-    throw new Error(
-      `Type "${type}" is not supported for project installs on platform "${platform}".`
-    );
-  }
-
   const defaultTitle = toTitleCase(normalizedName);
   const finalTitle =
     options.title ??
@@ -556,6 +684,7 @@ async function resolveSingleFileInputs(
 
       return input;
     })());
+
   const finalDescription =
     options.description ??
     (await (async () => {
@@ -575,6 +704,7 @@ async function resolveSingleFileInputs(
 
       return input;
     })());
+
   const finalTags = await (async () => {
     if (options.tags) {
       return tagsSchema.parse(options.tags);
@@ -596,25 +726,28 @@ async function resolveSingleFileInputs(
 
     return tagsInputSchema.parse(input);
   })();
-  const finalLicense = options.license ?? "MIT";
+
+  // License: CLI option > inferred (from frontmatter) > default MIT
+  const finalLicense = options.license ?? inferred.license ?? "MIT";
 
   if (isInteractive && !ctx.dryRun) {
     log.print("");
     log.print(ui.header("Quick publish"));
-    log.print(ui.keyValue("File", ui.path(filePath)));
+    log.print(
+      ui.keyValue(isDirectory ? "Directory" : "File", ui.path(source.path))
+    );
     log.print(ui.keyValue("Name", ui.code(normalizedName)));
     log.print(ui.keyValue("Title", finalTitle));
     log.print(ui.keyValue("Description", finalDescription));
     log.print(ui.keyValue("Platform", platform));
-    log.print(ui.keyValue("Type", type));
-    log.print(ui.keyValue("Installs to", ui.path(bundlePath)));
+    log.print(ui.keyValue("Type", ruleType));
     if (finalTags.length > 0) {
       log.print(ui.keyValue("Tags", finalTags.join(", ")));
     }
     log.print("");
 
     const confirm = await p.confirm({
-      message: "Publish this file?",
+      message: isDirectory ? "Publish this directory?" : "Publish this file?",
       initialValue: true,
     });
 
@@ -624,27 +757,24 @@ async function resolveSingleFileInputs(
   }
 
   return {
-    filePath,
+    source,
     name: normalizedName,
     platform,
-    type,
+    ruleType,
     title: finalTitle,
     description: finalDescription,
     tags: finalTags,
     license: finalLicense,
-    bundlePath,
   };
 }
 
-async function buildRuleInputFromSingleFile(
-  inputs: SingleFilePublishInputs
+async function buildRuleInputFromQuickPublish(
+  inputs: QuickPublishInputs
 ): Promise<RuleInput> {
-  const content = await readFile(inputs.filePath);
-
   const config: RuleInput["config"] = {
     $schema: RULE_SCHEMA_URL,
     name: inputs.name,
-    type: inputs.type,
+    type: inputs.ruleType,
     title: inputs.title,
     description: inputs.description,
     license: inputs.license,
@@ -652,15 +782,50 @@ async function buildRuleInputFromSingleFile(
     platforms: [{ platform: inputs.platform }],
   };
 
+  if (inputs.source.type === "file") {
+    // Single file quick publish
+    const content = await readFile(inputs.source.path);
+    const bundlePath = getInstallPath({
+      platform: inputs.platform,
+      type: inputs.ruleType,
+      name: inputs.name,
+      scope: "project",
+    });
+
+    if (!bundlePath) {
+      throw new Error(
+        `Type "${inputs.ruleType}" is not supported for project installs on platform "${inputs.platform}".`
+      );
+    }
+
+    return {
+      name: inputs.name,
+      config,
+      platformFiles: [
+        {
+          platform: inputs.platform,
+          files: [{ path: bundlePath, content }],
+        },
+      ],
+    };
+  }
+
+  // Directory quick publish - use collectPlatformFiles logic
+  const loadedConfig = {
+    configPath: `${inputs.source.path}/agentrules.json`, // Virtual path
+    config: {
+      ...config,
+      platforms: [{ platform: inputs.platform }],
+    },
+    configDir: inputs.source.path,
+  };
+
+  const platformFiles = await collectPlatformFiles(loadedConfig);
+
   return {
     name: inputs.name,
     config,
-    platformFiles: [
-      {
-        platform: inputs.platform,
-        files: [{ path: inputs.bundlePath, content }],
-      },
-    ],
+    platformFiles,
   };
 }
 

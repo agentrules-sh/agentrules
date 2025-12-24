@@ -4,8 +4,8 @@ import {
   inferInstructionPlatformsFromFileName,
   inferPlatformFromPath,
   inferTypeFromPath,
-  normalizeSkillFiles,
   normalizePlatformInput,
+  normalizeSkillFiles,
 } from "./utils";
 
 describe("normalizePlatformInput", () => {

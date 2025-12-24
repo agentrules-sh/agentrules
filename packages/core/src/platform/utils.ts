@@ -210,7 +210,7 @@ export function normalizeSkillFiles({
     let relative: string;
     if (skillRoot === ".") {
       relative = f.path;
-    } else if (f.path.startsWith(skillRoot + "/")) {
+    } else if (f.path.startsWith(`${skillRoot}/`)) {
       relative = f.path.slice(skillRoot.length + 1);
     } else {
       relative = f.path;

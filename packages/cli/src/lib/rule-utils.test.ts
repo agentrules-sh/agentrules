@@ -5,6 +5,7 @@ import { join } from "path";
 import {
   loadRule,
   normalizeName,
+  parseSkillFrontmatter,
   resolveConfigPath,
   toTitleCase,
 } from "./rule-utils";
@@ -58,6 +59,108 @@ describe("toTitleCase", () => {
 
   it("handles multiple words", () => {
     expect(toTitleCase("my-awesome-rule-name")).toBe("My Awesome Rule Name");
+  });
+});
+
+describe("parseSkillFrontmatter", () => {
+  it("extracts name from frontmatter", () => {
+    const content = `---
+name: my-skill
+description: A test skill
+---
+
+# My Skill`;
+    const result = parseSkillFrontmatter(content);
+    expect(result.name).toBe("my-skill");
+  });
+
+  it("extracts license from frontmatter", () => {
+    const content = `---
+name: my-skill
+license: MIT
+---
+
+# My Skill`;
+    const result = parseSkillFrontmatter(content);
+    expect(result.license).toBe("MIT");
+  });
+
+  it("extracts both name and license", () => {
+    const content = `---
+name: git-tools
+license: Apache-2.0
+description: Git utilities
+---
+
+# Git Tools`;
+    const result = parseSkillFrontmatter(content);
+    expect(result.name).toBe("git-tools");
+    expect(result.license).toBe("Apache-2.0");
+  });
+
+  it("handles quoted values", () => {
+    const content = `---
+name: "my-skill"
+license: 'MIT'
+---`;
+    const result = parseSkillFrontmatter(content);
+    expect(result.name).toBe("my-skill");
+    expect(result.license).toBe("MIT");
+  });
+
+  it("returns empty object when no frontmatter", () => {
+    const content = "# My Skill\n\nNo frontmatter here.";
+    const result = parseSkillFrontmatter(content);
+    expect(result).toEqual({});
+  });
+
+  it("returns empty object for malformed frontmatter", () => {
+    const content = `---
+name: my-skill
+no closing delimiter`;
+    const result = parseSkillFrontmatter(content);
+    expect(result).toEqual({});
+  });
+
+  it("handles frontmatter with only name", () => {
+    const content = `---
+name: solo-skill
+---`;
+    const result = parseSkillFrontmatter(content);
+    expect(result.name).toBe("solo-skill");
+    expect(result.license).toBeUndefined();
+  });
+
+  it("handles frontmatter with only license", () => {
+    const content = `---
+license: GPL-3.0
+---`;
+    const result = parseSkillFrontmatter(content);
+    expect(result.name).toBeUndefined();
+    expect(result.license).toBe("GPL-3.0");
+  });
+
+  it("ignores other frontmatter fields", () => {
+    const content = `---
+name: my-skill
+description: Should be ignored
+compatibility: claude
+metadata:
+  author: test
+allowed-tools:
+  - bash
+---`;
+    const result = parseSkillFrontmatter(content);
+    expect(result.name).toBe("my-skill");
+    expect(result.license).toBeUndefined();
+    expect(Object.keys(result)).toEqual(["name"]);
+  });
+
+  it("handles Windows line endings", () => {
+    const content = "---\r\nname: win-skill\r\nlicense: MIT\r\n---\r\n";
+    const result = parseSkillFrontmatter(content);
+    expect(result.name).toBe("win-skill");
+    expect(result.license).toBe("MIT");
   });
 });
 
@@ -491,7 +594,7 @@ describe("loadRule", () => {
     };
 
     // Helper to get files from first platform
-    const getFiles = (loaded: Awaited<ReturnType<typeof loadRule>>) =>
+    const getSkillFiles = (loaded: Awaited<ReturnType<typeof loadRule>>) =>
       loaded.platformFiles[0].files;
 
     it("bundles skill files to install directory", async () => {
@@ -507,7 +610,7 @@ describe("loadRule", () => {
       const loaded = await loadRule(skillDir);
 
       expect(loaded.name).toBe("my-skill");
-      const paths = getFiles(loaded).map((f) => f.path);
+      const paths = getSkillFiles(loaded).map((f) => f.path);
       expect(paths).toContain(".claude/skills/my-skill/SKILL.md");
       expect(paths).toContain(".claude/skills/my-skill/helper.ts");
     });
@@ -525,7 +628,7 @@ describe("loadRule", () => {
 
       const loaded = await loadRule(skillDir);
 
-      const paths = getFiles(loaded).map((f) => f.path);
+      const paths = getSkillFiles(loaded).map((f) => f.path);
       expect(paths).toContain(".claude/skills/my-skill/SKILL.md");
       expect(paths).toContain(".claude/skills/my-skill/lib/utils.ts");
     });
@@ -541,7 +644,7 @@ describe("loadRule", () => {
 
       const loaded = await loadRule(skillDir);
 
-      const paths = getFiles(loaded).map((f) => f.path);
+      const paths = getSkillFiles(loaded).map((f) => f.path);
       // opencode uses singular "skill" not "skills"
       expect(paths).toContain(".opencode/skill/my-skill/SKILL.md");
     });
@@ -572,7 +675,7 @@ describe("loadRule", () => {
 
       const loaded = await loadRule(skillDir);
 
-      const paths = getFiles(loaded).map((f) => f.path);
+      const paths = getSkillFiles(loaded).map((f) => f.path);
       expect(paths).toContain(".claude/skills/my-skill/SKILL.md");
       expect(paths.some((p) => p.includes("README.md"))).toBeFalse();
       expect(paths.some((p) => p.includes("LICENSE.txt"))).toBeFalse();

@@ -283,6 +283,292 @@ describe("publish", () => {
     });
   });
 
+  describe("skill directory quick publish", () => {
+    it("publishes a skill directory with all files", async () => {
+      await setupLoggedInContext();
+
+      const skillDir = join(testDir, "my-skill");
+      await mkdir(skillDir, { recursive: true });
+      await writeFile(
+        join(skillDir, "SKILL.md"),
+        "---\nname: my-skill\nlicense: MIT\n---\n\n# My Skill\n"
+      );
+      await writeFile(join(skillDir, "helper.ts"), "export const x = 1;");
+
+      let sentBody: unknown;
+      mockFetch({
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
+        method: "POST",
+        response: createPublishResponse("my-skill"),
+        onCall: (_url, init) => {
+          sentBody = JSON.parse(init?.body as string);
+        },
+      });
+
+      const result = await publish({
+        path: skillDir,
+        platform: ["claude"],
+        yes: true,
+      });
+
+      expect(result.success).toBeTrue();
+
+      const payload = sentBody as {
+        name: string;
+        variants: Array<{ platform: string; files: Array<{ path: string }> }>;
+      };
+
+      expect(payload.name).toBe("my-skill");
+      expect(payload.variants).toHaveLength(1);
+      expect(payload.variants[0].platform).toBe("claude");
+
+      const paths = payload.variants[0].files.map((f) => f.path);
+      expect(paths).toContain(".claude/skills/my-skill/SKILL.md");
+      expect(paths).toContain(".claude/skills/my-skill/helper.ts");
+    });
+
+    it("uses frontmatter name as default", async () => {
+      await setupLoggedInContext();
+
+      const skillDir = join(testDir, "skill-dir");
+      await mkdir(skillDir, { recursive: true });
+      await writeFile(
+        join(skillDir, "SKILL.md"),
+        "---\nname: frontmatter-name\n---\n\n# Skill\n"
+      );
+
+      let sentBody: unknown;
+      mockFetch({
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
+        method: "POST",
+        response: createPublishResponse("frontmatter-name"),
+        onCall: (_url, init) => {
+          sentBody = JSON.parse(init?.body as string);
+        },
+      });
+
+      const result = await publish({
+        path: skillDir,
+        platform: ["claude"],
+        yes: true,
+      });
+
+      expect(result.success).toBeTrue();
+
+      const payload = sentBody as { name: string };
+      expect(payload.name).toBe("frontmatter-name");
+    });
+
+    it("uses frontmatter license as default", async () => {
+      await setupLoggedInContext();
+
+      const skillDir = join(testDir, "licensed-skill");
+      await mkdir(skillDir, { recursive: true });
+      await writeFile(
+        join(skillDir, "SKILL.md"),
+        "---\nname: licensed-skill\nlicense: Apache-2.0\n---\n"
+      );
+
+      let sentBody: unknown;
+      mockFetch({
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
+        method: "POST",
+        response: createPublishResponse("licensed-skill"),
+        onCall: (_url, init) => {
+          sentBody = JSON.parse(init?.body as string);
+        },
+      });
+
+      const result = await publish({
+        path: skillDir,
+        platform: ["claude"],
+        yes: true,
+      });
+
+      expect(result.success).toBeTrue();
+
+      const payload = sentBody as { license: string };
+      expect(payload.license).toBe("Apache-2.0");
+    });
+
+    it("allows --name to override frontmatter name", async () => {
+      await setupLoggedInContext();
+
+      const skillDir = join(testDir, "override-skill");
+      await mkdir(skillDir, { recursive: true });
+      await writeFile(
+        join(skillDir, "SKILL.md"),
+        "---\nname: frontmatter-name\n---\n"
+      );
+
+      let sentBody: unknown;
+      mockFetch({
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
+        method: "POST",
+        response: createPublishResponse("cli-override"),
+        onCall: (_url, init) => {
+          sentBody = JSON.parse(init?.body as string);
+        },
+      });
+
+      const result = await publish({
+        path: skillDir,
+        platform: ["claude"],
+        name: "cli-override",
+        yes: true,
+      });
+
+      expect(result.success).toBeTrue();
+
+      const payload = sentBody as { name: string };
+      expect(payload.name).toBe("cli-override");
+    });
+
+    it("requires --platform for skill directory", async () => {
+      await setupLoggedOutContext();
+
+      const skillDir = join(testDir, "no-platform-skill");
+      await mkdir(skillDir, { recursive: true });
+      await writeFile(
+        join(skillDir, "SKILL.md"),
+        "---\nname: no-platform\n---\n"
+      );
+
+      const result = await publish({
+        path: skillDir,
+        yes: true,
+        dryRun: true,
+      });
+
+      expect(result.success).toBeFalse();
+      expect(result.error).toContain("--platform");
+    });
+
+    it("infers type as skill for directories with SKILL.md", async () => {
+      await setupLoggedInContext();
+
+      const skillDir = join(testDir, "inferred-skill");
+      await mkdir(skillDir, { recursive: true });
+      await writeFile(
+        join(skillDir, "SKILL.md"),
+        "---\nname: inferred-skill\n---\n"
+      );
+
+      let sentBody: unknown;
+      mockFetch({
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
+        method: "POST",
+        response: createPublishResponse("inferred-skill"),
+        onCall: (_url, init) => {
+          sentBody = JSON.parse(init?.body as string);
+        },
+      });
+
+      // No --type provided, should infer from SKILL.md presence
+      const result = await publish({
+        path: skillDir,
+        platform: ["claude"],
+        yes: true,
+      });
+
+      expect(result.success).toBeTrue();
+
+      const payload = sentBody as {
+        variants: Array<{ files: Array<{ path: string }> }>;
+      };
+
+      // Should be in skills directory, not commands or other
+      expect(payload.variants[0].files[0]?.path).toContain("/skills/");
+    });
+
+    it("excludes metadata files from skill directory bundle", async () => {
+      await setupLoggedInContext();
+
+      const skillDir = join(testDir, "metadata-skill");
+      await mkdir(skillDir, { recursive: true });
+      await writeFile(
+        join(skillDir, "SKILL.md"),
+        "---\nname: metadata-skill\n---\n"
+      );
+      await writeFile(join(skillDir, "README.md"), "# Readme");
+      await writeFile(join(skillDir, "LICENSE.txt"), "MIT");
+      await writeFile(join(skillDir, "INSTALL.txt"), "Install");
+      await writeFile(join(skillDir, "helper.ts"), "export const x = 1;");
+
+      let sentBody: unknown;
+      mockFetch({
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
+        method: "POST",
+        response: createPublishResponse("metadata-skill"),
+        onCall: (_url, init) => {
+          sentBody = JSON.parse(init?.body as string);
+        },
+      });
+
+      const result = await publish({
+        path: skillDir,
+        platform: ["claude"],
+        yes: true,
+      });
+
+      expect(result.success).toBeTrue();
+
+      const payload = sentBody as {
+        variants: Array<{ files: Array<{ path: string }> }>;
+      };
+
+      const paths = payload.variants[0].files.map((f) => f.path);
+      expect(paths).toContain(".claude/skills/metadata-skill/SKILL.md");
+      expect(paths).toContain(".claude/skills/metadata-skill/helper.ts");
+      expect(paths.some((p) => p.includes("README.md"))).toBeFalse();
+      expect(paths.some((p) => p.includes("LICENSE.txt"))).toBeFalse();
+      expect(paths.some((p) => p.includes("INSTALL.txt"))).toBeFalse();
+    });
+
+    it("does not treat directory with agentrules.json as quick publish", async () => {
+      await setupLoggedInContext();
+
+      const skillDir = join(testDir, "config-skill");
+      await mkdir(skillDir, { recursive: true });
+      await writeFile(
+        join(skillDir, "SKILL.md"),
+        "---\nname: config-skill\n---\n"
+      );
+      await writeFile(
+        join(skillDir, "agentrules.json"),
+        JSON.stringify({
+          name: "config-skill",
+          type: "skill",
+          title: "Config Skill",
+          description: "Has a config",
+          license: "MIT",
+          platforms: ["claude"],
+        })
+      );
+
+      let sentBody: unknown;
+      mockFetch({
+        url: `${DEFAULT_REGISTRY_URL}${API_ENDPOINTS.rules.base}`,
+        method: "POST",
+        response: createPublishResponse("config-skill"),
+        onCall: (_url, init) => {
+          sentBody = JSON.parse(init?.body as string);
+        },
+      });
+
+      // Should use config publish, not directory quick publish
+      const result = await publish({
+        path: skillDir,
+      });
+
+      expect(result.success).toBeTrue();
+
+      const payload = sentBody as { title: string };
+      // Config publish uses title from config
+      expect(payload.title).toBe("Config Skill");
+    });
+  });
+
   describe("config publish overrides", () => {
     it("applies metadata overrides without modifying config", async () => {
       await setupLoggedInContext();

@@ -19,6 +19,41 @@ import { log } from "./log";
 // Re-export types for consumers
 export type { RuleConfig } from "@agentrules/core";
 
+export const SKILL_FILENAME = "SKILL.md";
+
+export type SkillFrontmatter = {
+  name?: string;
+  license?: string;
+};
+
+/**
+ * Parse SKILL.md frontmatter for name and license.
+ * Only extracts simple key: value pairs we need for quick publish defaults.
+ */
+export function parseSkillFrontmatter(content: string): SkillFrontmatter {
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!match?.[1]) return {};
+
+  const frontmatter = match[1];
+  const result: SkillFrontmatter = {};
+
+  // Extract name: value (handles quoted and unquoted values)
+  const nameMatch = frontmatter.match(/^name:\s*["']?([^"'\n]+)["']?\s*$/m);
+  if (nameMatch?.[1]) {
+    result.name = nameMatch[1].trim();
+  }
+
+  // Extract license: value
+  const licenseMatch = frontmatter.match(
+    /^license:\s*["']?([^"'\n]+)["']?\s*$/m
+  );
+  if (licenseMatch?.[1]) {
+    result.license = licenseMatch[1].trim();
+  }
+
+  return result;
+}
+
 const METADATA_FILES = {
   install: ["INSTALL.txt"],
   readme: ["README.md"],
