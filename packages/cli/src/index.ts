@@ -337,7 +337,7 @@ program
 
         const nextSteps: string[] = [
           "Add your rule files in this directory",
-          "Add tags (recommended) and features (recommended) to agentrules.json",
+          "Add tags and features to agentrules.json",
           `Run ${ui.command("agentrules publish")} to publish your rule`,
         ];
 
@@ -371,7 +371,7 @@ program
 
       const nextSteps: string[] = [
         "Add your rule files in this directory",
-        "Add tags (recommended) and features (recommended) to agentrules.json",
+        "Add tags and features to agentrules.json",
         `Run ${ui.command("agentrules publish")} to publish your rule`,
       ];
 

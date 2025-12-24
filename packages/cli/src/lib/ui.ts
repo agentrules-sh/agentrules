@@ -583,6 +583,64 @@ export function fileTree(
 }
 
 // =============================================================================
+// Rule Preview
+// =============================================================================
+
+export type RulePreviewOptions = {
+  header: string;
+  /** File or directory path */
+  path?: string;
+  pathLabel?: string;
+  name: string;
+  title: string;
+  description?: string;
+  platforms: string[];
+  type?: string;
+  tags?: string[];
+  features?: string[];
+  license?: string;
+  /** Show hints about improving the rule */
+  showHints?: boolean;
+};
+
+export function rulePreview(options: RulePreviewOptions): string {
+  const lines: string[] = [];
+
+  lines.push(header(options.header));
+
+  if (options.path) {
+    lines.push(keyValue(options.pathLabel ?? "Path", path(options.path)));
+  }
+
+  lines.push(keyValue("Name", code(options.name)));
+  lines.push(keyValue("Title", options.title));
+  lines.push(keyValue("Description", options.description || dim("—")));
+  lines.push(keyValue("Platforms", options.platforms.join(", ")));
+
+  if (options.type) {
+    lines.push(keyValue("Type", options.type));
+  }
+
+  if (options.tags && options.tags.length > 0) {
+    lines.push(keyValue("Tags", options.tags.join(", ")));
+  } else if (options.showHints) {
+    lines.push(keyValue("Tags", dim("— (add to improve discoverability)")));
+  }
+
+  if (options.features && options.features.length > 0) {
+    lines.push(keyValue("Features", options.features.join(", ")));
+  } else if (options.showHints) {
+    lines.push(keyValue("Features", dim("— (highlight what this rule does)")));
+  }
+
+  if (options.license) {
+    lines.push(keyValue("License", options.license));
+  }
+
+  return lines.join("\n");
+}
+
+// =============================================================================
 // Export
 // =============================================================================
 
@@ -639,6 +697,7 @@ export const ui = {
   fileCounts,
   hint,
   link,
+  rulePreview,
 
   // Utils
   stripAnsi,

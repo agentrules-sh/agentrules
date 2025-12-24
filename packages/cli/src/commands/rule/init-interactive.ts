@@ -12,6 +12,7 @@ import {
 import * as p from "@clack/prompts";
 import { join } from "path";
 import { directoryExists, fileExists } from "@/lib/fs";
+import { log } from "@/lib/log";
 import { normalizeName, toTitleCase } from "@/lib/rule-utils";
 import { ui } from "@/lib/ui";
 import { check } from "@/lib/zod-validator";
@@ -301,13 +302,37 @@ export async function initInteractive(
     }
   );
 
+  const tags = parseTags(result.tags);
+  const platformIds = platformEntries.map((entry) =>
+    typeof entry === "string" ? entry : entry.platform
+  );
+
+  // Show preview
+  log.print("");
+  log.print(
+    ui.rulePreview({
+      header: "Rule configuration",
+      path: directory,
+      pathLabel: "Directory",
+      name: result.name,
+      title: result.title.trim() || toTitleCase(result.name),
+      description: result.description,
+      platforms: platformIds,
+      type: useSkillDefaults ? "skill" : undefined,
+      tags,
+      license: result.license,
+      showHints: true,
+    })
+  );
+  log.print("");
+
   const initOptions: InitOptions = {
     directory,
     name: result.name,
     type: useSkillDefaults ? "skill" : undefined,
     title: result.title.trim() || undefined,
     description: result.description,
-    tags: parseTags(result.tags),
+    tags,
     platforms: platformEntries,
     license: result.license,
     force,

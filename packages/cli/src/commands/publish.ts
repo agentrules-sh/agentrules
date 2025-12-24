@@ -793,20 +793,20 @@ async function resolveQuickPublishInputs(
 
   if (isInteractive && !ctx.dryRun) {
     log.print("");
-    log.print(ui.header("Quick publish"));
     log.print(
-      ui.keyValue(isDirectory ? "Directory" : "File", ui.path(source.path))
+      ui.rulePreview({
+        header: "Quick publish",
+        path: source.path,
+        pathLabel: isDirectory ? "Directory" : "File",
+        name: normalizedName,
+        title: finalTitle,
+        description: finalDescription,
+        platforms,
+        type: ruleType,
+        tags: finalTags,
+        showHints: true,
+      })
     );
-    log.print(ui.keyValue("Name", ui.code(normalizedName)));
-    log.print(ui.keyValue("Title", finalTitle));
-    log.print(
-      ui.keyValue("Description", finalDescription || ui.dim("No description"))
-    );
-    log.print(ui.keyValue("Platforms", platforms.join(", ")));
-    log.print(ui.keyValue("Type", ruleType));
-    if (finalTags.length > 0) {
-      log.print(ui.keyValue("Tags", finalTags.join(", ")));
-    }
     log.print("");
 
     const confirm = await p.confirm({
