@@ -1,7 +1,9 @@
 import {
+  getInstallDir,
   getInstallPath,
   normalizePlatformEntry,
   normalizePlatformInput,
+  normalizeSkillFiles,
   PLATFORMS,
   type PlatformFiles,
   RULE_CONFIG_FILENAME,
@@ -315,21 +317,6 @@ export async function collectPlatformFiles(
       `Files for ${platform}: source=${resolvedSourcePath}, dir=${filesDir}`
     );
 
-    const treatInstructionAsRoot =
-      config.type === undefined || config.type === "instruction";
-
-    const instructionProjectPath = treatInstructionAsRoot
-      ? getInstallPath({
-          platform,
-          type: "instruction",
-          scope: "project",
-        })
-      : null;
-
-    const instructionContent = instructionProjectPath
-      ? await readFileIfExists(join(configDir, instructionProjectPath))
-      : undefined;
-
     const filesDirExists = await directoryExists(filesDir);
 
     const rootExclude: string[] = [RULE_CONFIG_FILENAME];
@@ -346,6 +333,64 @@ export async function collectPlatformFiles(
     const collectedFiles = filesDirExists
       ? await collectFiles(filesDir, rootExclude, ignorePatterns)
       : [];
+
+    if (collectedFiles.length === 0) {
+      if (!filesDirExists) {
+        throw new Error(
+          `Files directory not found: ${filesDir}. Create the directory or set "path" in the platform entry.`
+        );
+      }
+
+      throw new Error(
+        `No files found in ${filesDir}. Rules must include at least one file.`
+      );
+    }
+
+    // Handle skill type: use SKILL.md anchor-based normalization
+    if (config.type === "skill") {
+      const installDir = getInstallDir({
+        platform,
+        type: "skill",
+        name: config.name,
+      });
+
+      if (!installDir) {
+        throw new Error(`Platform "${platform}" does not support skill type.`);
+      }
+
+      const normalizedFiles = normalizeSkillFiles({
+        files: collectedFiles,
+        installDir,
+      });
+
+      platformFiles.push({
+        platform,
+        files: normalizedFiles.map((f) => ({
+          path: f.path,
+          content:
+            typeof f.content === "string"
+              ? f.content
+              : new TextDecoder().decode(f.content),
+        })),
+      });
+      continue;
+    }
+
+    // Handle instruction type: keep instruction file at root
+    const treatInstructionAsRoot =
+      config.type === undefined || config.type === "instruction";
+
+    const instructionProjectPath = treatInstructionAsRoot
+      ? getInstallPath({
+          platform,
+          type: "instruction",
+          scope: "project",
+        })
+      : null;
+
+    const instructionContent = instructionProjectPath
+      ? await readFileIfExists(join(configDir, instructionProjectPath))
+      : undefined;
 
     const publishFiles: Array<{ path: string; content: string }> = [];
     const seenPublishPaths = new Set<string>();
@@ -376,12 +421,6 @@ export async function collectPlatformFiles(
     }
 
     if (publishFiles.length === 0) {
-      if (!filesDirExists) {
-        throw new Error(
-          `Files directory not found: ${filesDir}. Create the directory or set "path" in the platform entry.`
-        );
-      }
-
       throw new Error(
         `No files found in ${filesDir}. Rules must include at least one file.`
       );

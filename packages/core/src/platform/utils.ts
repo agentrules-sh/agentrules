@@ -140,3 +140,85 @@ export function inferTypeFromPath(
 
   return getProjectTypeDirMap(platform).get(nextDir);
 }
+
+// --- Skill bundling utilities ---
+
+export type GetInstallDirInput = {
+  platform: PlatformId;
+  type: string;
+  name: string;
+};
+
+/**
+ * Get the install directory for a type (parent directory of the install path).
+ * For skills, this is the directory containing SKILL.md.
+ */
+export function getInstallDir({
+  platform,
+  type,
+  name,
+}: GetInstallDirInput): string | null {
+  const installPath = getInstallPath({
+    platform,
+    type,
+    name,
+    scope: "project",
+  });
+  if (!installPath) return null;
+
+  // Get parent directory of the install path
+  const lastSlash = installPath.lastIndexOf("/");
+  if (lastSlash === -1) return null;
+
+  return installPath.slice(0, lastSlash);
+}
+
+export type BundleFile = {
+  path: string;
+  content: string | Uint8Array;
+};
+
+export type NormalizeSkillFilesInput = {
+  files: BundleFile[];
+  installDir: string;
+};
+
+/**
+ * Normalize skill files by finding SKILL.md anchor and adjusting all paths.
+ * Strips any existing path prefix to prevent duplication.
+ */
+export function normalizeSkillFiles({
+  files,
+  installDir,
+}: NormalizeSkillFilesInput): BundleFile[] {
+  // Find the SKILL.md marker
+  const marker = files.find(
+    (f) => f.path === "SKILL.md" || f.path.endsWith("/SKILL.md")
+  );
+  if (!marker) {
+    throw new Error("SKILL.md not found in files");
+  }
+
+  // Get skill root (directory containing SKILL.md)
+  const skillRoot =
+    marker.path === "SKILL.md"
+      ? "."
+      : marker.path.slice(0, marker.path.lastIndexOf("/"));
+
+  return files.map((f) => {
+    // Strip skill root prefix
+    let relative: string;
+    if (skillRoot === ".") {
+      relative = f.path;
+    } else if (f.path.startsWith(skillRoot + "/")) {
+      relative = f.path.slice(skillRoot.length + 1);
+    } else {
+      relative = f.path;
+    }
+
+    return {
+      ...f,
+      path: `${installDir}/${relative}`,
+    };
+  });
+}

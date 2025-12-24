@@ -479,4 +479,131 @@ describe("loadRule", () => {
       await expect(loadRule(platformDir)).rejects.toThrow(/No files found/);
     });
   });
+
+  describe("skill type bundling", () => {
+    const SKILL_CONFIG = {
+      name: "my-skill",
+      type: "skill",
+      title: "My Skill",
+      description: "A test skill",
+      license: "MIT",
+      tags: ["test"],
+    };
+
+    // Helper to get files from first platform
+    const getFiles = (loaded: Awaited<ReturnType<typeof loadRule>>) =>
+      loaded.platformFiles[0].files;
+
+    it("bundles skill files to install directory", async () => {
+      const skillDir = join(testDir, "my-skill");
+      await mkdir(skillDir, { recursive: true });
+      await writeFile(
+        join(skillDir, "agentrules.json"),
+        JSON.stringify({ ...SKILL_CONFIG, platforms: ["claude"] })
+      );
+      await writeFile(join(skillDir, "SKILL.md"), "# My Skill");
+      await writeFile(join(skillDir, "helper.ts"), "export const x = 1;");
+
+      const loaded = await loadRule(skillDir);
+
+      expect(loaded.name).toBe("my-skill");
+      const paths = getFiles(loaded).map((f) => f.path);
+      expect(paths).toContain(".claude/skills/my-skill/SKILL.md");
+      expect(paths).toContain(".claude/skills/my-skill/helper.ts");
+    });
+
+    it("handles skill files in subdirectories", async () => {
+      const skillDir = join(testDir, "my-skill");
+      const libDir = join(skillDir, "lib");
+      await mkdir(libDir, { recursive: true });
+      await writeFile(
+        join(skillDir, "agentrules.json"),
+        JSON.stringify({ ...SKILL_CONFIG, platforms: ["claude"] })
+      );
+      await writeFile(join(skillDir, "SKILL.md"), "# My Skill");
+      await writeFile(join(libDir, "utils.ts"), "export const utils = {};");
+
+      const loaded = await loadRule(skillDir);
+
+      const paths = getFiles(loaded).map((f) => f.path);
+      expect(paths).toContain(".claude/skills/my-skill/SKILL.md");
+      expect(paths).toContain(".claude/skills/my-skill/lib/utils.ts");
+    });
+
+    it("bundles to opencode skill directory (singular)", async () => {
+      const skillDir = join(testDir, "my-skill");
+      await mkdir(skillDir, { recursive: true });
+      await writeFile(
+        join(skillDir, "agentrules.json"),
+        JSON.stringify({ ...SKILL_CONFIG, platforms: ["opencode"] })
+      );
+      await writeFile(join(skillDir, "SKILL.md"), "# My Skill");
+
+      const loaded = await loadRule(skillDir);
+
+      const paths = getFiles(loaded).map((f) => f.path);
+      // opencode uses singular "skill" not "skills"
+      expect(paths).toContain(".opencode/skill/my-skill/SKILL.md");
+    });
+
+    it("throws when SKILL.md is missing", async () => {
+      const skillDir = join(testDir, "my-skill");
+      await mkdir(skillDir, { recursive: true });
+      await writeFile(
+        join(skillDir, "agentrules.json"),
+        JSON.stringify({ ...SKILL_CONFIG, platforms: ["claude"] })
+      );
+      await writeFile(join(skillDir, "helper.ts"), "export const x = 1;");
+      // No SKILL.md
+
+      await expect(loadRule(skillDir)).rejects.toThrow(/SKILL\.md not found/);
+    });
+
+    it("excludes metadata files from skill bundle", async () => {
+      const skillDir = join(testDir, "my-skill");
+      await mkdir(skillDir, { recursive: true });
+      await writeFile(
+        join(skillDir, "agentrules.json"),
+        JSON.stringify({ ...SKILL_CONFIG, platforms: ["claude"] })
+      );
+      await writeFile(join(skillDir, "SKILL.md"), "# My Skill");
+      await writeFile(join(skillDir, "README.md"), "# Readme");
+      await writeFile(join(skillDir, "LICENSE.txt"), "MIT");
+
+      const loaded = await loadRule(skillDir);
+
+      const paths = getFiles(loaded).map((f) => f.path);
+      expect(paths).toContain(".claude/skills/my-skill/SKILL.md");
+      expect(paths.some((p) => p.includes("README.md"))).toBeFalse();
+      expect(paths.some((p) => p.includes("LICENSE.txt"))).toBeFalse();
+    });
+
+    it("bundles to multiple platforms", async () => {
+      const skillDir = join(testDir, "my-skill");
+      await mkdir(skillDir, { recursive: true });
+      await writeFile(
+        join(skillDir, "agentrules.json"),
+        JSON.stringify({ ...SKILL_CONFIG, platforms: ["claude", "opencode"] })
+      );
+      await writeFile(join(skillDir, "SKILL.md"), "# My Skill");
+
+      const loaded = await loadRule(skillDir);
+
+      expect(loaded.platformFiles).toHaveLength(2);
+
+      const claudeFiles = loaded.platformFiles.find(
+        (p) => p.platform === "claude"
+      )?.files;
+      const opencodeFiles = loaded.platformFiles.find(
+        (p) => p.platform === "opencode"
+      )?.files;
+
+      expect(claudeFiles?.map((f) => f.path)).toContain(
+        ".claude/skills/my-skill/SKILL.md"
+      );
+      expect(opencodeFiles?.map((f) => f.path)).toContain(
+        ".opencode/skill/my-skill/SKILL.md"
+      );
+    });
+  });
 });
