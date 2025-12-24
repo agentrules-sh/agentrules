@@ -625,7 +625,7 @@ async function resolveQuickPublishInputs(
     }
 
     const selection = await p.multiselect({
-      message: "Platforms (select one or more)",
+      message: `Platforms ${ui.dim("(space to toggle, 'a' to select all)")}`,
       options: PLATFORM_IDS.map((id) => ({ value: id, label: id })),
       required: true,
     });

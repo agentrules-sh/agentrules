@@ -13,6 +13,7 @@ import * as p from "@clack/prompts";
 import { join } from "path";
 import { directoryExists, fileExists } from "@/lib/fs";
 import { normalizeName, toTitleCase } from "@/lib/rule-utils";
+import { ui } from "@/lib/ui";
 import { check } from "@/lib/zod-validator";
 import {
   detectSkillDirectory,
@@ -125,7 +126,7 @@ export async function initInteractive(
       ? validatedPlatforms
       : await (async () => {
           const platformChoices = await p.multiselect({
-            message: "Platforms (select one or more)",
+            message: `Platforms ${ui.dim("(space to toggle, 'a' to select all)")}`,
             options: PLATFORM_IDS.map((id) => ({ value: id, label: id })),
             required: true,
           });
