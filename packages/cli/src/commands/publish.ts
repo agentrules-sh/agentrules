@@ -48,7 +48,7 @@ import {
 } from "@/lib/rule-utils";
 import { ui } from "@/lib/ui";
 import { check } from "@/lib/zod-validator";
-import { detectSkillDirectory } from "./rule/init";
+import { detectSkillDirectory, initRule } from "./rule/init";
 
 /** Maximum size per variant/platform bundle in bytes (1MB) */
 const MAX_VARIANT_SIZE_BYTES = 1 * 1024 * 1024;
@@ -222,6 +222,8 @@ export async function publish(
       version,
       spinner: fileSpinner,
       ctx,
+      quickPublish: resolved,
+      yes,
     });
   }
 
@@ -278,6 +280,8 @@ export async function publish(
       version,
       spinner: dirSpinner,
       ctx,
+      quickPublish: resolved,
+      yes,
     });
   }
 
@@ -907,8 +911,13 @@ async function finalizePublish(options: {
     success: (message: string) => void;
   };
   ctx: ReturnType<typeof useAppContext>;
+  /** Quick publish inputs - if provided, prompt to create agentrules.json */
+  quickPublish?: QuickPublishInputs;
+  /** Skip interactive prompts */
+  yes?: boolean;
 }): Promise<PublishResult> {
-  const { publishInput, dryRun, version, spinner, ctx } = options;
+  const { publishInput, dryRun, version, spinner, ctx, quickPublish, yes } =
+    options;
 
   // Calculate sizes for validation and display
   const totalFileCount = publishInput.variants.reduce(
@@ -1064,6 +1073,46 @@ async function finalizePublish(options: {
   // Show registry page URL
   log.info("");
   log.info(ui.keyValue("Now live at", ui.link(data.url)));
+
+  // Prompt to create agentrules.json for quick publish
+  if (quickPublish) {
+    let createConfig = yes; // --yes defaults to creating config
+
+    if (!yes && process.stdin.isTTY) {
+      log.print("");
+      const answer = await p.confirm({
+        message: "Create agentrules.json for future publishes?",
+        initialValue: true,
+      });
+      createConfig = !p.isCancel(answer) && answer;
+    }
+
+    if (createConfig) {
+      const sourceDir =
+        quickPublish.source.type === "directory"
+          ? quickPublish.source.path
+          : undefined;
+
+      // For single files, create config in same directory as file
+      const configDir =
+        sourceDir ??
+        (quickPublish.source.path.replace(/[/\\][^/\\]+$/, "") || ".");
+
+      await initRule({
+        directory: configDir,
+        name: quickPublish.name,
+        title: quickPublish.title,
+        description: quickPublish.description || undefined,
+        platforms: quickPublish.platforms,
+        type: quickPublish.ruleType,
+        tags: quickPublish.tags,
+        license: quickPublish.license,
+        force: false,
+      });
+
+      log.success(`Created ${ui.path(`${configDir}/agentrules.json`)}`);
+    }
+  }
 
   return {
     success: true,
