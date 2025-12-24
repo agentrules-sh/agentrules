@@ -8,11 +8,16 @@ import {
   RULE_SCHEMA_URL,
   type RuleType,
 } from "@agentrules/core";
-import { mkdir, writeFile } from "fs/promises";
+import { mkdir, readFile, writeFile } from "fs/promises";
 import { basename, join } from "path";
 import { directoryExists, fileExists } from "@/lib/fs";
 import { log } from "@/lib/log";
-import { normalizeName, toTitleCase } from "@/lib/rule-utils";
+import {
+  normalizeName,
+  parseSkillFrontmatter,
+  SKILL_FILENAME,
+  toTitleCase,
+} from "@/lib/rule-utils";
 
 export type InitOptions = {
   /** Directory to write agentrules.json (defaults to cwd) */
@@ -41,6 +46,32 @@ export type InitResult = {
 /** Default rule name when none specified */
 const DEFAULT_RULE_NAME = "my-rule";
 
+export type SkillDirectoryInfo = {
+  name?: string;
+  license?: string;
+};
+
+/**
+ * Detect if directory contains SKILL.md and extract frontmatter defaults.
+ */
+export async function detectSkillDirectory(
+  directory: string
+): Promise<SkillDirectoryInfo | undefined> {
+  const skillPath = join(directory, SKILL_FILENAME);
+
+  if (!(await fileExists(skillPath))) {
+    return;
+  }
+
+  const content = await readFile(skillPath, "utf8");
+  const frontmatter = parseSkillFrontmatter(content);
+
+  return {
+    name: frontmatter.name,
+    license: frontmatter.license,
+  };
+}
+
 /**
  * Initialize a rule in a directory (rule root).
  *
@@ -53,6 +84,10 @@ export async function initRule(options: InitOptions): Promise<InitResult> {
   const ruleDir = options.directory ?? process.cwd();
 
   log.debug(`Initializing rule in: ${ruleDir}`);
+
+  // Detect skill directory and get defaults from frontmatter
+  const skillInfo = await detectSkillDirectory(ruleDir);
+  const isSkillDirectory = skillInfo !== undefined;
 
   // Infer platform from directory name if not provided
   const inferredPlatform = getPlatformFromDir(basename(ruleDir));
@@ -67,11 +102,14 @@ export async function initRule(options: InitOptions): Promise<InitResult> {
 
   const platforms = platformInputs.map(normalizePlatformEntryInput);
 
-  // Validate/normalize inputs
-  const name = normalizeName(options.name ?? DEFAULT_RULE_NAME);
+  // Validate/normalize inputs - use skill frontmatter as defaults
+  const name = normalizeName(
+    options.name ?? skillInfo?.name ?? DEFAULT_RULE_NAME
+  );
   const title = options.title ?? toTitleCase(name);
   const description = options.description ?? "";
-  const license = options.license ?? "MIT";
+  const license = options.license ?? skillInfo?.license ?? "MIT";
+  const ruleType = isSkillDirectory ? "skill" : options.type;
 
   const platformLabels = platforms
     .map((p) => (typeof p === "string" ? p : p.platform))
@@ -91,7 +129,7 @@ export async function initRule(options: InitOptions): Promise<InitResult> {
   const config: RawRuleConfig = {
     $schema: RULE_SCHEMA_URL,
     name,
-    ...(options.type && { type: options.type as RuleType }),
+    ...(ruleType && { type: ruleType as RuleType }),
     title,
     version: 1,
     description,
