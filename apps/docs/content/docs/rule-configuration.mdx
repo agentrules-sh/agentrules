@@ -39,35 +39,79 @@ Example:
 }
 ```
 
-### Multi-Platform Rules
+## Structuring Your Rule
 
-If your rule works for multiple platforms, list them all:
+### Single platform
 
-```json title="agentrules.json"
-{
-  "$schema": "https://agentrules.directory/schema/agentrules.json",
-  "name": "my-rule",
-  "title": "My Awesome Rule",
-  "description": "A helpful rule",
-  "license": "MIT",
-  "platforms": [
-    { "platform": "opencode", "path": "opencode" },
-    { "platform": "claude", "path": "claude" }
-  ],
-  "tags": ["typescript", "react"]
-}
+Files are placed under the platform directory automatically:
+
+```
+my-rule/
+├── agentrules.json
+└── commands/
+    └── deploy.md
 ```
 
-You can also specify custom paths for each platform:
+Installs as `.claude/commands/deploy.md` or `.opencode/commands/deploy.md`.
+
+### Multi-platform
+
+When publishing to multiple platforms with different content, use `path` to specify source directories:
+
+```
+my-rule/
+├── agentrules.json
+├── claude/
+│   └── commands/
+│       └── deploy.md
+└── opencode/
+    └── commands/
+        └── deploy.md
+```
 
 ```json title="agentrules.json"
 {
   "platforms": [
-    { "platform": "opencode", "path": "opencode" },
-    { "platform": "claude", "path": ".claude-config" }
+    { "platform": "claude", "path": "claude" },
+    { "platform": "opencode", "path": "opencode" }
   ]
 }
 ```
+
+If the content is the same for all platforms, just list them:
+
+```json title="agentrules.json"
+{
+  "platforms": ["claude", "opencode"]
+}
+```
+
+### Skills
+
+For multi-file skills, set `type: "skill"` and structure files naturally:
+
+```
+my-skill/
+├── agentrules.json
+├── SKILL.md
+├── scripts/
+│   └── helper.py
+└── references/
+    └── api.md
+```
+
+```json title="agentrules.json"
+{
+  "name": "my-skill",
+  "type": "skill",
+  "platforms": ["claude", "opencode"],
+  ...
+}
+```
+
+Files are automatically placed in the correct skill directory for each platform (e.g., `.claude/skills/my-skill/...`).
+
+See [agentskills.io](https://agentskills.io) for the skills standard.
 
 ## Metadata Files
 
