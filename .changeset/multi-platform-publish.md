@@ -2,11 +2,11 @@
 "@agentrules/cli": patch
 ---
 
-Add multi-platform support for quick publish and improved UX
+Unify init and quick publish flows with shared prompts
 
-- Quick publish now supports publishing to multiple platforms at once
-- Add keyboard hint to platform multiselect (`a` to select all)
-- Add rule preview with tags/features hints before publishing
-- Prompt to create agentrules.json after quick publish succeeds
-- Fix empty tags input handling
-- Use consistent `—` placeholder for missing optional fields
+- Quick publish any directory (not just skill directories)
+- Per-platform path prompting for multi-platform directories
+- Multi-platform support for quick publish
+- Prompt to create agentrules.json after quick publish
+- Add keyboard hint to platform multiselect
+- Add rule preview with tags/features hints
