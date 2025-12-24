@@ -40,13 +40,20 @@ npx @agentrules/cli publish
 
 Your rule is now live.
 
-## Quick publish (single file)
+## Quick Publish
 
-If you just want to share one file (like a Claude command), you can publish it directly:
+Don't have an `agentrules.json`? Publish directly — the CLI prompts for what it needs:
 
 ```bash
+# Publish a file or directory (interactive)
+npx @agentrules/cli publish .claude/commands/deploy.md
+npx @agentrules/cli publish ./my-rule
+
+# Non-interactive (requires all options)
 npx @agentrules/cli publish .claude/commands/deploy.md --platform claude --type command --name deploy
 ```
+
+After publishing, you'll be prompted to create an `agentrules.json` for future publishes.
 
 Use `--dry-run` to preview before publishing.
 

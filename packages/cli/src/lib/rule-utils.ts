@@ -1,20 +1,32 @@
 import {
+  COMMON_LICENSES,
+  descriptionSchema,
   getInstallDir,
   getInstallPath,
+  isSupportedPlatform,
+  licenseSchema,
+  nameSchema,
   normalizePlatformEntry,
   normalizePlatformInput,
   normalizeSkillFiles,
+  PLATFORM_IDS,
   PLATFORMS,
   type PlatformFiles,
+  type PlatformId,
   RULE_CONFIG_FILENAME,
   type RuleConfig,
   type RuleInput,
+  type RuleType,
+  tagsSchema,
   validateConfig,
 } from "@agentrules/core";
+import * as p from "@clack/prompts";
 import { readdir, readFile, stat } from "fs/promises";
 import { dirname, join, relative } from "path";
 import { directoryExists, fileExists } from "./fs";
 import { log } from "./log";
+import { ui } from "./ui";
+import { check } from "./zod-validator";
 
 // Re-export types for consumers
 export type { RuleConfig } from "@agentrules/core";
@@ -263,7 +275,7 @@ export async function loadConfig(
 
   const configDir = dirname(configPath);
 
-  const platformNames = platforms.map((p) => p.platform).join(", ");
+  const platformNames = platforms.map((plat) => plat.platform).join(", ");
   log.debug(`Loaded config: ${config.name}, platforms: ${platformNames}`);
 
   return {
@@ -567,4 +579,328 @@ async function readFirstMatch(
     }
   }
   return;
+}
+
+// =============================================================================
+// Interactive Prompts - Shared Rule Input Collection
+// =============================================================================
+
+export type CollectedRuleInputs = {
+  platforms: PlatformId[];
+  platformPaths: Partial<Record<PlatformId, string>>;
+  name: string;
+  title: string;
+  description: string;
+  tags: string[];
+  license: string;
+  isSkill: boolean;
+  ruleType?: RuleType;
+};
+
+export type CollectRuleInputsOptions = {
+  directory: string;
+  defaults?: {
+    name?: string;
+    title?: string;
+    description?: string;
+    platforms?: PlatformId[];
+    platformPaths?: Partial<Record<PlatformId, string>>;
+    license?: string;
+    tags?: string[];
+    ruleType?: RuleType;
+  };
+  nonInteractive?: boolean;
+  detectType?: boolean;
+};
+
+export type SkillDirectoryInfo = {
+  name?: string;
+  license?: string;
+};
+
+/**
+ * Detect if directory contains SKILL.md and extract frontmatter defaults.
+ */
+export async function detectSkillDirectory(
+  directory: string
+): Promise<SkillDirectoryInfo | undefined> {
+  const skillPath = join(directory, SKILL_FILENAME);
+
+  if (!(await fileExists(skillPath))) {
+    return;
+  }
+
+  const content = await readFile(skillPath, "utf8");
+  const frontmatter = parseSkillFrontmatter(content);
+
+  return {
+    name: frontmatter.name,
+    license: frontmatter.license,
+  };
+}
+
+function parseTags(input: unknown): string[] {
+  if (typeof input !== "string") return [];
+  if (input.trim().length === 0) return [];
+
+  return input
+    .split(",")
+    .map((tag) => tag.trim().toLowerCase())
+    .filter((tag) => tag.length > 0);
+}
+
+function checkTags(value: unknown): string | undefined {
+  const tags = parseTags(value);
+  const result = tagsSchema.safeParse(tags);
+  if (!result.success) {
+    return result.error.issues[0]?.message;
+  }
+}
+
+/**
+ * Collect rule inputs via interactive prompts or defaults.
+ *
+ * Handles:
+ * - Skill detection with SKILL.md frontmatter
+ * - Platform multiselect with keyboard hints
+ * - Per-platform path prompting (for non-skill multi-platform)
+ * - Name, title, description, tags, license prompts
+ */
+export async function collectRuleInputs(
+  options: CollectRuleInputsOptions
+): Promise<CollectedRuleInputs> {
+  const { directory, defaults = {}, nonInteractive = false } = options;
+
+  // Detect skill directory and prompt
+  const skillInfo = await detectSkillDirectory(directory);
+  let isSkill = false;
+
+  if (skillInfo && !nonInteractive) {
+    const confirm = await p.confirm({
+      message: `Detected SKILL.md${skillInfo.name ? ` (${skillInfo.name})` : ""}. Initialize as skill?`,
+      initialValue: true,
+    });
+
+    if (p.isCancel(confirm)) {
+      throw new Error("Cancelled");
+    }
+
+    isSkill = confirm;
+  } else if (skillInfo && nonInteractive) {
+    // Non-interactive with skill detected - use skill defaults
+    isSkill = true;
+  }
+
+  // Build default values with skill info fallbacks
+  const defaultName =
+    isSkill && skillInfo?.name
+      ? normalizeName(skillInfo.name)
+      : (defaults.name ?? "my-rule");
+
+  const defaultLicense =
+    isSkill && skillInfo?.license
+      ? skillInfo.license
+      : (defaults.license ?? "MIT");
+
+  // Validate pre-selected platforms if provided
+  const validatedPlatforms: PlatformId[] = [];
+  if (defaults.platforms) {
+    for (const platform of defaults.platforms) {
+      if (!isSupportedPlatform(platform)) {
+        throw new Error(`Unknown platform "${platform}"`);
+      }
+      validatedPlatforms.push(platform);
+    }
+  }
+
+  // Platform selection
+  const selectedPlatforms: PlatformId[] =
+    validatedPlatforms.length > 0
+      ? validatedPlatforms
+      : await (async () => {
+          if (nonInteractive) {
+            throw new Error("Missing --platform in non-interactive mode");
+          }
+
+          const platformChoices = await p.multiselect({
+            message: `Platforms ${ui.dim("(space to toggle, 'a' to select all)")}`,
+            options: PLATFORM_IDS.map((id) => ({ value: id, label: id })),
+            required: true,
+          });
+
+          if (p.isCancel(platformChoices)) {
+            throw new Error("Cancelled");
+          }
+
+          return platformChoices as PlatformId[];
+        })();
+
+  // Platform paths (only for multi-platform, non-skill)
+  const platformPaths: Partial<Record<PlatformId, string>> = {};
+
+  if (selectedPlatforms.length > 1 && !isSkill && !nonInteractive) {
+    // Check if we have complete path mapping from defaults
+    const hasCompletePathMapping = selectedPlatforms.every((platform) => {
+      const value = defaults.platformPaths?.[platform];
+      return typeof value === "string" && value.trim().length > 0;
+    });
+
+    if (hasCompletePathMapping && defaults.platformPaths) {
+      // Use provided paths
+      for (const platform of selectedPlatforms) {
+        const pathVal = defaults.platformPaths[platform]?.trim();
+        if (pathVal && pathVal !== ".") {
+          platformPaths[platform] = pathVal;
+        }
+      }
+    } else {
+      // Prompt for each platform's path
+      for (const platform of selectedPlatforms) {
+        const mappedPath = defaults.platformPaths?.[platform]?.trim();
+        const suggestedPath =
+          mappedPath ??
+          ((await directoryExists(join(directory, platform))) ? platform : ".");
+
+        const input = await p.text({
+          message: `Folder for ${platform} files ('.' = same folder as agentrules.json)`,
+          placeholder: suggestedPath,
+          defaultValue: suggestedPath,
+        });
+
+        if (p.isCancel(input)) {
+          throw new Error("Cancelled");
+        }
+
+        const trimmed = input.trim();
+        const resolvedPath = trimmed.length > 0 ? trimmed : suggestedPath;
+
+        if (resolvedPath !== ".") {
+          platformPaths[platform] = resolvedPath;
+        }
+      }
+    }
+  } else if (defaults.platformPaths) {
+    // Copy over any provided paths
+    for (const platform of selectedPlatforms) {
+      const pathVal = defaults.platformPaths[platform]?.trim();
+      if (pathVal && pathVal !== ".") {
+        platformPaths[platform] = pathVal;
+      }
+    }
+  }
+
+  // Non-interactive mode: use defaults for remaining fields
+  if (nonInteractive) {
+    const name = normalizeName(defaults.name ?? defaultName);
+    const nameCheck = nameSchema.safeParse(name);
+    if (!nameCheck.success) {
+      throw new Error(nameCheck.error.issues[0]?.message ?? "Invalid name");
+    }
+
+    return {
+      platforms: selectedPlatforms,
+      platformPaths,
+      name,
+      title: defaults.title ?? toTitleCase(name),
+      description: defaults.description ?? "",
+      tags: defaults.tags ?? [],
+      license: defaultLicense,
+      isSkill,
+      ruleType: isSkill ? "skill" : defaults.ruleType,
+    };
+  }
+
+  // Interactive prompts for remaining values
+  const result = await p.group(
+    {
+      name: () => {
+        const normalizedDefault = normalizeName(defaultName);
+        return p.text({
+          message: "Rule name",
+          placeholder: normalizedDefault,
+          defaultValue: normalizedDefault,
+          validate: (value) => {
+            // Allow empty to use defaultValue
+            if (!value || value.trim() === "") return;
+            return check(nameSchema)(value);
+          },
+        });
+      },
+
+      title: ({ results }: { results: { name?: string } }) => {
+        const defaultTitle =
+          defaults.title ?? toTitleCase(results.name ?? defaultName);
+        return p.text({
+          message: "Title",
+          defaultValue: defaultTitle,
+          placeholder: defaultTitle,
+        });
+      },
+
+      description: () =>
+        p.text({
+          message: "Description",
+          placeholder: "Describe what this rule does...",
+          defaultValue: defaults.description,
+          validate: check(descriptionSchema),
+        }),
+
+      tags: () =>
+        p.text({
+          message: "Tags (comma-separated, optional)",
+          placeholder: "e.g., typescript, testing, react",
+          validate: checkTags,
+        }),
+
+      license: async () => {
+        const choice = await p.select({
+          message: "License",
+          options: [
+            ...COMMON_LICENSES.map((id) => ({ value: id, label: id })),
+            { value: "__other__", label: "Other (enter SPDX identifier)" },
+          ],
+          initialValue: defaultLicense,
+        });
+
+        if (p.isCancel(choice)) {
+          throw new Error("Cancelled");
+        }
+
+        if (choice === "__other__") {
+          const custom = await p.text({
+            message: "License (SPDX identifier)",
+            placeholder: "e.g., MPL-2.0, AGPL-3.0-only",
+            validate: check(licenseSchema),
+          });
+
+          if (p.isCancel(custom)) {
+            throw new Error("Cancelled");
+          }
+
+          return custom;
+        }
+
+        return choice;
+      },
+    },
+    {
+      onCancel: () => {
+        throw new Error("Cancelled");
+      },
+    }
+  );
+
+  const tags = parseTags(result.tags);
+
+  return {
+    platforms: selectedPlatforms,
+    platformPaths,
+    name: result.name,
+    title: result.title.trim() || toTitleCase(result.name),
+    description: result.description ?? "",
+    tags,
+    license: result.license,
+    isSkill,
+    ruleType: isSkill ? "skill" : defaults.ruleType,
+  };
 }

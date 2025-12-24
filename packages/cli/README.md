@@ -193,8 +193,9 @@ agentrules publish [path] [options]
 # Publish current directory
 agentrules publish
 
-# Publish a specific rule
+# Publish a specific directory or file (interactive if no agentrules.json)
 agentrules publish ./my-rule
+agentrules publish .claude/commands/deploy.md
 
 # Publish to major version 2
 agentrules publish --version 2

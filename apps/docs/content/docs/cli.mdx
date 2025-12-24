@@ -247,11 +247,12 @@ agentrules publish --platform claude
 agentrules publish --platform claude,opencode
 agentrules publish --platform claude --platform opencode
 
-# Quick publish a single file
-agentrules publish .claude/commands/deploy.md --platform claude --type command --name deploy
+# Quick publish a file or directory (interactive)
+agentrules publish .claude/commands/deploy.md
+agentrules publish ./my-rule
 
-# Preview quick publish
-agentrules publish .claude/commands/deploy.md --platform claude --type command --name deploy --dry-run
+# Quick publish non-interactively (requires all options)
+agentrules publish .claude/commands/deploy.md --platform claude --type command --name deploy
 ```
 
 ### unpublish
