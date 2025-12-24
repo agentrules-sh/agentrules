@@ -799,7 +799,9 @@ async function resolveQuickPublishInputs(
     );
     log.print(ui.keyValue("Name", ui.code(normalizedName)));
     log.print(ui.keyValue("Title", finalTitle));
-    log.print(ui.keyValue("Description", finalDescription));
+    log.print(
+      ui.keyValue("Description", finalDescription || ui.dim("No description"))
+    );
     log.print(ui.keyValue("Platforms", platforms.join(", ")));
     log.print(ui.keyValue("Type", ruleType));
     if (finalTags.length > 0) {
