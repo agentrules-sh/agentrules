@@ -51,6 +51,57 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/**
+ * Prompts to create agentrules.json after quick publish (or dry run).
+ * With --yes, creates without prompting.
+ */
+async function promptToCreateConfig(
+  quickPublish: QuickPublishInputs | undefined,
+  yes: boolean | undefined
+): Promise<boolean> {
+  if (!quickPublish) return false;
+
+  let createConfig = yes ?? false;
+
+  if (!yes && process.stdin.isTTY) {
+    log.print("");
+    const answer = await p.confirm({
+      message: "Create agentrules.json for future publishes?",
+      initialValue: true,
+    });
+    createConfig = !p.isCancel(answer) && answer;
+  }
+
+  if (createConfig) {
+    const sourceDir =
+      quickPublish.source.type === "directory"
+        ? quickPublish.source.path
+        : undefined;
+
+    // For single files, create config in same directory as file
+    const configDir =
+      sourceDir ??
+      (quickPublish.source.path.replace(/[/\\][^/\\]+$/, "") || ".");
+
+    await initRule({
+      directory: configDir,
+      name: quickPublish.name,
+      title: quickPublish.title,
+      description: quickPublish.description || undefined,
+      platforms: quickPublish.platforms,
+      type: quickPublish.ruleType,
+      tags: quickPublish.tags,
+      license: quickPublish.license,
+      force: false,
+    });
+
+    log.success(`Created ${ui.path(join(configDir, "agentrules.json"))}`);
+    return true;
+  }
+
+  return false;
+}
+
 export type PublishOptions = {
   /** Path to agentrules.json, a directory containing it, or a single file to publish */
   path?: string;
@@ -821,6 +872,9 @@ async function finalizePublish(options: {
 
     log.print(ui.hint("Run without --dry-run to publish."));
 
+    // Still offer to create agentrules.json for quick publish dry runs
+    await promptToCreateConfig(quickPublish, yes);
+
     return {
       success: true,
       preview: {
@@ -900,44 +954,7 @@ async function finalizePublish(options: {
   log.info(ui.keyValue("Now live at", ui.link(data.url)));
 
   // Prompt to create agentrules.json for quick publish
-  if (quickPublish) {
-    let createConfig = yes; // --yes defaults to creating config
-
-    if (!yes && process.stdin.isTTY) {
-      log.print("");
-      const answer = await p.confirm({
-        message: "Create agentrules.json for future publishes?",
-        initialValue: true,
-      });
-      createConfig = !p.isCancel(answer) && answer;
-    }
-
-    if (createConfig) {
-      const sourceDir =
-        quickPublish.source.type === "directory"
-          ? quickPublish.source.path
-          : undefined;
-
-      // For single files, create config in same directory as file
-      const configDir =
-        sourceDir ??
-        (quickPublish.source.path.replace(/[/\\][^/\\]+$/, "") || ".");
-
-      await initRule({
-        directory: configDir,
-        name: quickPublish.name,
-        title: quickPublish.title,
-        description: quickPublish.description || undefined,
-        platforms: quickPublish.platforms,
-        type: quickPublish.ruleType,
-        tags: quickPublish.tags,
-        license: quickPublish.license,
-        force: false,
-      });
-
-      log.success(`Created ${ui.path(join(configDir, "agentrules.json"))}`);
-    }
-  }
+  await promptToCreateConfig(quickPublish, yes);
 
   return {
     success: true,
