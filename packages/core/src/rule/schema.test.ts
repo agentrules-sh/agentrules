@@ -1,7 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import { nameSchema, titleSchema } from "../schemas";
 import {
+  bundledFileSchema,
   COMMON_LICENSES,
+  isValidBundlePath,
   licenseSchema,
   platformIdSchema,
   ruleBundleSchema,
@@ -436,6 +438,82 @@ describe("ruleBundleSchema", () => {
     ).toThrow();
     expect(() =>
       ruleBundleSchema.parse({ ...validBundle, version: "v1.0" })
+    ).toThrow();
+  });
+});
+
+describe("isValidBundlePath", () => {
+  it("accepts valid relative paths", () => {
+    expect(isValidBundlePath(".cursor/rules/my-rule.mdc")).toBe(true);
+    expect(isValidBundlePath("AGENTS.md")).toBe(true);
+    expect(isValidBundlePath(".claude/skills/my-skill/SKILL.md")).toBe(true);
+    expect(isValidBundlePath("nested/deep/path/file.txt")).toBe(true);
+  });
+
+  it("rejects paths with parent directory traversal", () => {
+    expect(isValidBundlePath("../secret.txt")).toBe(false);
+    expect(isValidBundlePath("foo/../bar")).toBe(false);
+    expect(isValidBundlePath("foo/bar/../../secret")).toBe(false);
+    expect(isValidBundlePath("..")).toBe(false);
+  });
+
+  it("rejects absolute paths", () => {
+    expect(isValidBundlePath("/etc/passwd")).toBe(false);
+    expect(isValidBundlePath("/home/user/.ssh/id_rsa")).toBe(false);
+  });
+
+  it("rejects paths starting with tilde", () => {
+    expect(isValidBundlePath("~/.ssh/id_rsa")).toBe(false);
+    expect(isValidBundlePath("~/Documents/secret.txt")).toBe(false);
+  });
+
+  it("rejects paths with embedded home directory", () => {
+    expect(isValidBundlePath("foo/~/bar")).toBe(false);
+    expect(isValidBundlePath("some/path/~/secret")).toBe(false);
+  });
+
+  it("rejects paths with {userHomeDir} placeholder", () => {
+    expect(isValidBundlePath("{userHomeDir}/.config")).toBe(false);
+    expect(isValidBundlePath("foo/{userHomeDir}/bar")).toBe(false);
+  });
+});
+
+describe("bundledFileSchema path validation", () => {
+  const validFile = {
+    path: ".cursor/rules/my-rule.mdc",
+    size: 100,
+    checksum: "a".repeat(64),
+    content: "# My Rule",
+  };
+
+  it("accepts valid bundle paths", () => {
+    expect(() => bundledFileSchema.parse(validFile)).not.toThrow();
+    expect(() =>
+      bundledFileSchema.parse({ ...validFile, path: "AGENTS.md" })
+    ).not.toThrow();
+  });
+
+  it("rejects paths with parent directory traversal", () => {
+    expect(() =>
+      bundledFileSchema.parse({ ...validFile, path: "../secret.txt" })
+    ).toThrow();
+    expect(() =>
+      bundledFileSchema.parse({ ...validFile, path: "foo/../bar" })
+    ).toThrow();
+  });
+
+  it("rejects absolute paths", () => {
+    expect(() =>
+      bundledFileSchema.parse({ ...validFile, path: "/etc/passwd" })
+    ).toThrow();
+  });
+
+  it("rejects home directory paths", () => {
+    expect(() =>
+      bundledFileSchema.parse({ ...validFile, path: "~/.ssh/id_rsa" })
+    ).toThrow();
+    expect(() =>
+      bundledFileSchema.parse({ ...validFile, path: "{userHomeDir}/.config" })
     ).toThrow();
   });
 });

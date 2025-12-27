@@ -67,6 +67,36 @@ export const licenseSchema = z
 
 const pathSchema = z.string().trim().min(1);
 
+/**
+ * Validate a bundle file path for security.
+ * Rejects paths that could escape the install directory.
+ *
+ * @returns true if path is safe, false otherwise
+ */
+export function isValidBundlePath(path: string): boolean {
+  // Reject parent directory traversal
+  if (path.includes("..")) return false;
+
+  // Reject absolute paths
+  if (path.startsWith("/")) return false;
+
+  // Reject home directory references
+  if (path.startsWith("~")) return false;
+
+  // Reject embedded home directory (e.g., "foo/~/bar")
+  if (path.includes("/~/") || path.includes("\\~\\")) return false;
+
+  // Reject placeholder that should have been expanded
+  if (path.includes("{userHomeDir}")) return false;
+
+  return true;
+}
+
+const bundlePathSchema = z.string().min(1).refine(isValidBundlePath, {
+  message:
+    "Path must be relative without traversal (no .., ~, absolute paths, or {userHomeDir})",
+});
+
 const ignorePatternSchema = z
   .string()
   .trim()
@@ -131,7 +161,7 @@ export const ruleConfigSchema = z
   .strict();
 
 export const bundledFileSchema = z.object({
-  path: z.string().min(1),
+  path: bundlePathSchema,
   size: z.number().int().nonnegative(),
   checksum: z.string().length(64),
   content: z.string(),
