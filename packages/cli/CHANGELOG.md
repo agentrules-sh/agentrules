@@ -1,5 +1,14 @@
 # @agentrules/cli
 
+## 0.3.2
+
+### Patch Changes
+
+- 746d24f: - fix global install paths
+  - add extra validation to reject bundles with unsafe path traversal
+- Updated dependencies [746d24f]
+  - @agentrules/core@0.3.1
+
 ## 0.3.1
 
 ### Patch Changes

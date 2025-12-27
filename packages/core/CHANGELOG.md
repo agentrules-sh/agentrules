@@ -1,5 +1,12 @@
 # @agentrules/core
 
+## 0.3.1
+
+### Patch Changes
+
+- 746d24f: - fix global install paths
+  - add extra validation to reject bundles with unsafe path traversal
+
 ## 0.3.0
 
 ### Minor Changes
