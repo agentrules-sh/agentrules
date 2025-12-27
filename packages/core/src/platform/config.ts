@@ -7,12 +7,19 @@
  * 3. Update PlatformRuleType in types.ts to include new types
  *
  * Path templates support:
- * - {platformDir} - root directory for install scope (project: ".claude", global: "~/.claude")
+ * - {platformDir} - platform-specific directory (e.g., ".claude", ".cursor")
+ * - {userHomeDir} - user's home directory (expanded at runtime)
  * - {name} - rule name
  */
 
 import type { PlatformConfig, PlatformId, TypeConfig } from "./types";
 import { PLATFORM_ID_TUPLE } from "./types";
+
+/**
+ * Placeholder for user's home directory in path templates.
+ * Consumers (e.g., CLI) are responsible for expanding this at runtime.
+ */
+export const USER_HOME_DIR_PLACEHOLDER = "{userHomeDir}";
 
 export const PLATFORM_IDS = PLATFORM_ID_TUPLE as unknown as [
   PlatformId,
@@ -26,7 +33,7 @@ export const PLATFORMS = {
   opencode: {
     label: "OpenCode",
     platformDir: ".opencode",
-    globalDir: "~/.config/opencode",
+    globalDir: "{userHomeDir}/.config/opencode",
     types: {
       instruction: {
         description: "Project instructions",
@@ -58,7 +65,7 @@ export const PLATFORMS = {
   claude: {
     label: "Claude Code",
     platformDir: ".claude",
-    globalDir: "~/.claude",
+    globalDir: "{userHomeDir}/.claude",
     types: {
       instruction: {
         description: "Project instructions",
@@ -85,7 +92,7 @@ export const PLATFORMS = {
   cursor: {
     label: "Cursor",
     platformDir: ".cursor",
-    globalDir: "~/.cursor",
+    globalDir: "{userHomeDir}/.cursor",
     types: {
       instruction: {
         description: "Project instructions",
@@ -112,7 +119,7 @@ export const PLATFORMS = {
   codex: {
     label: "Codex",
     platformDir: ".codex",
-    globalDir: "~/.codex",
+    globalDir: "{userHomeDir}/.codex",
     types: {
       instruction: {
         description: "Project instructions",
@@ -217,7 +224,7 @@ export function getPlatformConfig(platform: PlatformId): PlatformConfig {
  * Returns the path relative to the platform's root directory.
  *
  * Example: For codex instruction with scope="global", returns "AGENTS.md"
- * (not "~/.codex/AGENTS.md")
+ * (not the full path with {userHomeDir})
  */
 export function getRelativeInstallPath({
   platform,

@@ -312,7 +312,7 @@ describe("add", () => {
     expect(filePaths.some((p) => p.endsWith("README.md"))).toBeTrue();
   });
 
-  it("global install paths do not contain literal tilde", async () => {
+  it("global install paths do not contain unexpanded placeholders or duplicates", async () => {
     const fixture = await createFixturesWithRootFiles(
       "# Config\n",
       "# README\n"
@@ -324,12 +324,20 @@ describe("add", () => {
       global: true,
     });
 
-    // Verify no file paths contain literal ~ (should be expanded)
+    // Verify target root is fully expanded
+    expect(result.targetRoot).not.toContain("~");
+    expect(result.targetRoot).not.toContain("{userHomeDir}");
+
+    // Verify no duplicate platform directories (e.g., .opencode/.opencode)
+    const platformDir = ".opencode";
+    expect(result.targetRoot).not.toContain(`${platformDir}/${platformDir}`);
+
+    // Verify file paths are relative and don't contain unexpanded placeholders
     for (const file of result.files) {
       expect(file.path).not.toContain("~");
+      expect(file.path).not.toContain("{userHomeDir}");
+      expect(file.path).not.toContain(`${platformDir}/${platformDir}`);
     }
-    // Verify target root is fully expanded (no ~)
-    expect(result.targetRoot).not.toContain("~");
   });
 
   it("installs all files to platform directory during project install", async () => {

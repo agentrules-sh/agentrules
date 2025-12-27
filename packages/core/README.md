@@ -135,20 +135,6 @@ for (const file of bundle.files) {
 }
 ```
 
-### Platform Configuration
-
-```ts
-import { PLATFORMS, PLATFORM_IDS } from "@agentrules/core";
-
-// All supported platform IDs
-console.log(PLATFORM_IDS); // ["opencode", "claude", "cursor", "codex"]
-
-// Get paths for a platform
-const opencode = PLATFORMS.opencode;
-console.log(opencode.platformDir); // ".opencode"
-console.log(opencode.globalDir);   // "~/.config/opencode"
-```
-
 ## Types
 
 Key types exported:

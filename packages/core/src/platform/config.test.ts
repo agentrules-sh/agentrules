@@ -107,7 +107,7 @@ describe("getInstallPath", () => {
     ).toBe(".claude/rules/my-rule.md");
   });
 
-  it("uses {platformDir} placeholder for global scope", () => {
+  it("returns {userHomeDir} placeholder for global scope (unexpanded)", () => {
     expect(
       getInstallPath({
         platform: "opencode",
@@ -115,7 +115,7 @@ describe("getInstallPath", () => {
         name: "my-agent",
         scope: "global",
       })
-    ).toBe("~/.config/opencode/agent/my-agent.md");
+    ).toBe("{userHomeDir}/.config/opencode/agent/my-agent.md");
 
     expect(
       getInstallPath({
@@ -124,7 +124,7 @@ describe("getInstallPath", () => {
         name: "my-rule",
         scope: "global",
       })
-    ).toBe("~/.claude/rules/my-rule.md");
+    ).toBe("{userHomeDir}/.claude/rules/my-rule.md");
   });
 
   it("returns path without {name} for instruction type", () => {

@@ -25,6 +25,7 @@ import {
   PLATFORMS,
   resolveSlug,
   toUtf8String,
+  USER_HOME_DIR_PLACEHOLDER,
   verifyBundledFileChecksum,
 } from "@agentrules/core";
 import chalk from "chalk";
@@ -389,7 +390,7 @@ function resolveInstallTarget(
         `Platform "${platform}" does not support global installation`
       );
     }
-    const globalRoot = resolve(expandHome(globalDir));
+    const globalRoot = resolve(expandUserHomeDir(globalDir));
     return {
       root: globalRoot,
       mode: "global",
@@ -404,7 +405,7 @@ function resolveInstallTarget(
 
   // Project install: use custom directory or current working directory
   const projectRoot = options.directory
-    ? resolve(expandHome(options.directory))
+    ? resolve(expandUserHomeDir(options.directory))
     : process.cwd();
   const label = options.directory
     ? `directory ${projectRoot}`
@@ -610,19 +611,28 @@ function ensureWithinRoot(candidate: string, root: string) {
   }
 }
 
-function expandHome(value: string) {
-  if (value.startsWith("~")) {
-    const remainder = value.slice(1);
-    const home = process.env.HOME || process.env.USERPROFILE || homedir();
-    if (!remainder) {
-      return home;
-    }
+/**
+ * Expand home directory references in a path string.
+ * Handles both {userHomeDir} placeholder and ~ prefix.
+ */
+function expandUserHomeDir(path: string): string {
+  const home = process.env.HOME || homedir();
+
+  if (path.includes(USER_HOME_DIR_PLACEHOLDER)) {
+    return path.replace(USER_HOME_DIR_PLACEHOLDER, home);
+  }
+
+  // Handle ~ prefix (for user-provided paths like --dir ~/foo)
+  if (path.startsWith("~")) {
+    const remainder = path.slice(1);
+    if (!remainder) return home;
     if (remainder.startsWith("/") || remainder.startsWith("\\")) {
       return `${home}${remainder}`;
     }
     return `${home}/${remainder}`;
   }
-  return value;
+
+  return path;
 }
 
 export { normalizePlatformInput } from "@agentrules/core";
