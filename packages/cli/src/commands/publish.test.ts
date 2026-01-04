@@ -3,6 +3,12 @@ import { API_ENDPOINTS } from "@agentrules/core";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
+import {
+  denyUnmockedFetch,
+  formatFetchCall,
+  installMockFetch,
+  mockFetchError,
+} from "@/test-utils/fetch";
 import { initAppContext } from "../lib/context";
 import { saveCredentials } from "../lib/credentials";
 import { publish } from "./publish";
@@ -15,7 +21,7 @@ let testDir: string;
 let homeDir: string;
 let originalHome: string | undefined;
 
-const DEFAULT_REGISTRY_URL = "https://agentrules.directory/";
+const DEFAULT_REGISTRY_URL = "https://registry.invalid/";
 
 const VALID_CONFIG = {
   $schema: "https://agentrules.directory/schema/agentrules.json",
@@ -111,7 +117,11 @@ async function createInProjectRule(
  * Sets up a logged-in context for testing
  */
 async function setupLoggedInContext(token = "test-token") {
-  await saveCredentials(DEFAULT_REGISTRY_URL, { token });
+  await saveCredentials(DEFAULT_REGISTRY_URL, {
+    token,
+    userName: "Test User",
+    userEmail: "test@example.com",
+  });
   await initAppContext({ url: DEFAULT_REGISTRY_URL });
 }
 
@@ -128,6 +138,7 @@ describe("publish", () => {
     homeDir = await mkdtemp(join(tmpdir(), "cli-home-"));
     originalHome = process.env.AGENT_RULES_HOME;
     process.env.AGENT_RULES_HOME = homeDir;
+    denyUnmockedFetch(originalFetch);
   });
 
   afterEach(async () => {
@@ -753,7 +764,7 @@ describe("publish", () => {
 
     const ruleDir = await createValidRule(testDir, "network-error-rule");
 
-    mockFetchError("Connection refused");
+    mockFetchError(originalFetch, "Connection refused");
 
     const result = await publish({ path: ruleDir });
 
@@ -762,8 +773,12 @@ describe("publish", () => {
   });
 
   it("uses custom API URL from config", async () => {
-    const customUrl = "https://custom.example.com/";
-    await saveCredentials(customUrl, { token: "custom-token" });
+    const customUrl = "https://custom.invalid/";
+    await saveCredentials(customUrl, {
+      token: "custom-token",
+      userName: "Test User",
+      userEmail: "test@example.com",
+    });
     await initAppContext({ url: customUrl });
 
     const ruleDir = await createValidRule(testDir, "custom-url-rule");
@@ -1103,14 +1118,12 @@ function mockFetch(options: MockFetchOptions) {
         status: options.status ?? 200,
       });
     }
-    throw new Error(`Unexpected fetch URL: ${url}`);
+    throw new Error(
+      `Unexpected fetch: ${formatFetchCall(input, init)} (expected ${options.url})`
+    );
   }) as typeof fetch;
 
-  mockedFetch.preconnect =
-    originalFetch.preconnect?.bind(originalFetch) ??
-    ((() => Promise.resolve()) as NonNullable<typeof originalFetch.preconnect>);
-
-  globalThis.fetch = mockedFetch;
+  installMockFetch(originalFetch, mockedFetch);
 }
 
 function createPublishResponse(
@@ -1131,16 +1144,4 @@ function createPublishResponse(
     url: `https://example.com/rules/${slug}`,
     ...overrides,
   };
-}
-
-function mockFetchError(message: string) {
-  const mockedFetch = (async () => {
-    throw new Error(message);
-  }) as unknown as typeof fetch;
-
-  mockedFetch.preconnect =
-    originalFetch.preconnect?.bind(originalFetch) ??
-    ((() => Promise.resolve()) as NonNullable<typeof originalFetch.preconnect>);
-
-  globalThis.fetch = mockedFetch;
 }

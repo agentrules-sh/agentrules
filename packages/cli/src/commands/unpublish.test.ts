@@ -3,6 +3,12 @@ import { API_ENDPOINTS } from "@agentrules/core";
 import { mkdtemp, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
+import {
+  denyUnmockedFetch,
+  formatFetchCall,
+  installMockFetch,
+  mockFetchError,
+} from "@/test-utils/fetch";
 import { initAppContext } from "../lib/context";
 import { saveCredentials } from "../lib/credentials";
 import { unpublish } from "./unpublish";
@@ -11,13 +17,17 @@ const originalFetch = globalThis.fetch;
 let homeDir: string;
 let originalHome: string | undefined;
 
-const DEFAULT_REGISTRY_URL = "https://agentrules.directory/";
+const DEFAULT_REGISTRY_URL = "https://registry.invalid/";
 
 /**
  * Sets up a logged-in context for testing
  */
 async function setupLoggedInContext(token = "test-token") {
-  await saveCredentials(DEFAULT_REGISTRY_URL, { token });
+  await saveCredentials(DEFAULT_REGISTRY_URL, {
+    token,
+    userName: "Test User",
+    userEmail: "test@example.com",
+  });
   await initAppContext({ url: DEFAULT_REGISTRY_URL });
 }
 
@@ -33,6 +43,7 @@ describe("unpublish", () => {
     homeDir = await mkdtemp(join(tmpdir(), "cli-unpublish-"));
     originalHome = process.env.AGENT_RULES_HOME;
     process.env.AGENT_RULES_HOME = homeDir;
+    denyUnmockedFetch(originalFetch);
   });
 
   afterEach(async () => {
@@ -185,7 +196,7 @@ describe("unpublish", () => {
   it("handles network errors", async () => {
     await setupLoggedInContext();
 
-    mockFetchError("Connection refused");
+    mockFetchError(originalFetch, "Connection refused");
 
     const result = await unpublish({
       rule: "my-rule@1.0",
@@ -196,8 +207,12 @@ describe("unpublish", () => {
   });
 
   it("uses custom API URL from registry config", async () => {
-    const customUrl = "https://custom.example.com/";
-    await saveCredentials(customUrl, { token: "custom-token" });
+    const customUrl = "https://custom.invalid/";
+    await saveCredentials(customUrl, {
+      token: "custom-token",
+      userName: "Test User",
+      userEmail: "test@example.com",
+    });
     await initAppContext({ url: customUrl });
 
     let calledUrl = "";
@@ -318,24 +333,10 @@ function mockFetch(options: MockFetchOptions) {
         headers: { "content-type": "application/json" },
       });
     }
-    throw new Error(`Unexpected fetch URL: ${url}`);
+    throw new Error(
+      `Unexpected fetch: ${formatFetchCall(input, init)} (expected ${options.url})`
+    );
   }) as typeof fetch;
 
-  mockedFetch.preconnect =
-    originalFetch.preconnect?.bind(originalFetch) ??
-    ((() => Promise.resolve()) as NonNullable<typeof originalFetch.preconnect>);
-
-  globalThis.fetch = mockedFetch;
-}
-
-function mockFetchError(message: string) {
-  const mockedFetch = (async () => {
-    throw new Error(message);
-  }) as unknown as typeof fetch;
-
-  mockedFetch.preconnect =
-    originalFetch.preconnect?.bind(originalFetch) ??
-    ((() => Promise.resolve()) as NonNullable<typeof originalFetch.preconnect>);
-
-  globalThis.fetch = mockedFetch;
+  installMockFetch(originalFetch, mockedFetch);
 }

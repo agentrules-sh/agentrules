@@ -9,18 +9,25 @@ import {
   type RegistryCredentials,
   saveCredentials,
 } from "@/lib/credentials";
+import {
+  denyUnmockedFetch,
+  formatFetchCall,
+  getFetchUrl,
+  installMockFetch,
+} from "@/test-utils/fetch";
 
 const originalFetch = globalThis.fetch;
 let homeDir: string;
 let originalHome: string | undefined;
 
-const DEFAULT_REGISTRY_URL = "https://agentrules.directory/";
+const DEFAULT_REGISTRY_URL = "https://registry.invalid/";
 
 describe("login", () => {
   beforeEach(async () => {
     homeDir = await mkdtemp(join(tmpdir(), "cli-login-"));
     originalHome = process.env.AGENT_RULES_HOME;
     process.env.AGENT_RULES_HOME = homeDir;
+    denyUnmockedFetch(originalFetch);
   });
 
   afterEach(async () => {
@@ -137,9 +144,8 @@ describe("login", () => {
             body: {
               device_code: "test-device-code",
               user_code: "PENDING-TEST",
-              verification_uri: "https://agentrules.directory/auth/device",
-              verification_uri_complete:
-                "https://agentrules.directory/auth/device?code=PENDING-TEST",
+              verification_uri: `${DEFAULT_REGISTRY_URL}auth/device`,
+              verification_uri_complete: `${DEFAULT_REGISTRY_URL}auth/device?code=PENDING-TEST`,
               expires_in: 300,
               interval: 0.01, // Very short interval for testing
             },
@@ -203,9 +209,8 @@ describe("login", () => {
             body: {
               device_code: "expired-code",
               user_code: "EXPIRED",
-              verification_uri: "https://agentrules.directory/auth/device",
-              verification_uri_complete:
-                "https://agentrules.directory/auth/device?code=EXPIRED",
+              verification_uri: `${DEFAULT_REGISTRY_URL}auth/device`,
+              verification_uri_complete: `${DEFAULT_REGISTRY_URL}auth/device?code=EXPIRED`,
               expires_in: 0.01, // Very short expiration
               interval: 0.01,
             },
@@ -231,7 +236,7 @@ describe("login", () => {
     });
 
     it("uses custom API URL when provided", async () => {
-      const customUrl = "https://custom.example.com/";
+      const customUrl = "https://custom.invalid/";
       await initAppContext({ url: customUrl });
 
       mockFetchSequence([
@@ -324,8 +329,11 @@ function mockFetchSequence(handlers: MockHandler[]) {
     handlerMap.set(h.url, h.handler);
   }
 
-  const mockedFetch = (async (input: Parameters<typeof fetch>[0]) => {
-    const url = String(input);
+  const mockedFetch = (async (
+    input: Parameters<typeof fetch>[0],
+    init?: Parameters<typeof fetch>[1]
+  ) => {
+    const url = getFetchUrl(input);
 
     // Find matching handler (exact match or prefix match for poll endpoint)
     let handler = handlerMap.get(url);
@@ -340,7 +348,7 @@ function mockFetchSequence(handlers: MockHandler[]) {
     }
 
     if (!handler) {
-      throw new Error(`Unexpected fetch URL: ${url}`);
+      throw new Error(`Unmocked fetch: ${formatFetchCall(input, init)}`);
     }
 
     const result = handler();
@@ -352,11 +360,7 @@ function mockFetchSequence(handlers: MockHandler[]) {
     });
   }) as typeof fetch;
 
-  mockedFetch.preconnect =
-    originalFetch.preconnect?.bind(originalFetch) ??
-    ((() => Promise.resolve()) as NonNullable<typeof originalFetch.preconnect>);
-
-  globalThis.fetch = mockedFetch;
+  installMockFetch(originalFetch, mockedFetch);
 }
 
 type DeviceFlowOptions = {
@@ -378,8 +382,8 @@ function mockDeviceCodeFlow(options: DeviceFlowOptions) {
         body: {
           device_code: options.deviceCode,
           user_code: options.userCode,
-          verification_uri: `${DEFAULT_REGISTRY_URL}/auth/device`,
-          verification_uri_complete: `${DEFAULT_REGISTRY_URL}/auth/device?code=${options.userCode}`,
+          verification_uri: `${DEFAULT_REGISTRY_URL}auth/device`,
+          verification_uri_complete: `${DEFAULT_REGISTRY_URL}auth/device?code=${options.userCode}`,
           expires_in: 300,
           interval: 0.01, // Very short interval for testing
         },

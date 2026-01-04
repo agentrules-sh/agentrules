@@ -5,18 +5,26 @@ import { join } from "path";
 import { whoami } from "@/commands/auth/whoami";
 import { initAppContext } from "@/lib/context";
 import { type RegistryCredentials, saveCredentials } from "@/lib/credentials";
+import {
+  denyUnmockedFetch,
+  formatFetchCall,
+  getFetchUrl,
+  installMockFetch,
+  mockFetchError,
+} from "@/test-utils/fetch";
 
 const originalFetch = globalThis.fetch;
 let homeDir: string;
 let originalHome: string | undefined;
 
-const DEFAULT_REGISTRY_URL = "https://agentrules.directory/";
+const DEFAULT_REGISTRY_URL = "https://registry.invalid/";
 
 describe("whoami", () => {
   beforeEach(async () => {
     homeDir = await mkdtemp(join(tmpdir(), "cli-whoami-"));
     originalHome = process.env.AGENT_RULES_HOME;
     process.env.AGENT_RULES_HOME = homeDir;
+    denyUnmockedFetch(originalFetch);
   });
 
   afterEach(async () => {
@@ -149,7 +157,7 @@ describe("whoami", () => {
       token: "test-token",
     };
     await saveCredentials(DEFAULT_REGISTRY_URL, credentials);
-    mockFetchError("Network error");
+    mockFetchError(originalFetch, "Network error");
     await initAppContext({ url: DEFAULT_REGISTRY_URL });
 
     const result = await whoami();
@@ -161,7 +169,7 @@ describe("whoami", () => {
   });
 
   it("checks credentials for specific registry when custom url used", async () => {
-    const customUrl = "https://custom.example.com/";
+    const customUrl = "https://custom.invalid/";
     await saveCredentials(customUrl, {
       token: "custom-token",
       userName: "Custom User",
@@ -185,30 +193,21 @@ type MockFetchOptions = {
 };
 
 function mockFetch(options: MockFetchOptions) {
-  const mockedFetch = (async (input: Parameters<typeof fetch>[0]) => {
-    if (String(input) === options.url) {
+  const mockedFetch = (async (
+    input: Parameters<typeof fetch>[0],
+    init?: Parameters<typeof fetch>[1]
+  ) => {
+    const url = getFetchUrl(input);
+
+    if (url === options.url) {
       return new Response(JSON.stringify(options.response), {
         status: options.status ?? 200,
       });
     }
-    throw new Error(`Unexpected fetch URL: ${input}`);
+    throw new Error(
+      `Unexpected fetch: ${formatFetchCall(input, init)} (expected ${options.url})`
+    );
   }) as typeof fetch;
 
-  mockedFetch.preconnect =
-    originalFetch.preconnect?.bind(originalFetch) ??
-    ((() => Promise.resolve()) as NonNullable<typeof originalFetch.preconnect>);
-
-  globalThis.fetch = mockedFetch;
-}
-
-function mockFetchError(message: string) {
-  const mockedFetch = (async () => {
-    throw new Error(message);
-  }) as unknown as typeof fetch;
-
-  mockedFetch.preconnect =
-    originalFetch.preconnect?.bind(originalFetch) ??
-    ((() => Promise.resolve()) as NonNullable<typeof originalFetch.preconnect>);
-
-  globalThis.fetch = mockedFetch;
+  installMockFetch(originalFetch, mockedFetch);
 }

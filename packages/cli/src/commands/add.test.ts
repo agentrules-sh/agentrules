@@ -18,6 +18,11 @@ import {
 } from "@/commands/add";
 import { loadConfig, saveConfig } from "@/lib/config";
 import { initAppContext } from "@/lib/context";
+import {
+  denyUnmockedFetch,
+  formatFetchCall,
+  installMockFetch,
+} from "@/test-utils/fetch";
 
 type FixturePayload = {
   resolveResponse: ResolvedRule;
@@ -35,7 +40,7 @@ const RULE_NAME = "agentic-dev-starter";
 const RULE_SLUG = `testuser/${RULE_NAME}`;
 const PLATFORM: PlatformId = "opencode";
 const TITLE = "Agentic Dev Starter Kit";
-const DEFAULT_BASE_URL = "https://agentrules.directory/";
+const DEFAULT_BASE_URL = "https://registry.invalid/";
 
 const originalFetch = globalThis.fetch;
 let originalCwd: string;
@@ -61,6 +66,15 @@ describe("add", () => {
     // Set HOME so ~ expansion works in tests
     originalUserHome = process.env.HOME;
     process.env.HOME = homeDir;
+    denyUnmockedFetch(originalFetch);
+    await saveConfig({
+      defaultRegistry: "main",
+      registries: {
+        main: {
+          url: DEFAULT_BASE_URL,
+        },
+      },
+    });
     // Init context (will use default 'main' registry from config)
     await initAppContext();
   });
@@ -563,11 +577,11 @@ function mockFetchSequence(steps: (MockStep & { status?: number })[]) {
 
   const mockedFetch = (async (
     input: Parameters<typeof fetch>[0],
-    _init?: Parameters<typeof fetch>[1]
+    init?: Parameters<typeof fetch>[1]
   ) => {
     const next = queue.shift();
     if (!next) {
-      throw new Error("Unexpected fetch call in test");
+      throw new Error(`Unmocked fetch: ${formatFetchCall(input, init)}`);
     }
     // Compare URLs ignoring query parameters for API calls
     // (version is passed as query param, but we don't need to verify it in tests)
@@ -577,18 +591,13 @@ function mockFetchSequence(steps: (MockStep & { status?: number })[]) {
     const expectedBase = `${expectedUrl.origin}${expectedUrl.pathname}`;
     if (inputBase !== expectedBase) {
       throw new Error(
-        `Unexpected fetch URL. Expected ${next.expectUrl}, received ${input}`
+        `Unexpected fetch: ${formatFetchCall(input, init)} (expected ${next.expectUrl})`
       );
     }
     return next.response;
   }) as typeof fetch;
 
-  type Preconnect = NonNullable<typeof originalFetch.preconnect>;
-  mockedFetch.preconnect =
-    originalFetch.preconnect?.bind(originalFetch) ??
-    (((..._args: Parameters<Preconnect>) => Promise.resolve()) as Preconnect);
-
-  globalThis.fetch = mockedFetch;
+  installMockFetch(originalFetch, mockedFetch);
 }
 
 async function sha256Hex(data: string): Promise<string> {
