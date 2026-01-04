@@ -1,0 +1,58 @@
+{
+  "name": "@agentrules/indexer",
+  "version": "0.1.0",
+  "author": "Brian Cheung <bcheung.dev@gmail.com> (https://github.com/bcheung)",
+  "license": "MIT",
+  "homepage": "https://agentrules.directory",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agentrules-sh/agentrules",
+    "directory": "packages/indexer"
+  },
+  "bugs": {
+    "url": "https://github.com/agentrules-sh/agentrules/issues"
+  },
+  "keywords": [
+    "agentrules",
+    "indexer",
+    "github",
+    "crawler"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "main": "./dist/index.js",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "clean": "rm -rf node_modules dist .turbo"
+  },
+  "dependencies": {
+    "@agentrules/core": "workspace:*"
+  },
+  "devDependencies": {
+    "tsdown": "^0.9.0",
+    "typescript": "catalog:"
+  }
+}
